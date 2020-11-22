@@ -40,6 +40,9 @@ MIDDLEWARE = (
 )
 
 INSTALLED_APPS = (
+    'static_templates.tests.app1',
+    'static_templates.tests.app2',
+    'static_templates',
     'django.contrib.auth',
     'django.contrib.contenttypes',
     'django.contrib.sessions',
@@ -47,8 +50,6 @@ INSTALLED_APPS = (
     'django.contrib.messages',
     'django.contrib.staticfiles',
     'django.contrib.admin',
-    'static_templates',
-    'static_templates.tests',
 )
 
 AUTHENTICATION_BACKENDS = (
