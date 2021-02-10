@@ -12,7 +12,7 @@ DATABASES = {
     }
 }
 
-ROOT_URLCONF = 'state_track.urls'
+ROOT_URLCONF = 'tests.urls'
 
 TEMPLATES = [
     {
@@ -40,9 +40,9 @@ MIDDLEWARE = (
 )
 
 INSTALLED_APPS = (
-    'static_templates.tests.app1',
-    'static_templates.tests.app2',
-    'static_templates',
+    'django_static_templates.tests.app1',
+    'django_static_templates.tests.app2',
+    'django_static_templates',
     'django.contrib.auth',
     'django.contrib.contenttypes',
     'django.contrib.sessions',

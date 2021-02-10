@@ -7,7 +7,7 @@ Introduction
 ==============================================
 
 `django-static-templates` enables the usage of Django's dynamic template engine infrastructure to generate static files.
-That is files, that are collected during the collectstatic routine and, potentially, served externally to Django.
+That is, files that are collected during the collectstatic routine and likely served externally to Django.
 
 For example, a frequently occurring pattern that violates the DRY principle is the presence of defines, or enum like
 structures in server side Python code that needs to be replicated in client side JavaScript. Single-sourcing these
