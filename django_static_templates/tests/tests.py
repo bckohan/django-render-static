@@ -62,7 +62,6 @@ class BaseTestCase(TestCase):
         self.clean_generated()
 
     def tearDown(self):
-        # todo preserve if fail?
         self.clean_generated()
 
     def clean_generated(self):
@@ -88,7 +87,7 @@ class BaseTestCase(TestCase):
         }
     }
 })
-class NominalTestCase(BaseTestCase):
+class ContextOverrideTestCase(BaseTestCase):
     """
     Tests:
         - context overriding
@@ -100,6 +99,6 @@ class NominalTestCase(BaseTestCase):
         call_command('generate_static')
         self.assertTrue(filecmp.cmp(
             APP1_STATIC_DIR / 'app1' / 'html' / 'hello.html',
-            EXPECTED_DIR / 'nominal1.html',
+            EXPECTED_DIR / 'ctx_override.html',
             shallow=False
         ))
