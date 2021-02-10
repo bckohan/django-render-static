@@ -55,7 +55,9 @@ class BaseTestCase(TestCase):
 
     to_remove = [
         APP1_STATIC_DIR,
-        GLOBAL_STATIC_DIR
+        GLOBAL_STATIC_DIR,
+        APP2_STATIC_DIR / 'app1',
+        APP2_STATIC_DIR / 'app2'
     ]
 
     def setUp(self):
@@ -71,6 +73,33 @@ class BaseTestCase(TestCase):
                     shutil.rmtree(artifact)
                 else:
                     os.remove(artifact)
+
+
+@override_settings(STATIC_TEMPLATES={})
+class NominalTestCase(BaseTestCase):
+    """
+    The bare minimum configuration test cases. Verifies:
+        - that settings present in context
+        - that templates are findable even if unconfigured
+        - verifies that generate_static accepts template arguments
+    """
+    def test_generate(self):
+        call_command('generate_static', 'app1/html/nominal1.html')
+        self.assertEqual(len(os.listdir(APP1_STATIC_DIR)), 1)
+        self.assertEqual(len(os.listdir(APP2_STATIC_DIR)), 0)
+        self.assertTrue(filecmp.cmp(
+            APP1_STATIC_DIR / 'app1' / 'html' / 'nominal1.html',
+            EXPECTED_DIR / 'nominal1.html',
+            shallow=False
+        ))
+        call_command('generate_static', 'app1/html/nominal2.html')
+        self.assertEqual(len(os.listdir(APP1_STATIC_DIR)), 1)
+        self.assertEqual(len(os.listdir(APP2_STATIC_DIR)), 1)
+        self.assertTrue(filecmp.cmp(
+            APP2_STATIC_DIR / 'app1' / 'html' / 'nominal2.html',
+            EXPECTED_DIR / 'nominal2.html',
+            shallow=False
+        ))
 
 
 @override_settings(STATIC_TEMPLATES={
@@ -89,16 +118,37 @@ class BaseTestCase(TestCase):
 })
 class ContextOverrideTestCase(BaseTestCase):
     """
-    Tests:
-        - context overriding
-        - directory creation
-        - app dir path resolution
-
+    Tests that per template contexts override global contexts and that the global context is also used.
     """
     def test_generate(self):
         call_command('generate_static')
         self.assertTrue(filecmp.cmp(
             APP1_STATIC_DIR / 'app1' / 'html' / 'hello.html',
             EXPECTED_DIR / 'ctx_override.html',
+            shallow=False
+        ))
+
+
+@override_settings(STATIC_TEMPLATES={
+    'context': {
+        'to': 'world',
+        'punc': '!',
+        'greeting': 'Bye'
+    },
+    'templates': {
+        'app1/html/hello.html': {
+            'dest': GLOBAL_STATIC_DIR / 'dest_override.html'
+        }
+    }
+})
+class DestOverrideTestCase(BaseTestCase):
+    """
+    Tests that destination can be overridden for app directory loaded templates.
+    """
+    def test_generate(self):
+        call_command('generate_static')
+        self.assertTrue(filecmp.cmp(
+            GLOBAL_STATIC_DIR / 'dest_override.html',
+            EXPECTED_DIR / 'dest_override.html',
             shallow=False
         ))

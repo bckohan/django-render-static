@@ -2,11 +2,6 @@ from django.core.management.base import (
     BaseCommand,
     CommandError
 )
-import os
-from django.template.engine import Engine
-from django.template import Context
-from django.contrib.staticfiles import finders
-from django.conf import settings
 from django_static_templates.engine import StaticTemplateEngine
 
 
@@ -20,6 +15,7 @@ class Command(BaseCommand):
             'templates',
             metavar='T',
             nargs='*',
+            type=str,
             help='The template names to generate. Default: All templates specified in settings.'
         )
 

@@ -219,8 +219,6 @@ class StaticTemplateEngine(object):
                 )
 
             dest = Path(template.origin.app.path) / 'static' / template_name
-        else:
-            dest /= template_name
 
         if not dest.parent.exists():
             os.makedirs(str(dest.parent))
