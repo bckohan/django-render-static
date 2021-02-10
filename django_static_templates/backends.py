@@ -21,6 +21,7 @@ class StaticDjangoTemplates(DjangoTemplates):
             options['loaders'] = loaders
         params['OPTIONS'] = options
         super().__init__(params)
+        self.engine.app_dirname = self.app_dirname
 
 
 class StaticJinja2Templates(Jinja2):

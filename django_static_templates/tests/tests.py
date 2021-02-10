@@ -6,6 +6,7 @@ from pathlib import Path
 from django.core.management import call_command
 import os
 import filecmp
+import shutil
 
 """
 Subclass engines/loaders, extend template to StaticTemplate that records app
@@ -52,26 +53,25 @@ EXPECTED_DIR = Path(__file__).parent / 'expected'
 
 class BaseTestCase(TestCase):
 
-    cleaned_dirs = [
+    to_remove = [
         APP1_STATIC_DIR,
         GLOBAL_STATIC_DIR
     ]
-
-    cleaned_files = []
 
     def setUp(self):
         self.clean_generated()
 
     def tearDown(self):
-        # todo preserve
+        # todo preserve if fail?
         self.clean_generated()
 
     def clean_generated(self):
-        for to_remove in self.cleaned_dirs:
-            os.rmdir(to_remove)
-
-        for to_remove in self.cleaned_files:
-            os.remove(to_remove)
+        for artifact in self.to_remove:
+            if artifact.exists():
+                if artifact.is_dir():
+                    shutil.rmtree(artifact)
+                else:
+                    os.remove(artifact)
 
 
 @override_settings(STATIC_TEMPLATES={

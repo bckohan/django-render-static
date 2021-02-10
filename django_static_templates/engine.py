@@ -109,7 +109,7 @@ class StaticTemplateEngine(object):
     def templates(self) -> dict:
         try:
             templates = {
-                name: StaticTemplateEngine.TemplateConfig(**config)
+                name: StaticTemplateEngine.TemplateConfig(name=name, **config)
                 for name, config in self.config.get('templates', {}).items()
             }
         except ImproperlyConfigured as e:
@@ -152,7 +152,6 @@ class StaticTemplateEngine(object):
                 'OPTIONS': {},
                 **backend,
             }
-
             engines[backend['NAME']] = backend
             backend_names.append(backend['NAME'])
 
@@ -164,7 +163,7 @@ class StaticTemplateEngine(object):
                 f"Set a unique NAME for each engine in settings.STATIC_TEMPLATES."
             )
 
-        for alias, config in engines:
+        for alias, config in engines.items():
             params = config.copy()
             backend = params.pop('BACKEND')
             engines[alias] = import_string(backend)(params)
@@ -212,7 +211,7 @@ class StaticTemplateEngine(object):
         if template is None:
             raise TemplateDoesNotExist(template_name, chain=chain)
 
-        dest = config.dest / template_name
+        dest = config.dest
         if dest is None:
             if not getattr(template.origin, 'app', None):
                 raise ImproperlyConfigured(
@@ -220,6 +219,8 @@ class StaticTemplateEngine(object):
                 )
 
             dest = Path(template.origin.app.path) / 'static' / template_name
+        else:
+            dest /= template_name
 
         if not dest.parent.exists():
             os.makedirs(str(dest.parent))
