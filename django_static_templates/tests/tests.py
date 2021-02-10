@@ -48,6 +48,7 @@ STATIC_TEMPLATES = {
 APP1_STATIC_DIR = Path(__file__).parent / 'app1' / 'static'  # this dir does not exist and must be cleaned up
 APP2_STATIC_DIR = Path(__file__).parent / 'app2' / 'static'  # this dir exists and is checked in
 GLOBAL_STATIC_DIR = Path(__file__).parent / 'global_static'  # this dir does not exist and must be cleaned up
+STATIC_TEMP_DIR = Path(__file__).parent / 'static_templates'
 EXPECTED_DIR = Path(__file__).parent / 'expected'
 
 
@@ -57,7 +58,8 @@ class BaseTestCase(TestCase):
         APP1_STATIC_DIR,
         GLOBAL_STATIC_DIR,
         APP2_STATIC_DIR / 'app1',
-        APP2_STATIC_DIR / 'app2'
+        APP2_STATIC_DIR / 'app2',
+        APP2_STATIC_DIR / 'nominal_fs2.html'
     ]
 
     def setUp(self):
@@ -150,5 +152,47 @@ class DestOverrideTestCase(BaseTestCase):
         self.assertTrue(filecmp.cmp(
             GLOBAL_STATIC_DIR / 'dest_override.html',
             EXPECTED_DIR / 'dest_override.html',
+            shallow=False
+        ))
+
+
+@override_settings(STATIC_TEMPLATES={
+    'ENGINES': [{
+        'BACKEND': 'django_static_templates.backends.StaticDjangoTemplates',
+        'DIRS': [STATIC_TEMP_DIR],
+        'OPTIONS': {
+            'app_dir': 'custom_templates',
+            'loaders': [
+                'django_static_templates.loaders.StaticFilesystemLoader',
+                'django_static_templates.loaders.StaticAppDirectoriesLoader'
+            ]
+        },
+    }],
+    'templates': {
+        'nominal_fs.html': {
+            'dest': GLOBAL_STATIC_DIR / 'nominal_fs.html'
+        }
+    }
+})
+class FSLoaderTestCase(BaseTestCase):
+    """
+    Tests:
+        - Filesystem loader
+        - That loader order determines precedence
+        - That app directory static template dirs can be configured @ the backend level
+    """
+    def test_generate(self):
+        call_command('generate_static', 'nominal_fs.html', 'nominal_fs2.html')
+        self.assertFalse(APP1_STATIC_DIR.exists())
+        self.assertEqual(len(os.listdir(APP2_STATIC_DIR)), 1)
+        self.assertEqual(len(os.listdir(GLOBAL_STATIC_DIR)), 1)
+        self.assertTrue(filecmp.cmp(
+            GLOBAL_STATIC_DIR / 'nominal_fs.html',
+            EXPECTED_DIR / 'nominal_fs.html',
+            shallow=False
+        ))
+        self.assertTrue(filecmp.cmp(
+            APP2_STATIC_DIR / 'nominal_fs2.html',
+            EXPECTED_DIR / 'nominal_fs2.html',
             shallow=False
         ))
