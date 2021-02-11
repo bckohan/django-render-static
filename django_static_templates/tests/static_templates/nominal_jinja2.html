@@ -1,0 +1,15 @@
+<!DOCTYPE html>
+<html>
+<body>
+
+<h1>Nominal FS</h1>
+
+{% macro banner() -%}
+This is a jinja2 template!
+{% endmacro -%}
+
+<p>{{ banner() }}</p>
+<p>Settings secret: {{ settings.SECRET_KEY }}</p>
+
+</body>
+</html>

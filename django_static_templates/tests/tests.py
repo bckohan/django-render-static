@@ -58,8 +58,7 @@ class BaseTestCase(TestCase):
         APP1_STATIC_DIR,
         GLOBAL_STATIC_DIR,
         APP2_STATIC_DIR / 'app1',
-        APP2_STATIC_DIR / 'app2',
-        APP2_STATIC_DIR / 'nominal_fs2.html'
+        APP2_STATIC_DIR / 'app2'
     ]
 
     def setUp(self):
@@ -175,6 +174,9 @@ class DestOverrideTestCase(BaseTestCase):
     }
 })
 class FSLoaderTestCase(BaseTestCase):
+
+    to_remove = BaseTestCase.to_remove + [APP2_STATIC_DIR / 'nominal_fs2.html']
+
     """
     Tests:
         - Filesystem loader
@@ -194,5 +196,77 @@ class FSLoaderTestCase(BaseTestCase):
         self.assertTrue(filecmp.cmp(
             APP2_STATIC_DIR / 'nominal_fs2.html',
             EXPECTED_DIR / 'nominal_fs2.html',
+            shallow=False
+        ))
+
+
+@override_settings(STATIC_TEMPLATES={
+    'ENGINES': [{
+        'BACKEND': 'django_static_templates.backends.StaticJinja2Templates',
+        'DIRS': [STATIC_TEMP_DIR],
+        'APP_DIRS': True
+    }],
+    'templates': {
+        'nominal_jinja2.html': {
+            'dest': GLOBAL_STATIC_DIR / 'nominal_jinja2.html'
+        },
+        'app1/html/app_jinja2.html': {}
+    }
+})
+class Jinja2TestCase(BaseTestCase):
+    """
+    Tests:
+        - Filesystem loader
+        - That loader order determines precedence
+        - That app directory static template dirs can be configured @ the backend level
+    """
+    def test_generate(self):
+        call_command('generate_static')
+        self.assertEqual(len(os.listdir(APP1_STATIC_DIR)), 1)
+        self.assertEqual(len(os.listdir(GLOBAL_STATIC_DIR)), 1)
+        self.assertTrue(filecmp.cmp(
+            GLOBAL_STATIC_DIR / 'nominal_jinja2.html',
+            EXPECTED_DIR / 'nominal_jinja2.html',
+            shallow=False
+        ))
+        self.assertTrue(filecmp.cmp(
+            APP1_STATIC_DIR / 'app1' / 'html' / 'app_jinja2.html',
+            EXPECTED_DIR / 'app1_jinja2.html',
+            shallow=False
+        ))
+
+
+@override_settings(STATIC_TEMPLATES={
+    'ENGINES': [{
+        'BACKEND': 'django_static_templates.backends.StaticJinja2Templates',
+        'DIRS': [STATIC_TEMP_DIR],
+        'APP_DIRS': True,
+        'OPTIONS': {
+            'app_dir': 'custom_jinja2'
+        }
+    }],
+    'context': {
+        'global_ctx': 'present',
+        'ctx': 'absent'
+    },
+    'templates': {
+        'app1/html/app_jinja2.html': {
+            'context': {'ctx': 'present'}
+        }
+    }
+})
+class Jinja2CustomTestCase(BaseTestCase):
+    """
+    Tests:
+        - Jinja2 custom app directory names work
+        - Jinja2 contexts are present and that local overrides global
+    """
+    def test_generate(self):
+        call_command('generate_static')
+        self.assertEqual(len(os.listdir(APP2_STATIC_DIR)), 1)
+        self.assertFalse(APP1_STATIC_DIR.exists())
+        self.assertTrue(filecmp.cmp(
+            APP2_STATIC_DIR / 'app1' / 'html' / 'app_jinja2.html',
+            EXPECTED_DIR / 'app2_jinja2.html',
             shallow=False
         ))

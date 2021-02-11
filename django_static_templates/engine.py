@@ -9,6 +9,7 @@ from django.conf import settings
 from pathlib import Path
 from typing import Union
 import os
+from jinja2 import Environment
 
 __all__ = ['StaticTemplateEngine']
 
