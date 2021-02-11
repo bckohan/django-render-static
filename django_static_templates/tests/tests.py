@@ -18,8 +18,11 @@ import os
 import filecmp
 import shutil
 from django.apps import apps
+from django.template.exceptions import TemplateDoesNotExist
 from django.core.exceptions import ImproperlyConfigured
 from django.core.management import CommandError
+from django_static_templates.tests import defines
+from django_static_templates.tests import defines2
 
 APP1_STATIC_DIR = Path(__file__).parent / 'app1' / 'static'  # this dir does not exist and must be cleaned up
 APP2_STATIC_DIR = Path(__file__).parent / 'app2' / 'static'  # this dir exists and is checked in
@@ -287,7 +290,7 @@ class ConfigTestCase(TestCase):
             engine['StaticDjangoTemplates'].engine.loaders,
             [
                 'django_static_templates.loaders.StaticFilesystemLoader',
-                'django.template.loaders.StaticAppDirectoriesLoader'
+                'django_static_templates.loaders.StaticAppDirectoriesLoader'
             ]
         )
 
@@ -431,13 +434,27 @@ class ConfigTestCase(TestCase):
         """
         Backends must exist.
         """
-
         engine = StaticTemplateEngine({
             'ENGINES': [{
                 'BACKEND': 0
             }]
         })
         self.assertRaises(ImproperlyConfigured, lambda: engine.engines)
+
+    def test_allow_dot_modifiers(self):
+        engine = StaticTemplateEngine({
+            'ENGINES': [{
+                'BACKEND': 'django_static_templates.backends.StaticDjangoTemplates',
+                'APP_DIRS': True,
+            }],
+            'templates': {
+                '../app1/html/nominal1.html': {}
+            }
+        })
+        self.assertRaises(
+            TemplateDoesNotExist,
+            lambda: engine.render_to_disk('../app1/html/nominal1.html')
+        )
 
 
 @override_settings(STATIC_TEMPLATES={
@@ -476,3 +493,62 @@ class GenerateNothing(BaseTestCase):
         self.assertFalse(APP1_STATIC_DIR.exists())
         self.assertEqual(len(os.listdir(APP2_STATIC_DIR)), 0)
         self.assertFalse(GLOBAL_STATIC_DIR.exists())
+
+
+@override_settings(STATIC_TEMPLATES={
+    'ENGINES': [{
+        'BACKEND': 'django_static_templates.backends.StaticDjangoTemplates',
+        'OPTIONS': {
+            'app_dir': 'custom_templates',
+            'autoescape': False,
+            'loaders': [
+                ('django_static_templates.loaders.StaticLocMemLoader', {
+                    'defines1.js': 'var defines = {\n  {{ classes|classes_to_js:"  " }}};',
+                    'defines2.js': 'var defines = {\n{{ modules|modules_to_js }}};',
+                    'defines_error.js': 'var defines = {\n{{ classes|classes_to_js }}};',
+                })
+            ],
+            'builtins': ['django_static_templates.templatetags.django_static_templates']
+        },
+    }],
+    'templates': {
+        'defines1.js': {
+            'dest': GLOBAL_STATIC_DIR / 'defines1.js',
+            'context': {
+                'classes': [defines.MoreDefines, defines.ExtendedDefines]
+            }
+        },
+        'defines2.js': {
+            'dest': GLOBAL_STATIC_DIR / 'defines2.js',
+            'context': {
+                'modules': [defines, defines2]
+            }
+        },
+        'defines_error.js': {
+            'dest': GLOBAL_STATIC_DIR / 'defines_error.js',
+            'context': {
+                'classes': [0, {}]
+            }
+        }
+    }
+})
+class DefinesToJavascriptTest(BaseTestCase):
+
+    def test_classes_to_js(self):
+        call_command('generate_static', 'defines1.js')
+        self.assertTrue(filecmp.cmp(
+            GLOBAL_STATIC_DIR / 'defines1.js',
+            EXPECTED_DIR / 'defines1.js',
+            shallow=False
+        ))
+
+    def test_modules_to_js(self):
+        call_command('generate_static', 'defines2.js')
+        self.assertTrue(filecmp.cmp(
+            GLOBAL_STATIC_DIR / 'defines2.js',
+            EXPECTED_DIR / 'defines2.js',
+            shallow=False
+        ))
+
+    def test_classes_to_js_error(self):
+        self.assertRaises(CommandError, lambda: call_command('generate_static', 'defines_error.js'))

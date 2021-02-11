@@ -12,7 +12,7 @@ register = template.Library()
 __all__ = ['classes_to_js', 'modules_to_js']
 
 
-def to_js(classes, indent: str = ''):
+def to_js(classes: dict, indent: str = ''):
     js = ''
     first = True
     for cls, defines in classes.items():
