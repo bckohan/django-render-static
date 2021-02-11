@@ -22,6 +22,7 @@ class StaticDjangoTemplates(DjangoTemplates):
             loaders = ['django_static_templates.loaders.StaticFilesystemLoader']
             if params.get('APP_DIRS', False):
                 loaders += ['django.template.loaders.StaticAppDirectoriesLoader']
+                params['APP_DIRS'] = False  # base class with throw if this isn't present - and it must be false
             options['loaders'] = loaders
         params['OPTIONS'] = options
         super().__init__(params)

@@ -122,8 +122,8 @@ class StaticTemplateEngine(object):
 
     @cached_property
     def engines(self) -> dict:
-        engine_defs = self.config.get('ENGINES', {})
-        if not engine_defs:
+        engine_defs = self.config.get('ENGINES', None)
+        if engine_defs is None:
             self.config['ENGINES'] = self.DEFAULT_ENGINE_CONFIG
         elif not hasattr(engine_defs, '__iter__'):
             raise ImproperlyConfigured(
