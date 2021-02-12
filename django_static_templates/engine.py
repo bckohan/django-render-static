@@ -14,7 +14,6 @@ from typing import (
     Optional
 )
 import os
-from jinja2 import Environment
 
 __all__ = ['StaticTemplateEngine']
 

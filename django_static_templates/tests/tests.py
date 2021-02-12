@@ -505,7 +505,7 @@ class GenerateNothing(BaseTestCase):
                 ('django_static_templates.loaders.StaticLocMemLoader', {
                     'defines1.js': 'var defines = {\n  {{ classes|classes_to_js:"  " }}};',
                     'defines2.js': 'var defines = {\n{{ modules|modules_to_js }}};',
-                    'defines_error.js': 'var defines = {\n{{ classes|classes_to_js }}};',
+                    'defines_error.js': 'var defines = {\n{{ classes|classes_to_js }}};'
                 })
             ],
             'builtins': ['django_static_templates.templatetags.django_static_templates']

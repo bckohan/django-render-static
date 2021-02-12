@@ -8,3 +8,10 @@ class ExtDefines(object):
         (EDEFINE2, 'EDefine 2'),
         (EDEFINE3, 'EDefine 3'),
     )
+
+
+class EmptyDefines(object):
+    """
+    This should not show up when a module is dumped!
+    """
+    pass

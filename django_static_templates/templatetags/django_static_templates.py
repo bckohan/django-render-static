@@ -16,7 +16,7 @@ def to_js(classes: dict, indent: str = ''):
     js = ''
     first = True
     for cls, defines in classes.items():
-        if len(defines) > 0:
+        if defines:
             js += f"{indent if not first else ''}{cls.__name__}: {{ \n"
             first = False
 
