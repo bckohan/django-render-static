@@ -1,9 +1,16 @@
 from django.template.backends.django import DjangoTemplates
 from django.template.backends.jinja2 import Jinja2
 from django_static_templates.origin import AppOrigin
+from django.template.backends.jinja2 import Template
 from pathlib import Path
 from os.path import normpath
 from django.apps import apps
+from django.apps.config import AppConfig
+from typing import (
+    Dict,
+    List,
+    Tuple
+)
 
 
 __all__ = ['StaticDjangoTemplates', 'StaticJinja2Templates']
@@ -13,7 +20,7 @@ class StaticDjangoTemplates(DjangoTemplates):
 
     app_dirname = 'static_templates'
 
-    def __init__(self, params):
+    def __init__(self, params: Dict) -> None:
         params = params.copy()
         options = params.pop('OPTIONS').copy()
         loaders = options.get('loaders', None)
@@ -32,9 +39,9 @@ class StaticDjangoTemplates(DjangoTemplates):
 class StaticJinja2Templates(Jinja2):
 
     app_dirname = 'static_jinja2'
-    app_directories = None
+    app_directories: List[Tuple[Path, AppConfig]] = []
 
-    def __init__(self, params):
+    def __init__(self, params: Dict) -> None:
         params = params.copy()
         options = params.pop('OPTIONS').copy()
         self.app_dirname = options.pop('app_dir', self.app_dirname)
@@ -48,7 +55,7 @@ class StaticJinja2Templates(Jinja2):
 
         super().__init__(params)
 
-    def get_template(self, template_name):
+    def get_template(self, template_name: str) -> Template:
         """
         We override the Jinja2 get_template method so we can monkey patch in the AppConfig of the origin if this
         template was from an app directory. This information is used later down the line when deciding where to

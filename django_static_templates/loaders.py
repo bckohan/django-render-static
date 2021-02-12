@@ -11,7 +11,13 @@ from django.core.exceptions import SuspiciousFileOperation
 from django.utils._os import safe_join
 from pathlib import Path
 from django.apps import apps
-
+from django.apps.config import AppConfig
+from typing import (
+    Tuple,
+    Union,
+    Generator,
+    Any
+)
 
 __all__ = ['StaticFilesystemLoader', 'StaticAppDirectoriesLoader', 'StaticLocMemLoader']
 
@@ -22,7 +28,7 @@ class StaticFilesystemLoader(FilesystemLoader):
 
 class StaticAppDirectoriesLoader(AppDirLoader):
 
-    def get_dirs(self):
+    def get_dirs(self) -> Tuple[Tuple[Path, AppConfig], ...]:
         template_dirs = [
             (Path(app_config.path) / self.engine.app_dirname, app_config)
             for app_config in apps.get_app_configs()
@@ -30,7 +36,7 @@ class StaticAppDirectoriesLoader(AppDirLoader):
         ]
         return tuple(template_dirs)
 
-    def get_template_sources(self, template_name):
+    def get_template_sources(self, template_name) -> Generator[AppOrigin, None, None]:
         for template_dir, app_config in self.get_dirs():
             try:
                 name = safe_join(template_dir, template_name)

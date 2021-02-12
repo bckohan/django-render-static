@@ -7,7 +7,12 @@ from django.template.exceptions import TemplateDoesNotExist
 from collections import Counter
 from django.conf import settings
 from pathlib import Path
-from typing import Union
+from typing import (
+    Union,
+    List,
+    Dict,
+    Optional
+)
 import os
 from jinja2 import Environment
 
@@ -23,7 +28,7 @@ class StaticTemplateEngine(object):
     :raises ImproperlyConfigured: If there are any errors in the configuration passed in or specified in settings.
     """
 
-    config_ = None
+    config_: Dict = {}
 
     DEFAULT_ENGINE_CONFIG = [{
         'BACKEND': 'django_static_templates.backends.StaticDjangoTemplates',
@@ -47,10 +52,10 @@ class StaticTemplateEngine(object):
         :raises ImproperlyConfigured: If there are any unexpected or misconfigured parameters
         """
 
-        context_ = {}
-        dest_ = None
+        context_: Dict = {}
+        dest_: Optional[Path] = None
 
-        def __init__(self, name: str, dest: Union[Path, str] = None, context: dict = None) -> None:
+        def __init__(self, name: str, dest: Optional[Union[Path, str]] = None, context: Optional[Dict] = None) -> None:
             self.name = name
 
             if dest is not None:
@@ -73,15 +78,16 @@ class StaticTemplateEngine(object):
                 self.context_ = context
 
         @property
-        def context(self) -> dict:
+        def context(self) -> Dict:
             return self.context_
 
         @property
-        def dest(self) -> dict:
+        def dest(self) -> Optional[Path]:
             return self.dest_
 
-    def __init__(self, config: dict = None) -> None:
-        self.config_ = config
+    def __init__(self, config: Optional[Dict] = None) -> None:
+        if config:
+            self.config_ = config
 
     @cached_property
     def config(self) -> dict:
@@ -183,7 +189,7 @@ class StaticTemplateEngine(object):
     def __iter__(self):
         return iter(self.engines)
 
-    def all(self):
+    def all(self) -> List[BaseEngine]:
         """
         Get a list of all registered engines in order of precedence.
         :return: A list of engine instances in order of precedence
