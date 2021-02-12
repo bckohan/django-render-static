@@ -1,6 +1,8 @@
 """
-Wrapper for loading templates from "templates" directories in INSTALLED_APPS
-packages.
+Provide wrappers for the standard template loaders to adapt them for use in Static Templates.
+These loaders should be used instead of the standard ones, even though some are just renamed.
+This will allow app user code to be updated transparently if these loaders need to be
+adapted to work with Django Static Templates in the future.
 """
 
 from pathlib import Path
@@ -10,21 +12,27 @@ from django.apps import apps
 from django.apps.config import AppConfig
 from django.core.exceptions import SuspiciousFileOperation
 from django.template.loaders.app_directories import Loader as AppDirLoader
-from django.template.loaders.filesystem import Loader as FilesystemLoader
-from django.template.loaders.locmem import Loader as LocMemLoader
+from django.template.loaders.filesystem import Loader as StaticFilesystemLoader
+from django.template.loaders.locmem import Loader as StaticLocMemLoader
 from django.utils._os import safe_join
 from django_static_templates.origin import AppOrigin
 
 __all__ = ['StaticFilesystemLoader', 'StaticAppDirectoriesLoader', 'StaticLocMemLoader']
 
 
-class StaticFilesystemLoader(FilesystemLoader):
-    pass
-
-
 class StaticAppDirectoriesLoader(AppDirLoader):
+    """
+    A template loader that searches application directories based on the engine's configured app
+    directory name. This loader extends the standard AppDirLoader to provide an extended Origin
+    type that contains the AppConfig of the app where the template was found. This information
+    may be used later to determine where the template should be rendered to disk.
+    """
 
     def get_dirs(self) -> Tuple[Tuple[Path, AppConfig], ...]:
+        """
+        Fetch the directories
+        :return:
+        """
         template_dirs = [
             (Path(app_config.path) / self.engine.app_dirname, app_config)
             for app_config in apps.get_app_configs()
@@ -32,7 +40,13 @@ class StaticAppDirectoriesLoader(AppDirLoader):
         ]
         return tuple(template_dirs)
 
-    def get_template_sources(self, template_name) -> Generator[AppOrigin, None, None]:
+    def get_template_sources(self, template_name: str) -> Generator[AppOrigin, None, None]:
+        """
+        Yield the origins of all the templates from apps that match the given template name.
+
+        :param template_name: The name of the template to resolve
+        :return: Yielded AppOrigins for the found templates.
+        """
         for template_dir, app_config in self.get_dirs():
             try:
                 name = safe_join(template_dir, template_name)
@@ -47,8 +61,3 @@ class StaticAppDirectoriesLoader(AppDirLoader):
                 loader=self,
                 app=app_config
             )
-
-
-class StaticLocMemLoader(LocMemLoader):
-    pass
-
