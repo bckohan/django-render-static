@@ -1,19 +1,15 @@
-from django.utils.functional import cached_property
-from django.utils.module_loading import import_string
+import os
+from collections import Counter
+from pathlib import Path
+from typing import Dict, List, Optional, Union
+
+from django.conf import settings
 from django.core.exceptions import ImproperlyConfigured
 from django.template.backends.base import BaseEngine
-from django.template.utils import InvalidTemplateEngineError
 from django.template.exceptions import TemplateDoesNotExist
-from collections import Counter
-from django.conf import settings
-from pathlib import Path
-from typing import (
-    Union,
-    List,
-    Dict,
-    Optional
-)
-import os
+from django.template.utils import InvalidTemplateEngineError
+from django.utils.functional import cached_property
+from django.utils.module_loading import import_string
 
 __all__ = ['StaticTemplateEngine']
 

@@ -1,17 +1,12 @@
-from django.template.backends.django import DjangoTemplates
-from django.template.backends.jinja2 import Jinja2
-from django_static_templates.origin import AppOrigin
-from django.template.backends.jinja2 import Template
-from pathlib import Path
 from os.path import normpath
+from pathlib import Path
+from typing import Dict, List, Tuple
+
 from django.apps import apps
 from django.apps.config import AppConfig
-from typing import (
-    Dict,
-    List,
-    Tuple
-)
-
+from django.template.backends.django import DjangoTemplates
+from django.template.backends.jinja2 import Jinja2, Template
+from django_static_templates.origin import AppOrigin
 
 __all__ = ['StaticDjangoTemplates', 'StaticJinja2Templates']
 

@@ -1,11 +1,9 @@
-from django import template
+import inspect
 import json
 from types import ModuleType
-from typing import (
-    Type,
-    Iterable
-)
-import inspect
+from typing import Iterable, Type
+
+from django import template
 
 register = template.Library()
 

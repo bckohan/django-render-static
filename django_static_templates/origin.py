@@ -1,6 +1,7 @@
-from django.template import Origin
 from typing import Union
+
 from django.apps.config import AppConfig
+from django.template import Origin
 from django.template.loaders.base import Loader
 
 __all__ = ['AppOrigin']

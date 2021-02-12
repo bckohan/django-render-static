@@ -3,21 +3,17 @@ Wrapper for loading templates from "templates" directories in INSTALLED_APPS
 packages.
 """
 
-from django_static_templates.origin import AppOrigin
-from django.template.loaders.filesystem import Loader as FilesystemLoader
-from django.template.loaders.app_directories import Loader as AppDirLoader
-from django.template.loaders.locmem import Loader as LocMemLoader
-from django.core.exceptions import SuspiciousFileOperation
-from django.utils._os import safe_join
 from pathlib import Path
+from typing import Generator, Tuple
+
 from django.apps import apps
 from django.apps.config import AppConfig
-from typing import (
-    Tuple,
-    Union,
-    Generator,
-    Any
-)
+from django.core.exceptions import SuspiciousFileOperation
+from django.template.loaders.app_directories import Loader as AppDirLoader
+from django.template.loaders.filesystem import Loader as FilesystemLoader
+from django.template.loaders.locmem import Loader as LocMemLoader
+from django.utils._os import safe_join
+from django_static_templates.origin import AppOrigin
 
 __all__ = ['StaticFilesystemLoader', 'StaticAppDirectoriesLoader', 'StaticLocMemLoader']
 

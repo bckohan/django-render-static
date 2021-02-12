@@ -1,28 +1,21 @@
-from django.test import (
-    TestCase,
-    override_settings
-)
+import filecmp
+import os
+import shutil
 from pathlib import Path
-from django.core.management import call_command
-from django_static_templates.origin import (
-    AppOrigin,
-    Origin
+
+from django.apps import apps
+from django.core.exceptions import ImproperlyConfigured
+from django.core.management import CommandError, call_command
+from django.template.exceptions import TemplateDoesNotExist
+from django.template.utils import InvalidTemplateEngineError
+from django.test import TestCase, override_settings
+from django_static_templates.backends import (
+    StaticDjangoTemplates,
+    StaticJinja2Templates,
 )
 from django_static_templates.engine import StaticTemplateEngine
-from django_static_templates.backends import (
-    StaticJinja2Templates,
-    StaticDjangoTemplates
-)
-from django.template.utils import InvalidTemplateEngineError
-import os
-import filecmp
-import shutil
-from django.apps import apps
-from django.template.exceptions import TemplateDoesNotExist
-from django.core.exceptions import ImproperlyConfigured
-from django.core.management import CommandError
-from django_static_templates.tests import defines
-from django_static_templates.tests import defines2
+from django_static_templates.origin import AppOrigin, Origin
+from django_static_templates.tests import defines, defines2
 
 APP1_STATIC_DIR = Path(__file__).parent / 'app1' / 'static'  # this dir does not exist and must be cleaned up
 APP2_STATIC_DIR = Path(__file__).parent / 'app2' / 'static'  # this dir exists and is checked in
