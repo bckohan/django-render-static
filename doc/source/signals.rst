@@ -1,4 +1,0 @@
-.. _ref-signals:
-
-Signals
-=======
