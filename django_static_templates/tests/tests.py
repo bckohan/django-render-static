@@ -24,6 +24,18 @@ STATIC_TEMP_DIR = Path(__file__).parent / 'static_templates'
 EXPECTED_DIR = Path(__file__).parent / 'expected'
 
 
+class TestGenerateStaticParserAccessor(TestCase):
+    """
+    This test is just to get to 100% coverage - the get_parser function is private and is only
+    available to serve the sphinx docs
+    """
+
+    def test_get_parser(self):
+        from django_static_templates.management.commands.generate_static import get_parser
+        from django.core.management.base import CommandParser
+        self.assertTrue(isinstance(get_parser(), CommandParser))
+
+
 class AppOriginTestCase(TestCase):
 
     def test_equality(self):
