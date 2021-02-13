@@ -78,7 +78,7 @@ class NominalTestCase(BaseTestCase):
     def test_generate(self):
         call_command('generate_static', 'app1/html/nominal1.html')
         self.assertEqual(len(os.listdir(APP1_STATIC_DIR)), 1)
-        self.assertEqual(not APP2_STATIC_DIR.exists() or len(os.listdir(APP2_STATIC_DIR)), 0)
+        self.assertTrue(not APP2_STATIC_DIR.exists() or len(os.listdir(APP2_STATIC_DIR)) == 0)
         self.assertTrue(filecmp.cmp(
             APP1_STATIC_DIR / 'app1' / 'html' / 'nominal1.html',
             EXPECTED_DIR / 'nominal1.html',
