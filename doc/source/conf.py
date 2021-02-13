@@ -31,7 +31,9 @@ release = '0.1.0'
 # extensions coming with Sphinx (named 'sphinx.ext.*') or your custom
 # ones.
 extensions = [
-    'sphinx_rtd_theme'
+    'sphinx_rtd_theme',
+    'sphinx.ext.autodoc',
+    'sphinxarg.ext'
 ]
 
 # Add any paths that contain templates here, relative to this directory.
