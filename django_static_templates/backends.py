@@ -1,3 +1,8 @@
+"""
+Extensions of the standard Django template backends that add a few more configuration
+parameters and functionality necessary for the static engine. These backends should be
+used instead of the standard backends!
+"""
 from os.path import normpath
 from pathlib import Path
 from typing import Dict, List, Tuple
@@ -12,6 +17,15 @@ __all__ = ['StaticDjangoTemplates', 'StaticJinja2Templates']
 
 
 class StaticDjangoTemplates(DjangoTemplates):
+    """
+    Extend the standard DjangoTemplates backend to add options and change the default loaders.
+
+    The app_dir option is added which lets end users override the standard template directory name
+    for apps.
+
+    :param params: The parameters as passed into the STATIC_TEMPLATES configuration for this
+        backend.
+    """
 
     app_dirname = 'static_templates'
 
@@ -24,7 +38,8 @@ class StaticDjangoTemplates(DjangoTemplates):
             loaders = ['django_static_templates.loaders.StaticFilesystemLoader']
             if params.get('APP_DIRS', False):
                 loaders += ['django_static_templates.loaders.StaticAppDirectoriesLoader']
-                params['APP_DIRS'] = False  # base class with throw if this isn't present - and it must be false
+                # base class with throw if this isn't present - and it must be false
+                params['APP_DIRS'] = False
             options['loaders'] = loaders
         params['OPTIONS'] = options
         super().__init__(params)
@@ -32,6 +47,16 @@ class StaticDjangoTemplates(DjangoTemplates):
 
 
 class StaticJinja2Templates(Jinja2):
+    """
+    Extend the standard DjangoTemplates backend to add options. Unlike with the standard backend,
+    the loaders used for this backend remain unchanged.
+
+    The app_dir option is added which lets end users override the standard template directory name
+    for apps.
+
+    :param params: The parameters as passed into the STATIC_TEMPLATES configuration for this
+        backend.
+    """
 
     app_dirname = 'static_jinja2'
     app_directories: List[Tuple[Path, AppConfig]] = []
@@ -52,10 +77,10 @@ class StaticJinja2Templates(Jinja2):
 
     def get_template(self, template_name: str) -> Template:
         """
-        We override the Jinja2 get_template method so we can monkey patch in the AppConfig of the origin if this
-        template was from an app directory. This information is used later down the line when deciding where to
-        write rendered templates. For the django template backend we modified the loaders but modifying the Jinja2
-        loaders would be much more invasive.
+        We override the Jinja2 get_template method so we can monkey patch in the AppConfig of the
+        origin if this template was from an app directory. This information is used later down the
+        line when deciding where to write rendered templates. For the django template backend we
+        modified the loaders but modifying the Jinja2 loaders would be much more invasive.
         """
         template = super().get_template(template_name)
 

@@ -1,8 +1,11 @@
+# pylint: disable=C0114
+
 from django.core.management.base import BaseCommand, CommandError
 from django_static_templates.engine import StaticTemplateEngine
 
 
 class Command(BaseCommand):
+    # pylint: disable=C0115
 
     help = 'Generate static files from static templates.'
 
@@ -25,12 +28,14 @@ class Command(BaseCommand):
             templates = list(engine.templates.keys())
 
         if not templates:
-            self.stdout.write(self.style.WARNING(f'No templates selected for generation.'))
+            self.stdout.write(self.style.WARNING('No templates selected for generation.'))
             return
 
         for template in templates:
             try:
                 destination = engine.render_to_disk(template)
-                self.stdout.write(self.style.SUCCESS(f'Rendered template {template} to {destination}.'))
-            except Exception as e:
-                raise CommandError(f'Error rendering template {template} to disk: {e}')
+                self.stdout.write(
+                    self.style.SUCCESS(f'Rendered template {template} to {destination}.')
+                )
+            except Exception as exp:
+                raise CommandError(f'Error rendering template {template} to disk: {exp}') from exp
