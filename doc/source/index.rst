@@ -3,8 +3,9 @@
    You can adapt this file completely to your liking, but it should at least
    contain the root `toctree` directive.
 
+============
 Introduction
-==============================================
+============
 
 `django-static-templates` enables the usage of Django's dynamic templates to generate static files.
 That is, files that are collected during the collectstatic routine and likely served above Django on
@@ -23,8 +24,8 @@ You can report bugs and discuss features on the
    :caption: Contents:
 
    installation
-   configuration
    usage
+   configuration
    templatetags
    commands
    reference

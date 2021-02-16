@@ -5,8 +5,8 @@ during the deployment phase and always before collectstatic is run.
 
 This command accepts a list of template names to generate. If no names are specified all templates
 as specified in ``STATIC_TEMPLATES`` will be generated. A template name supplied as an argument does
-not need to be specified in ``STATIC_TEMPLATES`` for it to be found and rendered. Such templates will
-be given the global context as specified in ``STATIC_TEMPLATES``.
+not need to be specified in ``STATIC_TEMPLATES`` for it to be found and rendered. Such templates
+will be given the global context as specified in ``STATIC_TEMPLATES``.
 """
 from django.core.management.base import BaseCommand, CommandError
 from django_static_templates.engine import StaticTemplateEngine

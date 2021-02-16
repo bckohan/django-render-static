@@ -31,8 +31,10 @@ class TestGenerateStaticParserAccessor(TestCase):
     """
 
     def test_get_parser(self):
-        from django_static_templates.management.commands.generate_static import get_parser
         from django.core.management.base import CommandParser
+        from django_static_templates.management.commands.generate_static import (
+            get_parser,
+        )
         self.assertTrue(isinstance(get_parser(), CommandParser))
 
 
@@ -462,6 +464,53 @@ class ConfigTestCase(TestCase):
         )
 
 
+@override_settings(STATIC_TEMPLATES=None)
+class DirectRenderTestCase(BaseTestCase):
+
+    def test_override_context(self):
+        engine = StaticTemplateEngine({
+            'context': {
+                'to': 'world',
+                'punc': '!'
+            },
+            'templates': {
+                'app1/html/hello.html': {
+                    'context': {
+                        'greeting': 'Hello',
+                        'to': 'World'
+                    },
+                }
+            }
+        })
+        engine.render_to_disk('app1/html/hello.html', context={'punc': '.'})
+        self.assertTrue(filecmp.cmp(
+            APP1_STATIC_DIR / 'app1/html/hello.html',
+            EXPECTED_DIR / 'ctx_override2.html',
+            shallow=False
+        ))
+
+    def test_override_dest(self):
+        engine = StaticTemplateEngine({
+            'context': {
+                'to': 'world',
+                'punc': '!',
+                'greeting': 'Bye'
+            },
+            'templates': {
+                'app1/html/hello.html': {}
+            }
+        })
+        engine.render_to_disk(
+            'app1/html/hello.html',
+            dest=str(GLOBAL_STATIC_DIR/'override_dest.html')
+        )
+        self.assertTrue(filecmp.cmp(
+            GLOBAL_STATIC_DIR / 'override_dest.html',
+            EXPECTED_DIR / 'dest_override.html',
+            shallow=False
+        ))
+
+
 @override_settings(STATIC_TEMPLATES={
     'ENGINES': [{
         'BACKEND': 'django_static_templates.backends.StaticDjangoTemplates',
@@ -484,20 +533,34 @@ class RenderErrorsTestCase(BaseTestCase):
         self.assertRaises(CommandError, lambda: call_command('generate_static'))
 
     def test_render_missing(self):
-        self.assertRaises(CommandError, lambda: call_command('generate_static', 'this/template/doesnt/exist.html'))
+        self.assertRaises(
+            CommandError,
+            lambda: call_command('generate_static', 'this/template/doesnt/exist.html')
+        )
 
 
-@override_settings(STATIC_TEMPLATES={})
 class GenerateNothing(BaseTestCase):
 
-    def test_generate_nothing(self):
+    def generate_nothing(self):
         """
-        When no templates are configured, generate_static should generate nothing and it should not raise
+        When no templates are configured, generate_static should generate nothing and it should not
+        raise
         """
         call_command('generate_static')
         self.assertFalse(APP1_STATIC_DIR.exists())
         self.assertEqual(len(os.listdir(APP2_STATIC_DIR)), 0)
         self.assertFalse(GLOBAL_STATIC_DIR.exists())
+
+    @override_settings(STATIC_TEMPLATES={})
+    def test_empty_dict(self):
+        self.generate_nothing()
+
+    @override_settings(STATIC_TEMPLATES=None)
+    def test_none_settings(self):
+        self.generate_nothing()
+
+    def test_missing_settings_raises(self):
+        self.assertRaises(ImproperlyConfigured, lambda: call_command('generate_static'))
 
 
 @override_settings(STATIC_TEMPLATES={

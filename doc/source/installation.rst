@@ -1,5 +1,6 @@
 .. _ref-installation:
 
+============
 Installation
 ============
 

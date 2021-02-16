@@ -1,6 +1,6 @@
 [tool.poetry]
 name = "django-static-templates"
-version = "0.1.0"
+version = "1.0.0"
 description = "Use Django's template engine to generate static files at deployment time."
 authors = ["Brian Kohan <bckohan@gmail.com>"]
 license = "MIT"
@@ -21,6 +21,7 @@ include = [
 [tool.poetry.dependencies]
 python = "^3.6"
 Django = "^3.0"
+Jinja2 = "^2.11.3"
 
 [tool.poetry.dev-dependencies]
 pytest = "^5.2"

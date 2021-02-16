@@ -1,5 +1,5 @@
 """
-Provide wrappers for the standard template loaders to adapt them for use in Static Templates.
+Provide wrappers for the standard template loaders to adapt them for use by the static engine.
 These loaders should be used instead of the standard ones, even though some are just renamed.
 This will allow app user code to be updated transparently if these loaders need to be
 adapted to work with Django Static Templates in the future.
@@ -12,20 +12,34 @@ from django.apps import apps
 from django.apps.config import AppConfig
 from django.core.exceptions import SuspiciousFileOperation
 from django.template.loaders.app_directories import Loader as AppDirLoader
-from django.template.loaders.filesystem import Loader as StaticFilesystemLoader
-from django.template.loaders.locmem import Loader as StaticLocMemLoader
+from django.template.loaders.filesystem import Loader as FilesystemLoader
+from django.template.loaders.locmem import Loader as LocMemLoader
 from django.utils._os import safe_join
 from django_static_templates.origin import AppOrigin
 
 __all__ = ['StaticFilesystemLoader', 'StaticAppDirectoriesLoader', 'StaticLocMemLoader']
 
 
+class StaticFilesystemLoader(FilesystemLoader):
+    """
+    Simple extension of ``django.template.loaders.filesystem.Loader``
+    """
+
+
+class StaticLocMemLoader(LocMemLoader):
+    """
+    Simple extension of ``django.template.loaders.locmem.Loader``
+    """
+
+
 class StaticAppDirectoriesLoader(AppDirLoader):
     """
-    A template loader that searches application directories based on the engine's configured app
-    directory name. This loader extends the standard AppDirLoader to provide an extended Origin
-    type that contains the AppConfig of the app where the template was found. This information
-    may be used later to determine where the template should be rendered to disk.
+    Extension of ``django.template.loaders.app_directories.Loader``
+
+    Searches application directories based on the engine's configured app directory name.
+    This loader extends the standard AppDirLoader to provide an extended Origin type that contains
+    the AppConfig of the app where the template was found. This information may be used later to
+    determine where the template should be rendered to disk.
     """
 
     def get_dirs(self) -> Tuple[Tuple[Path, AppConfig], ...]:

@@ -1,5 +1,6 @@
 .. _ref-commands:
 
+========
 Commands
 ========
 
@@ -9,7 +10,7 @@ generate_static
 .. automodule:: django_static_templates.management.commands.generate_static
 
 Usage
------
+~~~~~
 
 .. argparse::
     :module: django_static_templates.management.commands.generate_static
@@ -17,7 +18,7 @@ Usage
     :prog: manage.py
 
 Example
--------
+~~~~~~~
 
 To generate all templates configured in ``STATIC_TEMPLATES`` settings:
 

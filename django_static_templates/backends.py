@@ -18,12 +18,14 @@ __all__ = ['StaticDjangoTemplates', 'StaticJinja2Templates']
 
 class StaticDjangoTemplates(DjangoTemplates):
     """
-    Extend the standard DjangoTemplates backend to add options and change the default loaders.
+    Extend the standard ``django.template.backends.django.DjangoTemplates`` backend to add options
+    and change the default loaders.
 
-    The app_dir option is added which lets end users override the standard template directory name
-    for apps.
+    By default this backend will search for templates in application directories named
+    ``static_templates``. The ``app_dir`` option is added to the standard options to allow users to
+    override this location.
 
-    :param params: The parameters as passed into the STATIC_TEMPLATES configuration for this
+    :param params: The parameters as passed into the ``STATIC_TEMPLATES`` configuration for this
         backend.
     """
 
@@ -48,13 +50,14 @@ class StaticDjangoTemplates(DjangoTemplates):
 
 class StaticJinja2Templates(Jinja2):
     """
-    Extend the standard DjangoTemplates backend to add options. Unlike with the standard backend,
-    the loaders used for this backend remain unchanged.
+    Extend the standard ``django.template.backends.jinja2.Jinja2`` backend to add options. Unlike
+    with the standard backend, the loaders used for this backend remain unchanged.
 
-    The app_dir option is added which lets end users override the standard template directory name
-    for apps.
+    By default this backend will search for templates in application directories named
+    ``static_jinja2``. The ``app_dir`` option is added to the standard option to allow users to
+    override this location.
 
-    :param params: The parameters as passed into the STATIC_TEMPLATES configuration for this
+    :param params: The parameters as passed into the ``STATIC_TEMPLATES`` configuration for this
         backend.
     """
 
