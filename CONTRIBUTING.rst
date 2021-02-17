@@ -24,7 +24,9 @@ Installation
 `django-static-templates` uses Poetry_ for environment, package and dependency management. Poetry_
 greatly simplifies environment bootstrapping. Once it's installed.
 
-poetry install
+.. code-block::
+
+    poetry install
 
 Documentation
 -------------
@@ -32,7 +34,7 @@ Documentation
 `django-static-templates` documentation is generated using Sphinx_ with the readthedocs_ theme. Any
 new feature PRs must provide updated documentation for the features added. To build the docs run:
 
-..code-block::
+.. code-block::
 
     cd ./doc
     poetry run make html
@@ -46,7 +48,7 @@ Header imports are also standardized using isort_. Before any PR is accepted the
 run, and static analysis tools should not produce any errors or warnings. Disabling certain errors
 or warnings where justified is acceptable:
 
-..code-block::
+.. code-block::
 
     poetry run isort django_static_templates
     poetry run mypy django_static_templates
@@ -62,20 +64,20 @@ tests must be passing and the code coverage must be at 100%.
 
 To run the full suite:
 
-..code-block::
+.. code-block::
 
     poetry run pytest
 
 To run a single test, or group of tests in a class:
 
-..code-block::
+.. code-block::
 
     poetry run pytest <path_to_tests_file>::ClassName::FunctionName
 
 For instance to run all tests in DefinesToJavascriptTest, and then just the test_classes_to_js test
 you would do:
 
-..code-block::
+.. code-block::
 
     poetry run pytest django_static_templates/tests/tests.py::DefinesToJavascriptTest
     poetry run pytest django_static_templates/tests/tests.py::DefinesToJavascriptTest::test_classes_to_js
