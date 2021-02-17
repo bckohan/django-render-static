@@ -1,3 +1,5 @@
+from pathlib import Path
+
 SECRET_KEY = 'psst'
 SITE_ID = 1
 
@@ -12,7 +14,7 @@ DATABASES = {
     }
 }
 
-ROOT_URLCONF = 'tests.urls'
+ROOT_URLCONF = 'django_static_templates.tests.urls'
 
 TEMPLATES = [
     {
@@ -56,5 +58,5 @@ AUTHENTICATION_BACKENDS = (
     "django.contrib.auth.backends.ModelBackend",
 )
 
-STATIC_ROOT = '/tmp/'  # Dummy
+STATIC_ROOT = Path(__file__).parent / 'global_static'
 STATIC_URL = '/static/'

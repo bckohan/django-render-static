@@ -8,6 +8,7 @@ from django.core.exceptions import ImproperlyConfigured
 from django.core.management import CommandError, call_command
 from django.template.exceptions import TemplateDoesNotExist
 from django.template.utils import InvalidTemplateEngineError
+from django.conf import settings
 from django.test import TestCase, override_settings
 from django_static_templates.backends import (
     StaticDjangoTemplates,
@@ -15,11 +16,15 @@ from django_static_templates.backends import (
 )
 from django_static_templates.engine import StaticTemplateEngine
 from django_static_templates.origin import AppOrigin, Origin
-from django_static_templates.tests import defines, defines2
+from django_static_templates.tests import defines
+from django.utils.module_loading import import_string
+from deepdiff import DeepDiff
+import inspect
+import js2py
 
 APP1_STATIC_DIR = Path(__file__).parent / 'app1' / 'static'  # this dir does not exist and must be cleaned up
 APP2_STATIC_DIR = Path(__file__).parent / 'app2' / 'static'  # this dir exists and is checked in
-GLOBAL_STATIC_DIR = Path(__file__).parent / 'global_static'  # this dir does not exist and must be cleaned up
+GLOBAL_STATIC_DIR = settings.STATIC_ROOT  # this dir does not exist and must be cleaned up
 STATIC_TEMP_DIR = Path(__file__).parent / 'static_templates'
 EXPECTED_DIR = Path(__file__).parent / 'expected'
 
@@ -529,8 +534,17 @@ class DirectRenderTestCase(BaseTestCase):
 })
 class RenderErrorsTestCase(BaseTestCase):
 
+    @override_settings(STATIC_ROOT=None)
     def test_render_no_dest(self):
         self.assertRaises(CommandError, lambda: call_command('generate_static'))
+
+    def test_render_default_static_root(self):
+        call_command('generate_static')
+        self.assertTrue(filecmp.cmp(
+            settings.STATIC_ROOT / 'nominal_fs.html',
+            EXPECTED_DIR / 'nominal_fs.html',
+            shallow=False
+        ))
 
     def test_render_missing(self):
         self.assertRaises(
@@ -568,10 +582,9 @@ class GenerateNothing(BaseTestCase):
         'BACKEND': 'django_static_templates.backends.StaticDjangoTemplates',
         'OPTIONS': {
             'app_dir': 'custom_templates',
-            'autoescape': False,
             'loaders': [
                 ('django_static_templates.loaders.StaticLocMemLoader', {
-                    'defines1.js': 'var defines = {\n  {{ classes|classes_to_js:"  " }}};',
+                    'defines1.js': 'var defines = {\n{{ classes|classes_to_js:"  " }}};',
                     'defines2.js': 'var defines = {\n{{ modules|modules_to_js }}};',
                     'defines_error.js': 'var defines = {\n{{ classes|classes_to_js }}};'
                 })
@@ -583,13 +596,13 @@ class GenerateNothing(BaseTestCase):
         'defines1.js': {
             'dest': GLOBAL_STATIC_DIR / 'defines1.js',
             'context': {
-                'classes': [defines.MoreDefines, defines.ExtendedDefines]
+                'classes': [defines.MoreDefines, 'django_static_templates.tests.defines.ExtendedDefines']
             }
         },
         'defines2.js': {
             'dest': GLOBAL_STATIC_DIR / 'defines2.js',
             'context': {
-                'modules': [defines, defines2]
+                'modules': [defines, 'django_static_templates.tests.defines2']
             }
         },
         'defines_error.js': {
@@ -602,21 +615,104 @@ class GenerateNothing(BaseTestCase):
 })
 class DefinesToJavascriptTest(BaseTestCase):
 
+    def diff_modules(self, js_file, py_modules):
+        py_classes = []
+        for module in py_modules:
+            if isinstance(module, str):
+                module = import_string(module)
+            for key in dir(module):
+                cls = getattr(module, key)
+                if inspect.isclass(cls):
+                    py_classes.append(cls)
+
+        return self.diff_classes(js_file, py_classes)
+
+    def diff_classes(self, js_file, py_classes):
+        """
+        Given a javascript file and a list of classes, evaluate the javascript code into a python
+        dictionary and determine if that dictionary matches the upper case parameters on the defines
+        class.
+        """
+        members = {}
+        with open(js_file, 'r') as js:
+            js_dict = js2py.eval_js(js.read()).to_dict()
+            for cls in py_classes:
+                if isinstance(cls, str):
+                    cls = import_string(cls)
+                for mcls in reversed(cls.__mro__):
+                    new_mems = {n: getattr(mcls, n) for n in dir(mcls) if n.isupper()}
+                    if len(new_mems) > 0:
+                        members.setdefault(cls.__name__, {}).update(new_mems)
+
+        return DeepDiff(
+            members,
+            js_dict,
+            ignore_type_in_groups=[(tuple, list)]  # treat tuples and lists the same
+        )
+
     def test_classes_to_js(self):
         call_command('generate_static', 'defines1.js')
-        self.assertTrue(filecmp.cmp(
-            GLOBAL_STATIC_DIR / 'defines1.js',
-            EXPECTED_DIR / 'defines1.js',
-            shallow=False
-        ))
+        self.assertEqual(
+            self.diff_classes(
+                js_file=GLOBAL_STATIC_DIR / 'defines1.js',
+                py_classes=settings.STATIC_TEMPLATES[
+                    'templates'
+                ]['defines1.js']['context']['classes']
+            ),
+            {}
+        )
+        # verify indent
+        with open(GLOBAL_STATIC_DIR / 'defines1.js', 'r') as jf:
+            jf.readline()
+            self.assertTrue(jf.readline().startswith('  '))
 
     def test_modules_to_js(self):
         call_command('generate_static', 'defines2.js')
-        self.assertTrue(filecmp.cmp(
-            GLOBAL_STATIC_DIR / 'defines2.js',
-            EXPECTED_DIR / 'defines2.js',
-            shallow=False
-        ))
+        self.assertEqual(
+            self.diff_modules(
+                js_file=GLOBAL_STATIC_DIR / 'defines2.js',
+                py_modules=settings.STATIC_TEMPLATES[
+                    'templates'
+                ]['defines2.js']['context']['modules']
+            ),
+            {}
+        )
+        # verify indent
+        with open(GLOBAL_STATIC_DIR / 'defines2.js', 'r') as jf:
+            jf.readline()
+            self.assertFalse(jf.readline().startswith(' '))
 
     def test_classes_to_js_error(self):
         self.assertRaises(CommandError, lambda: call_command('generate_static', 'defines_error.js'))
+
+
+@override_settings(STATIC_TEMPLATES={
+    'ENGINES': [{
+        'BACKEND': 'django_static_templates.backends.StaticDjangoTemplates',
+        'OPTIONS': {
+            'loaders': [
+                ('django_static_templates.loaders.StaticLocMemLoader', {
+                    'urls1.js': 'var urls = {\n{% urls_to_js indent="  " %}};'
+                })
+            ],
+            'builtins': ['django_static_templates.templatetags.django_static_templates']
+        },
+    }],
+})
+class URLSToJavascriptTest(BaseTestCase):
+
+    def test_full_url_dump(self):
+        call_command('generate_static', 'urls1.js')
+        with open(GLOBAL_STATIC_DIR / 'urls1.js', 'r') as jf:
+            url_js = js2py.eval_js(jf.read())
+
+            self.assertEqual({
+                    'request': '/test/simple/',
+                    'args': [],
+                    'kwargs': {}
+                },
+                self.client.get(url_js.path_tst()).json()
+            )
+
+    #def tearDown(self):
+    #    pass

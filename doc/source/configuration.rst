@@ -33,12 +33,7 @@ settings:
                     'defines': 'app.defines.DefinesClass'
                 }
             },
-            'urls.js': {
-                'context': {
-                    'url_conf': ROOT_URLCONF
-                },
-                'dest': STATIC_ROOT / 'urls.js'
-            }
+            'urls.js': {}
         }
       }
 
@@ -142,7 +137,8 @@ needed for a template they must be specified here.
 
 .. note::
 
-    `generate_static` will be able to generate templates not listed in ``templates``.
+    `generate_static` will be able to generate templates not listed in ``templates``, but only if
+    supplied by name on the command line. Only the default context will be available to them.
 
 ``dest``
 ~~~~~~~~

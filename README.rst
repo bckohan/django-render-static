@@ -1,4 +1,7 @@
 django-static-templates
 #######################
 
-Use Django's template engine to generate static files at deployment time.
+.. include:: doc/source/intro.rst
+.. include:: doc/source/installation.rst
+.. include:: doc/source/usage.rst
+

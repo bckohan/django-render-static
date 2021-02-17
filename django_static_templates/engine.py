@@ -334,18 +334,26 @@ class StaticTemplateEngine:
         if template is None:
             raise TemplateDoesNotExist(template_name, chain=chain)
 
+        app = getattr(template.origin, 'app', None)
+
         if dest is None:
             dest = config.dest
 
         if dest is None:
-            if not getattr(template.origin, 'app', None):
-                raise ImproperlyConfigured(
-                    f"Template {template_name} must be configured with a 'dest' since it was not "
-                    f"loaded from an app!"
-                )
+            if app:
+                dest = Path(app.path) / 'static' / template_name
+            else:
+                dest = getattr(settings, 'STATIC_ROOT', None)
+                if dest is None:
+                    raise ImproperlyConfigured(
+                        f"Template {template_name} must either be configured with a 'dest' or "
+                        f"STATIC_ROOT must be defined in settings, because it was not loaded "
+                        f"from an app!"
+                    )
+                else:
+                    dest = Path(dest) / template_name
 
-            dest = Path(template.origin.app.path) / 'static' / template_name
-        elif isinstance(dest, str):
+        if isinstance(dest, str):
             dest = Path(dest)
 
         if not dest.parent.exists():
