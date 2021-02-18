@@ -2,21 +2,16 @@
 
 import inspect
 import json
-from types import ModuleType
-from typing import Iterable, Type, Union, Optional
-from django.utils.module_loading import import_string
 from importlib import import_module
-from django.utils.safestring import SafeString
-from django.urls.converters import (
-    IntConverter,
-)
+from types import ModuleType
+from typing import Iterable, Optional, Type, Union
+
 from django import template
 from django.conf import settings
-from django.urls import (
-    reverse,
-    URLPattern,
-    URLResolver
-)
+from django.urls import URLPattern, URLResolver, reverse
+from django.urls.converters import IntConverter
+from django.utils.module_loading import import_string
+from django.utils.safestring import SafeString
 
 register = template.Library()
 
@@ -140,7 +135,8 @@ def urls_to_js(url_conf: Optional[Union[ModuleType, str]] = None, indent: str = 
     if isinstance(url_conf, str):
         url_conf = import_module(url_conf)
 
-    for pattern in url_conf.urlpatterns:
+    patterns = getattr(url_conf, 'urlpatterns', [])
+    for pattern in patterns:
         if isinstance(pattern, URLPattern) and getattr(pattern, 'name', None):
             url_js += f'{url_pattern_to_js(pattern, indent=indent)}'
         #elif isinstance(pattern, URLResolver):

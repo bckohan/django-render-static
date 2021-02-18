@@ -11,7 +11,7 @@ from django.apps import apps
 from django.apps.config import AppConfig
 from django.template.backends.django import DjangoTemplates
 from django.template.backends.jinja2 import Jinja2, Template
-from django_static_templates.origin import AppOrigin
+from static_templates.origin import AppOrigin
 
 __all__ = ['StaticDjangoTemplates', 'StaticJinja2Templates']
 
@@ -37,9 +37,9 @@ class StaticDjangoTemplates(DjangoTemplates):
         loaders = options.get('loaders', None)
         self.app_dirname = options.pop('app_dir', self.app_dirname)
         if loaders is None:
-            loaders = ['django_static_templates.loaders.StaticFilesystemLoader']
+            loaders = ['static_templates.loaders.StaticFilesystemLoader']
             if params.get('APP_DIRS', False):
-                loaders += ['django_static_templates.loaders.StaticAppDirectoriesLoader']
+                loaders += ['static_templates.loaders.StaticAppDirectoriesLoader']
                 # base class with throw if this isn't present - and it must be false
                 params['APP_DIRS'] = False
             options['loaders'] = loaders

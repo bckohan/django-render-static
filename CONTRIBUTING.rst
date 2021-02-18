@@ -50,16 +50,16 @@ or warnings where justified is acceptable:
 
 .. code-block::
 
-    poetry run isort django_static_templates
-    poetry run mypy django_static_templates
-    poetry run pylint django_static_templates
+    poetry run isort static_templates
+    poetry run mypy static_templates
+    poetry run pylint static_templates
 
 
 Running Tests
 -------------
 
 `django-static-templates` is setup to use django-pytest_ to allow pytest_ to run Django unit tests.
-All the tests are housed in django_static_templates/tests/tests.py. Before a PR is accepted, all
+All the tests are housed in static_templates/tests/tests.py. Before a PR is accepted, all
 tests must be passing and the code coverage must be at 100%.
 
 To run the full suite:
@@ -79,8 +79,8 @@ you would do:
 
 .. code-block::
 
-    poetry run pytest django_static_templates/tests/tests.py::DefinesToJavascriptTest
-    poetry run pytest django_static_templates/tests/tests.py::DefinesToJavascriptTest::test_classes_to_js
+    poetry run pytest static_templates/tests/tests.py::DefinesToJavascriptTest
+    poetry run pytest static_templates/tests/tests.py::DefinesToJavascriptTest::test_classes_to_js
 
 
 Continuous Integration

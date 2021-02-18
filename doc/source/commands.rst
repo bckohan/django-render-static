@@ -7,13 +7,13 @@ Commands
 generate_static
 ---------------
 
-.. automodule:: django_static_templates.management.commands.generate_static
+.. automodule:: static_templates.management.commands.generate_static
 
 Usage
 ~~~~~
 
 .. argparse::
-    :module: django_static_templates.management.commands.generate_static
+    :module: static_templates.management.commands.generate_static
     :func: get_parser
     :prog: manage.py
 

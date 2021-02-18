@@ -11,17 +11,17 @@ settings:
 
       STATIC_TEMPLATES = {
         'ENGINES': [
-            'BACKEND': 'django_static_templates.backends.StaticDjangoTemplates',
+            'BACKEND': 'static_templates.backends.StaticDjangoTemplates',
             'DIRS': [BASE_DIR / 'tmpls' ], # look here for templates
             'OPTIONS': {
                 'app_dir': 'static_tmplates',  # search this directory in apps for templates
                 'loaders': [
                     # search apps for templates
-                    'django_static_templates.loaders.StaticAppDirectoriesLoader',
+                    'static_templates.loaders.StaticAppDirectoriesLoader',
                     # search DIRS for templates
-                    'django_static_templates.loaders.StaticFilesystemLoader'
+                    'static_templates.loaders.StaticFilesystemLoader'
                  ],
-                'builtins': ['django_static_templates.templatetags.django_static_templates']
+                'builtins': ['static_templates.templatetags.static_templates']
             },
         ],
         'context': {
@@ -62,11 +62,11 @@ then the default engine and loaders will be used which is equivalent to:
 
     STATIC_TEMPALTES = {
         'ENGINES': [
-            'BACKEND': 'django_static_templates.backends.StaticDjangoTemplates',
+            'BACKEND': 'static_templates.backends.StaticDjangoTemplates',
             'DIRS': [],
             'OPTIONS': {
-                'loaders': ['django_static_templates.loaders.StaticAppDirectoriesLoader'],
-                'builtins': ['django_static_templates.templatetags.django_static_templates']
+                'loaders': ['static_templates.loaders.StaticAppDirectoriesLoader'],
+                'builtins': ['static_templates.templatetags.static_templates']
             },
         ]
     }
@@ -85,9 +85,9 @@ inherited from the standard Django ``TEMPLATES`` configuration.
 The backend classes that render templates. The standard ``TEMPLATES`` engines should not be used
 here, instead use the two engines provided by `django-static-templates`:
 
-- ``django_static_templates.backends.StaticDjangoTemplates``
+- ``static_templates.backends.StaticDjangoTemplates``
     - default app directory: ``static_templates``
-- ``django_static_templates.backends.StaticJinja2Templates``
+- ``static_templates.backends.StaticJinja2Templates``
     - default app directory: ``static_jinja2``
 
 If ``APP_DIRS`` is true, or if an app directories loader is used such that templates are searched
@@ -108,10 +108,10 @@ parameters are inherited from the standard Django template backends. One additio
 Works the same way as the ``loaders`` parameter on ``TEMPLATES``. Except when using the standard
 template backend the loaders have been extended and static specific loaders should be used instead:
 
-- ``django_static_templates.backends.StaticDjangoTemplates``
-    - ``django_static_templates.loaders.StaticAppDirectoriesLoader``
-    - ``django_static_templates.loaders.StaticFilesystemLoader``
-    - ``django_static_templates.loaders.StaticLocMemLoader``
+- ``static_templates.backends.StaticDjangoTemplates``
+    - ``static_templates.loaders.StaticAppDirectoriesLoader``
+    - ``static_templates.loaders.StaticFilesystemLoader``
+    - ``static_templates.loaders.StaticLocMemLoader``
 
 The normal Jinja2 loaders are used for the ``StaticJinja2Templates`` backend.
 

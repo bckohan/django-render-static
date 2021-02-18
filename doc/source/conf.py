@@ -1,5 +1,5 @@
 from datetime import datetime
-import django_static_templates
+import static_templates
 # Configuration file for the Sphinx documentation builder.
 #
 # This file only contains a selection of the most common options. For a full
@@ -24,7 +24,7 @@ copyright = f'2020-{datetime.now().year}, Brian Kohan'
 author = 'Brian Kohan'
 
 # The full version, including alpha/beta/rc tags
-release = django_static_templates.__version__
+release = static_templates.__version__
 
 
 # -- General configuration ---------------------------------------------------

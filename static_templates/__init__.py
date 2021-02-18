@@ -16,4 +16,4 @@ __license__ = 'MIT'
 __copyright__ = 'Copyright 2021 Brian Kohan'
 
 
-default_app_config = 'django_static_templates.apps.DjangoStaticTemplatesConfig'  # pylint: disable=C0103
+default_app_config = 'static_templates.apps.StaticTemplatesConfig'  # pylint: disable=C0103

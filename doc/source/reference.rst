@@ -8,7 +8,7 @@ Reference
 django\_static\_templates.engine
 --------------------------------
 
-.. automodule:: django_static_templates.engine
+.. automodule:: static_templates.engine
 
    .. autoclass:: StaticTemplateEngine
 
@@ -16,7 +16,7 @@ django\_static\_templates.engine
 django\_static\_templates.backends
 ----------------------------------
 
-.. automodule:: django_static_templates.backends
+.. automodule:: static_templates.backends
 
 
    .. autoclass:: StaticDjangoTemplates
@@ -27,7 +27,7 @@ django\_static\_templates.backends
 django\_static\_templates.loaders
 ---------------------------------
 
-.. automodule:: django_static_templates.loaders
+.. automodule:: static_templates.loaders
 
 
    .. autoclass:: StaticAppDirectoriesLoader
@@ -38,7 +38,7 @@ django\_static\_templates.loaders
 django\_static\_templates.origin
 --------------------------------
 
-.. automodule:: django_static_templates.origin
+.. automodule:: static_templates.origin
 
 
    .. autoclass:: AppOrigin
@@ -47,7 +47,7 @@ django\_static\_templates.origin
 django\_static\_templates.templatetags.django\_static\_templates
 ----------------------------------------------------------------
 
-.. automodule:: django_static_templates.templatetags.django_static_templates
+.. automodule:: static_templates.templatetags.static_templates
 
 
    .. autofunction:: to_js

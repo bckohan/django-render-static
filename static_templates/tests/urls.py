@@ -1,9 +1,6 @@
 from django.contrib import admin
-from django.urls import (
-    path,
-    re_path,
-    include
-)
+from django.urls import include, path, re_path
+
 from .views import TestView
 
 """

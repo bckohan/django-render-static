@@ -15,7 +15,7 @@ from django.template.loaders.app_directories import Loader as AppDirLoader
 from django.template.loaders.filesystem import Loader as FilesystemLoader
 from django.template.loaders.locmem import Loader as LocMemLoader
 from django.utils._os import safe_join
-from django_static_templates.origin import AppOrigin
+from static_templates.origin import AppOrigin
 
 __all__ = ['StaticFilesystemLoader', 'StaticAppDirectoriesLoader', 'StaticLocMemLoader']
 

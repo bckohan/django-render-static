@@ -1,26 +1,26 @@
 import filecmp
+import inspect
 import os
 import shutil
 from pathlib import Path
 
+import js2py
+from deepdiff import DeepDiff
 from django.apps import apps
+from django.conf import settings
 from django.core.exceptions import ImproperlyConfigured
 from django.core.management import CommandError, call_command
 from django.template.exceptions import TemplateDoesNotExist
 from django.template.utils import InvalidTemplateEngineError
-from django.conf import settings
 from django.test import TestCase, override_settings
-from django_static_templates.backends import (
+from django.utils.module_loading import import_string
+from static_templates.backends import (
     StaticDjangoTemplates,
     StaticJinja2Templates,
 )
-from django_static_templates.engine import StaticTemplateEngine
-from django_static_templates.origin import AppOrigin, Origin
-from django_static_templates.tests import defines
-from django.utils.module_loading import import_string
-from deepdiff import DeepDiff
-import inspect
-import js2py
+from static_templates.engine import StaticTemplateEngine
+from static_templates.origin import AppOrigin, Origin
+from static_templates.tests import defines
 
 APP1_STATIC_DIR = Path(__file__).parent / 'app1' / 'static'  # this dir does not exist and must be cleaned up
 APP2_STATIC_DIR = Path(__file__).parent / 'app2' / 'static'  # this dir exists and is checked in
@@ -37,7 +37,7 @@ class TestGenerateStaticParserAccessor(TestCase):
 
     def test_get_parser(self):
         from django.core.management.base import CommandParser
-        from django_static_templates.management.commands.generate_static import (
+        from static_templates.management.commands.generate_static import (
             get_parser,
         )
         self.assertTrue(isinstance(get_parser(), CommandParser))
@@ -46,8 +46,8 @@ class TestGenerateStaticParserAccessor(TestCase):
 class AppOriginTestCase(TestCase):
 
     def test_equality(self):
-        test_app1 = apps.get_app_config('django_static_templates_tests_app1')
-        test_app2 = apps.get_app_config('django_static_templates_tests_app2')
+        test_app1 = apps.get_app_config('static_templates_tests_app1')
+        test_app2 = apps.get_app_config('static_templates_tests_app2')
 
         origin1 = AppOrigin(name='/path/to/tmpl.html', template_name='to/tmpl.html', app=test_app1)
         origin2 = AppOrigin(name='/path/to/tmpl.html', template_name='to/tmpl.html', app=test_app1)
@@ -167,13 +167,13 @@ class DestOverrideTestCase(BaseTestCase):
 
 @override_settings(STATIC_TEMPLATES={
     'ENGINES': [{
-        'BACKEND': 'django_static_templates.backends.StaticDjangoTemplates',
+        'BACKEND': 'static_templates.backends.StaticDjangoTemplates',
         'DIRS': [STATIC_TEMP_DIR],
         'OPTIONS': {
             'app_dir': 'custom_templates',
             'loaders': [
-                'django_static_templates.loaders.StaticFilesystemLoader',
-                'django_static_templates.loaders.StaticAppDirectoriesLoader'
+                'static_templates.loaders.StaticFilesystemLoader',
+                'static_templates.loaders.StaticAppDirectoriesLoader'
             ]
         },
     }],
@@ -212,7 +212,7 @@ class FSLoaderTestCase(BaseTestCase):
 
 @override_settings(STATIC_TEMPLATES={
     'ENGINES': [{
-        'BACKEND': 'django_static_templates.backends.StaticJinja2Templates',
+        'BACKEND': 'static_templates.backends.StaticJinja2Templates',
         'DIRS': [STATIC_TEMP_DIR],
         'APP_DIRS': True
     }],
@@ -248,7 +248,7 @@ class Jinja2TestCase(BaseTestCase):
 
 @override_settings(STATIC_TEMPLATES={
     'ENGINES': [{
-        'BACKEND': 'django_static_templates.backends.StaticJinja2Templates',
+        'BACKEND': 'static_templates.backends.StaticJinja2Templates',
         'DIRS': [STATIC_TEMP_DIR],
         'APP_DIRS': True,
         'OPTIONS': {
@@ -292,7 +292,7 @@ class ConfigTestCase(TestCase):
         """
         engine = StaticTemplateEngine({
             'ENGINES': [{
-                'BACKEND': 'django_static_templates.backends.StaticDjangoTemplates',
+                'BACKEND': 'static_templates.backends.StaticDjangoTemplates',
                 'DIRS': [STATIC_TEMP_DIR],
                 'APP_DIRS': True,
                 'OPTIONS': {}
@@ -301,21 +301,21 @@ class ConfigTestCase(TestCase):
         self.assertEqual(
             engine['StaticDjangoTemplates'].engine.loaders,
             [
-                'django_static_templates.loaders.StaticFilesystemLoader',
-                'django_static_templates.loaders.StaticAppDirectoriesLoader'
+                'static_templates.loaders.StaticFilesystemLoader',
+                'static_templates.loaders.StaticAppDirectoriesLoader'
             ]
         )
 
         engine = StaticTemplateEngine({
             'ENGINES': [{
-                'BACKEND': 'django_static_templates.backends.StaticDjangoTemplates',
+                'BACKEND': 'static_templates.backends.StaticDjangoTemplates',
                 'DIRS': [STATIC_TEMP_DIR],
                 'APP_DIRS': False,
                 'OPTIONS': {}
             }],
         })
         self.assertEqual(
-            engine['StaticDjangoTemplates'].engine.loaders, ['django_static_templates.loaders.StaticFilesystemLoader']
+            engine['StaticDjangoTemplates'].engine.loaders, ['static_templates.loaders.StaticFilesystemLoader']
         )
 
     def test_app_dirs_error(self):
@@ -324,11 +324,11 @@ class ConfigTestCase(TestCase):
         """
         engine = StaticTemplateEngine({
             'ENGINES': [{
-                'BACKEND': 'django_static_templates.backends.StaticDjangoTemplates',
+                'BACKEND': 'static_templates.backends.StaticDjangoTemplates',
                 'DIRS': [STATIC_TEMP_DIR],
                 'APP_DIRS': True,
                 'OPTIONS': {
-                    'loaders': ['django_static_templates.loaders.StaticFilesystemLoader']
+                    'loaders': ['static_templates.loaders.StaticFilesystemLoader']
                 }
             }]
         })
@@ -415,12 +415,12 @@ class ConfigTestCase(TestCase):
         engine = StaticTemplateEngine({
             'ENGINES': [{
                 'NAME': 'IDENTICAL',
-                'BACKEND': 'django_static_templates.backends.StaticDjangoTemplates',
+                'BACKEND': 'static_templates.backends.StaticDjangoTemplates',
                 'APP_DIRS': True
             },
             {
                 'NAME': 'IDENTICAL',
-                'BACKEND': 'django_static_templates.backends.StaticJinja2Templates',
+                'BACKEND': 'static_templates.backends.StaticJinja2Templates',
                 'APP_DIRS': True
             }]
         })
@@ -429,12 +429,12 @@ class ConfigTestCase(TestCase):
         engine = StaticTemplateEngine({
             'ENGINES': [{
                 'NAME': 'IDENTICAL',
-                'BACKEND': 'django_static_templates.backends.StaticDjangoTemplates',
+                'BACKEND': 'static_templates.backends.StaticDjangoTemplates',
                 'APP_DIRS': True
             },
             {
                 'NAME': 'DIFFERENT',
-                'BACKEND': 'django_static_templates.backends.StaticJinja2Templates',
+                'BACKEND': 'static_templates.backends.StaticJinja2Templates',
                 'APP_DIRS': True
             }]
         })
@@ -456,7 +456,7 @@ class ConfigTestCase(TestCase):
     def test_allow_dot_modifiers(self):
         engine = StaticTemplateEngine({
             'ENGINES': [{
-                'BACKEND': 'django_static_templates.backends.StaticDjangoTemplates',
+                'BACKEND': 'static_templates.backends.StaticDjangoTemplates',
                 'APP_DIRS': True,
             }],
             'templates': {
@@ -518,13 +518,13 @@ class DirectRenderTestCase(BaseTestCase):
 
 @override_settings(STATIC_TEMPLATES={
     'ENGINES': [{
-        'BACKEND': 'django_static_templates.backends.StaticDjangoTemplates',
+        'BACKEND': 'static_templates.backends.StaticDjangoTemplates',
         'DIRS': [STATIC_TEMP_DIR],
         'OPTIONS': {
             'app_dir': 'custom_templates',
             'loaders': [
-                'django_static_templates.loaders.StaticFilesystemLoader',
-                'django_static_templates.loaders.StaticAppDirectoriesLoader'
+                'static_templates.loaders.StaticFilesystemLoader',
+                'static_templates.loaders.StaticAppDirectoriesLoader'
             ]
         },
     }],
@@ -579,30 +579,30 @@ class GenerateNothing(BaseTestCase):
 
 @override_settings(STATIC_TEMPLATES={
     'ENGINES': [{
-        'BACKEND': 'django_static_templates.backends.StaticDjangoTemplates',
+        'BACKEND': 'static_templates.backends.StaticDjangoTemplates',
         'OPTIONS': {
             'app_dir': 'custom_templates',
             'loaders': [
-                ('django_static_templates.loaders.StaticLocMemLoader', {
+                ('static_templates.loaders.StaticLocMemLoader', {
                     'defines1.js': 'var defines = {\n{{ classes|classes_to_js:"  " }}};',
                     'defines2.js': 'var defines = {\n{{ modules|modules_to_js }}};',
                     'defines_error.js': 'var defines = {\n{{ classes|classes_to_js }}};'
                 })
             ],
-            'builtins': ['django_static_templates.templatetags.django_static_templates']
+            'builtins': ['static_templates.templatetags.static_templates']
         },
     }],
     'templates': {
         'defines1.js': {
             'dest': GLOBAL_STATIC_DIR / 'defines1.js',
             'context': {
-                'classes': [defines.MoreDefines, 'django_static_templates.tests.defines.ExtendedDefines']
+                'classes': [defines.MoreDefines, 'static_templates.tests.defines.ExtendedDefines']
             }
         },
         'defines2.js': {
             'dest': GLOBAL_STATIC_DIR / 'defines2.js',
             'context': {
-                'modules': [defines, 'django_static_templates.tests.defines2']
+                'modules': [defines, 'static_templates.tests.defines2']
             }
         },
         'defines_error.js': {
@@ -688,14 +688,14 @@ class DefinesToJavascriptTest(BaseTestCase):
 
 @override_settings(STATIC_TEMPLATES={
     'ENGINES': [{
-        'BACKEND': 'django_static_templates.backends.StaticDjangoTemplates',
+        'BACKEND': 'static_templates.backends.StaticDjangoTemplates',
         'OPTIONS': {
             'loaders': [
-                ('django_static_templates.loaders.StaticLocMemLoader', {
+                ('static_templates.loaders.StaticLocMemLoader', {
                     'urls1.js': 'var urls = {\n{% urls_to_js indent="  " %}};'
                 })
             ],
-            'builtins': ['django_static_templates.templatetags.django_static_templates']
+            'builtins': ['static_templates.templatetags.static_templates']
         },
     }],
 })

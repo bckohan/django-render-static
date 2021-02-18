@@ -10,10 +10,10 @@ Installation
        pip install django-static-templates
 
 
-2. Add 'django_static_templates' to your ``INSTALLED_APPS`` ::
+2. Add 'static_templates' to your ``INSTALLED_APPS`` ::
 
        INSTALLED_APPS = [
-           'django_static_templates',
+           'static_templates',
        ]
 
 3. Add a ``STATIC_TEMPLATES`` configuration directive to your settings file::
