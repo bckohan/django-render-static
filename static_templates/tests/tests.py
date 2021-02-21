@@ -1,7 +1,10 @@
 import filecmp
 import inspect
+import json
 import os
 import shutil
+import subprocess
+import uuid
 from pathlib import Path
 
 import js2py
@@ -13,6 +16,7 @@ from django.core.management import CommandError, call_command
 from django.template.exceptions import TemplateDoesNotExist
 from django.template.utils import InvalidTemplateEngineError
 from django.test import TestCase, override_settings
+from django.urls import reverse
 from django.utils.module_loading import import_string
 from static_templates.backends import (
     StaticDjangoTemplates,
@@ -27,6 +31,17 @@ APP2_STATIC_DIR = Path(__file__).parent / 'app2' / 'static'  # this dir exists a
 GLOBAL_STATIC_DIR = settings.STATIC_ROOT  # this dir does not exist and must be cleaned up
 STATIC_TEMP_DIR = Path(__file__).parent / 'static_templates'
 EXPECTED_DIR = Path(__file__).parent / 'expected'
+
+
+USE_NODE_JS = True if shutil.which('node') else False
+
+
+class BestEffortEncoder(json.JSONEncoder):
+    def default(self, obj):
+        try:
+            return json.JSONEncoder.default(self, obj)
+        except TypeError:
+            return str(obj)
 
 
 class TestGenerateStaticParserAccessor(TestCase):
@@ -692,7 +707,7 @@ class DefinesToJavascriptTest(BaseTestCase):
         'OPTIONS': {
             'loaders': [
                 ('static_templates.loaders.StaticLocMemLoader', {
-                    'urls1.js': 'var urls = {\n{% urls_to_js indent="  " %}};'
+                    'urls.js': 'var urls = {\n{% urls_to_js indent="  " es5=True%}};'
                 })
             ],
             'builtins': ['static_templates.templatetags.static_templates']
@@ -701,18 +716,171 @@ class DefinesToJavascriptTest(BaseTestCase):
 })
 class URLSToJavascriptTest(BaseTestCase):
 
-    def test_full_url_dump(self):
-        call_command('generate_static', 'urls1.js')
-        with open(GLOBAL_STATIC_DIR / 'urls1.js', 'r') as jf:
-            url_js = js2py.eval_js(jf.read())
+    url_js = None
+    es5_mode = False
 
-            self.assertEqual({
-                    'request': '/test/simple/',
-                    'args': [],
-                    'kwargs': {}
-                },
-                self.client.get(url_js.path_tst()).json()
-            )
+    def get_url_from_js(self, qname, options=None):  # pragma: no cover
+        if options is None:
+            options = {}
+        if USE_NODE_JS:
+            shutil.copyfile(GLOBAL_STATIC_DIR/'urls.js', GLOBAL_STATIC_DIR / 'get_url.js')
+            accessor_str = ''
+            for comp in qname.split(':'):
+                accessor_str += f'["{comp}"]'
+            with open(GLOBAL_STATIC_DIR / 'get_url.js', 'a+') as tmp_js:
+                tmp_js.write(
+                    f'\nconsole.log(urls{accessor_str}'
+                    f'({json.dumps(options, cls=BestEffortEncoder)}));\n')
 
-    #def tearDown(self):
-    #    pass
+            return subprocess.check_output([
+                'node',
+                GLOBAL_STATIC_DIR / 'get_url.js'
+            ]).decode('UTF-8').strip()
+
+        if self.url_js is None:
+            with open(GLOBAL_STATIC_DIR / 'urls.js', 'r') as jf:
+                if self.es5_mode:
+                    url_js = js2py.eval_js(jf.read())
+                else:
+                    import warnings
+                    with warnings.catch_warnings():
+                        warnings.filterwarnings('ignore', category=UserWarning)
+                        """
+                        Suppress the following warning from js2py:
+
+                            Importing babel.py for the first time - this can take some time. 
+                            Please note that currently Javascript 6 in Js2Py is unstable and slow. 
+                            Use only for tiny scripts! Importing babel.py for the first time - this can 
+                            take some time. Please note that currently Javascript 6 in Js2Py is unstable
+                            and slow. Use only for tiny scripts!'
+                        """
+                        url_js = js2py.eval_js6(jf.read())
+        func = url_js
+        for comp in qname.split(':'):
+            func = url_js[comp]
+        return func(options)
+
+    def compare(self, qname, options=None, object_hook=lambda dct: dct):
+        if options is None:
+            options = {}
+        resp = self.client.get(self.get_url_from_js(qname, options))
+        if resp.status_code == 301:
+            resp = self.client.get(resp.url)
+
+        self.assertEqual({
+                'request': reverse(qname, kwargs=options),
+                'args': [],
+                'kwargs': options
+            },
+            resp.json(object_hook=object_hook)
+        )
+
+    @override_settings(STATIC_TEMPLATES={
+        'ENGINES': [{
+            'BACKEND': 'static_templates.backends.StaticDjangoTemplates',
+            'OPTIONS': {
+                'loaders': [
+                    ('static_templates.loaders.StaticLocMemLoader', {
+                        'urls.js': 'var urls = {\n{% urls_to_js indent="  "%}};'
+                    })
+                ],
+                'builtins': ['static_templates.templatetags.static_templates']
+            },
+        }],
+    })
+    def test_full_url_dump_es6(self):
+        """
+        This ES6 test is horrendously slow when not using node for reasons mentioned by the Js2Py
+        warning
+        """
+        self.test_full_url_dump(es5=False)
+
+    def test_full_url_dump(self, es5=True):
+        self.es5_mode = es5
+        self.url_js = None
+
+        from static_templates import placeholders as gen
+        gen.register_variable_placeholder('strarg', 'a')
+        gen.register_variable_placeholder('intarg', 0)
+
+        call_command('generate_static', 'urls.js')
+
+        def convert_to_id(dct, key='id'):
+            if key in dct:
+                dct[key] = uuid.UUID(dct[key])
+            return dct
+
+        def convert_to_int(dct, key):
+            if key in dct:
+                dct[key] = int(dct[key])
+            return dct
+
+        #################################################################
+        # root urls
+        qname = 'path_tst'
+        self.compare(qname)
+        self.compare(qname, {'arg1': 1})
+        self.compare(qname, {'arg1': 12, 'arg2': 'xo'})
+        #################################################################
+
+        #################################################################
+        # app1 straight include 1
+        qname = 'sub1:app1_pth'
+        self.compare(qname)
+        self.compare(qname, {'arg1': 143})  # emma
+        self.compare(qname, {'arg1': 5678, 'arg2': 'xo'})
+        self.compare('sub1:app1_detail', {'id': uuid.uuid1()}, object_hook=convert_to_id)
+        self.compare('sub1:custom_tst', {'year': 2021})
+        #################################################################
+
+        #################################################################
+        # app1 straight include 2
+        qname = 'sub2:app1_pth'
+        self.compare(qname)
+        self.compare(qname, {'arg1': 143})  # emma
+        self.compare(qname, {'arg1': 5678, 'arg2': 'xo'})
+        self.compare('sub2:app1_detail', {'id': uuid.uuid1()}, object_hook=convert_to_id)
+        self.compare('sub2:custom_tst', {'year': 1021})
+        #################################################################
+
+        #################################################################
+        # app1 include through app2
+        qname = 'app2:app1:app1_pth'
+        self.compare(qname)
+        self.compare(qname, {'arg1': 1})
+        self.compare(qname, {'arg1': 12, 'arg2': 'xo'})
+        self.compare('app2:app1:app1_detail', {'id': uuid.uuid1()}, object_hook=convert_to_id)
+        self.compare('app2:app1:custom_tst', {'year': 2999})
+        #################################################################
+
+        #################################################################
+        # app1 include through app2
+        qname = 'app2:app2_pth'
+        self.compare(qname)
+        self.compare(qname, {'arg1': 'adf23'})
+        self.compare(
+            'app2:app2_pth_diff',
+            {'arg2': 'this/is/a/path/', 'arg1': uuid.uuid1()},
+            object_hook=lambda dct: convert_to_id(dct, 'arg1')
+        )
+        self.compare(
+            'app2:app2_pth_diff',
+            {'arg2': 'so/is/this', 'arg1': uuid.uuid1()},
+            object_hook=lambda dct: convert_to_id(dct, 'arg1')
+        )
+        #################################################################
+
+        #################################################################
+        # re_paths
+
+        self.compare('re_path_tst')
+        self.compare('re_path_tst', {'strarg': 'DEMOPLY'})
+        self.compare(
+            're_path_tst',
+            {'strarg': 'is', 'intarg': 1337},
+            object_hook=lambda dct: convert_to_int(dct, 'intarg')
+        )
+        #################################################################
+
+    def tearDown(self):
+        pass
