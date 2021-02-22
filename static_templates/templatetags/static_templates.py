@@ -6,7 +6,7 @@ import json
 import re
 from importlib import import_module
 from types import ModuleType
-from typing import Dict, Iterable, List, Optional, Type, Union, Tuple
+from typing import Dict, Iterable, Optional, Type, Union, Tuple
 
 from django import template
 from django.conf import settings
@@ -15,14 +15,12 @@ from django.urls.exceptions import NoReverseMatch
 from django.urls.resolvers import RegexPattern, RoutePattern
 from django.utils.module_loading import import_string
 from django.utils.safestring import SafeString
-from static_templates.exceptions import PlaceholderGenerationFailed
-from static_templates.placeholders import resolve_placeholders
+from static_templates.exceptions import URLGenerationFailed, PlaceholderNotFound
+from static_templates.placeholders import resolve_placeholders, resolve_unnamed_placeholders
 
 register = template.Library()
 
 __all__ = ['classes_to_js', 'modules_to_js', 'urls_to_js']
-
-MAX_PLACEHOLDER_TRIES = 32
 
 
 def to_js(classes: dict, indent: str = ''):
@@ -117,6 +115,114 @@ def urls_to_js(  # pylint: disable=R0913
         exclude: Optional[Iterable[str]] = None,
         es5: bool = False
 ) -> str:
+    """
+    Dump reversable URLs to javascript. The javascript generated provides functions for each fully
+    qualified URL name that perform the same service as Django's URL `reverse` function. The
+    javascript output by this tag isn't standalone. It is up to the caller to embed it in another
+    object. For instance, given the following urls.py:
+
+    ..code-block::
+
+        from django.urls import include, path
+        from views import MyView
+
+        urlpatterns = [
+            path('my/url/', MyView.as_view(), name='my_url'),
+            path('url/with/arg/<int:arg1>', MyView.as_view(), name='my_url'),
+            path('sub/', include('other_app.urls', namespace='sub')),
+        ]
+
+    And the other app's urls.py:
+
+    ..code-block::
+
+        from django.urls import path
+        from views import MyView
+
+        urlpatterns = [
+            path('detail/<uuid:id>', MyView.as_view(), name='detail'),
+        ]
+
+    And the following template:
+
+    ..code-block::
+
+        var urls =  {
+            {% urls_to_js %}
+        };
+
+    The generated javascript would look like:
+
+    ..code-block::
+
+        var urls = {
+            "my_url": function(kwargs={}, args=[]) {
+                if (Object.keys(kwargs).length === 0)
+                    return "/my/url/";
+                if (Object.keys(kwargs).length === 1 && ['arg1'].every(
+                    value => kwargs.hasOwnProperty(value))
+                )
+                return `/url/with/arg/${kwargs["arg1"]}`;
+            },
+            "other": {
+                "detail": function(kwargs={}, args=[]) {
+                    if (Object.keys(kwargs).length === 1 && ['id'].every(
+                        value => kwargs.hasOwnProperty(value))
+                    )
+                        return `/sub/detail/${kwargs["id"]}`;
+                },
+            },
+        };
+
+
+        # /my/url/
+        console.log(urls.my_url());
+
+        # /url/with/arg/143
+        console.log(urls.my_url({'arg1': 143}));
+
+        # /sub/detail/aaaaaaaa-aaaa-aaaa-aaaa-aaaaaaaaaaaa
+        console.log(urls.other.detail({'id': 'aaaaaaaa-aaaa-aaaa-aaaa-aaaaaaaaaaaa'}));
+
+
+    ..note::
+        Care has been taken to harden this process to changes to the Django url resolution
+        source and to ensure that it just works with minimal intervention.
+
+        The general strategy of this process is two staged. First a tree structure is generated
+        by walking the urlpatterns structure that contains the url patterns and resolves all their
+        fully qualified names including all parent namespaces. URLs and namespaces are included
+        and excluded at this stage based on the include/exclude parameters. The branches of the tree
+        are namespaces and the leaves are fully qualified URL names containing lists of
+        corresponding URLPatterns.
+
+        The second stage recursively walks the tree, writing javascript as it enters namespaces and
+        encounters URLPatterns. Multiple URLs may be registered against the same fully qualified
+        name, but may be distinguished by the named parameters they accept. One javascript function
+        is generated for each fully qualified URL name, that will select the correct URL reversal
+        based on the names of the parameters passed in and map those parameter values to the correct
+        placeholders in the URL. To ensure the outputs of the javascript match Django's `reverse`
+        the strategy is to use the results of the `reverse` call for the fully qualified name.
+        Placeholder values are passed into `reverse` and then overwritten with javascript
+        substitution code based on the regex grouping information. This strategy avoids as much
+        error prone regex/string processing as possible. The concession here is that placeholder
+        values must be supplied by the user wherever we cant infer them. When using path instead of
+        re_path we can use default placeholders for all the known converters. When using re_path
+        or custom path converters users must register placeholders by parameter name, converter
+        type, or app_name. Libraries exist for generating string patterns that match regex's but
+        none seem reliable or stable enough to include as a dependency.
+
+
+    :param url_conf: The root url module to dump urls from, default: settings.ROOT_URLCONF
+    :param indent: string to use for indentation in javascript, default: '  '
+    :param depth: the starting indentation depth, default: 0
+    :param include: A list of url names to include, namespaces without url names will be treated as
+        every url under the namespace. Default: include everything
+    :param exclude: A list of url names to exclude, namespaces without url names will be treated as
+        every url under the namespace. Default: exclude nothing
+    :param es5: if True, dump es5 valid javascript, if False javascript will be es6
+    :return: A javascript object containing functions that generate urls with and without parameters
+    """
     if url_conf is None:
         url_conf = settings.ROOT_URLCONF
 
@@ -190,12 +296,22 @@ def urls_to_js(  # pylint: disable=R0913
     ) -> str:
 
         if es5:
-            p_js = f'{indent * dpth}"{qname.split(":")[-1]}": function(options) {{\n'
-            p_js += f'{indent * (dpth+1)}options = options || {{}};\n'
+            p_js = f'{indent * dpth}"{qname.split(":")[-1]}": function(kwargs, args) {{\n'
+            p_js += f'{indent * (dpth+1)}kwargs = kwargs || {{}};\n'
+            p_js += f'{indent * (dpth+1)}args = args || [];\n'
         else:
-            p_js = f'{indent * dpth}"{qname.split(":")[-1]}": function(options={{}}) {{\n'
+            p_js = f'{indent * dpth}"{qname.split(":")[-1]}": function(kwargs={{}}, args=[]) {{\n'
+
+        def reversable(endpoint):
+            # django doesnt allow mixing unnamed and named parameters when reversing a url
+            num_named = len(endpoint.pattern.regex.groupindex)
+            if num_named and num_named != endpoint.pattern.regex.groups:
+                return False
+            return True
 
         def add_pattern(endpoint: URLPattern):
+            if not reversable(endpoint):
+                return ''
             if isinstance(endpoint.pattern, RoutePattern):
                 params = {
                     var: {
@@ -210,90 +326,131 @@ def urls_to_js(  # pylint: disable=R0913
                     } for var in endpoint.pattern.regex.groupindex.keys()
                 }
             else:
-                raise PlaceholderGenerationFailed(f'Unrecognized URLPattern type: {type(endpoint)}')
+                raise URLGenerationFailed(f'Unrecognized URLPattern type: {type(endpoint)}')
 
-            if params:
-                for placeholders in itertools.product(*[
-                    resolve_placeholders(param, **lookup) for param, lookup in params.items()
-                ]):
-                    kwargs = {param: placeholders[idx] for idx, param in enumerate(params.keys())}
-                    try:
-                        placeholder_url = reverse(qname, kwargs=kwargs)
-                        # it must match! The URLPattern tree complicates things by often times
-                        # having ^ present at the start of each regex snippet. We know that this
-                        # regex must match the end of the placeholder_url but it might not match
-                        # the beginning depending on its placement in the tree - so we spoof
-                        # the match beginning behavior by prepending newline and running in
-                        # MULTILINE mode
-                        mtch = endpoint.pattern.regex.search(placeholder_url.lstrip('/'))
-                        if not mtch:
-                            endpoint.pattern.regex.search(placeholder_url)
-                        if not mtch:
-                            mtch = re.search(
-                                endpoint.pattern.regex.pattern.lstrip('^'),
-                                placeholder_url.lstrip('/'),
-                                flags=re.MULTILINE
-                            )
-                        if not mtch:
-                            mtch = re.search(
-                                endpoint.pattern.regex.pattern.lstrip('^'),
-                                placeholder_url,
-                                flags=re.MULTILINE
-                            )
-                        if not mtch:
-                            continue  # TODO is this possible?
-                        url = ''
-                        # there might be group matches that aren't part of our kwargs, we go through
-                        # this extra work to make sure we aren't subbing spans that aren't kwargs
-                        grp_mp = {
-                            idx: var for var, idx in endpoint.pattern.regex.groupindex.items()
+            unnamed = endpoint.pattern.regex.groups > 0 and not params
+            if params or unnamed:
+                try:
+                    if unnamed:
+                        resolved_placeholders = resolve_unnamed_placeholders(
+                            url_name=endpoint.name,
+                            app_name=app_name
+                        )
+                    else:
+                        resolved_placeholders = itertools.product(*[
+                            resolve_placeholders(
+                                param,
+                                **lookup
+                            ) for param, lookup in params.items()
+                        ])
+                    for placeholders in resolved_placeholders:
+                        kwargs = {
+                            param: placeholders[idx] for idx, param in enumerate(params.keys())
                         }
-                        replacements = []
-                        for idx, value in enumerate(mtch.groups(), start=1):
-                            if idx in grp_mp and grp_mp[idx] in kwargs:
-                                replacements.append(
-                                    (
-                                        mtch.span(idx),
+                        try:
+                            if unnamed:
+                                placeholder_url = reverse(qname, args=placeholders)
+                            else:
+                                placeholder_url = reverse(qname, kwargs=kwargs)
+                            # it must match! The URLPattern tree complicates things by often times
+                            # having ^ present at the start of each regex snippet - no way around
+                            # removing it because we're matching against full url strings
+                            mtch = endpoint.pattern.regex.search(placeholder_url.lstrip('/'))
+                            if not mtch:
+                                endpoint.pattern.regex.search(placeholder_url)
+                            if not mtch:
+                                mtch = re.search(
+                                    endpoint.pattern.regex.pattern.lstrip('^'),
+                                    placeholder_url.lstrip('/')
+                                )
+                            if not mtch:
+                                mtch = re.search(
+                                    endpoint.pattern.regex.pattern.lstrip('^'),
+                                    placeholder_url
+                                )
+                            if not mtch:
+                                continue  # try another placeholder
+                            url = ''
+                            # there might be group matches that aren't part of our kwargs, we go
+                            # through this extra work to make sure we aren't subbing spans that
+                            # aren't kwargs
+                            grp_mp = {
+                                idx: var for var, idx in endpoint.pattern.regex.groupindex.items()
+                            }
+                            replacements = []
+                            for idx, value in enumerate(mtch.groups(), start=1):
+                                if unnamed:
+                                    replacements.append(
                                         (
-                                            f'"+options["{grp_mp[idx]}"].toString()+"' if es5 else
-                                            f'${{options["{grp_mp[idx]}"]}}'
+                                            mtch.span(idx),
+                                            (
+                                                f'"+args[{idx-1}].toString()+"' if es5
+                                                else
+                                                f'${{args[{idx-1}]}}'
+                                            )
                                         )
                                     )
+                                elif idx in grp_mp and grp_mp[idx] in kwargs:
+                                    replacements.append(
+                                        (
+                                            mtch.span(idx),
+                                            (
+                                                f'"+kwargs["{grp_mp[idx]}"].toString()+"' if es5
+                                                else
+                                                f'${{kwargs["{grp_mp[idx]}"]}}'
+                                            )
+                                        )
+                                    )
+                            url_idx = 0
+                            for rpl in replacements:
+                                while url_idx <= rpl[0][0]:
+                                    url += placeholder_url[url_idx]
+                                    url_idx += 1
+                                url += rpl[1]
+                                url_idx += (rpl[0][1]-rpl[0][0])
+                            opts_str = ",".join([f"'{param}'" for param in kwargs.keys()])
+                            if unnamed:
+                                qt = '"' if es5 else '`'
+                                return (
+                                        f'{indent * (dpth + 1)}if (args.length === '
+                                        f'{len(placeholders)})\n'
+                                        f'{indent * (dpth + 2)}'
+                                        f'return {qt}/{url.lstrip("/")}{qt};\n'
                                 )
-                        url_idx = 0
-                        for rpl in replacements:
-                            while url_idx <= rpl[0][0]:
-                                url += placeholder_url[url_idx]
-                                url_idx += 1
-                            url += rpl[1]
-                            url_idx += (rpl[0][1]-rpl[0][0])
-                        opts_str = ",".join([f"'{param}'" for param in kwargs.keys()])
-                        if es5:
-                            return (
-                                    f'{indent * (dpth + 1)}if (Object.keys(options).length === '
-                                    f'{len(kwargs)} && [{opts_str}].every(function(value) {{ '
-                                    f'return options.hasOwnProperty(value);}}))\n'
-                                    f'{indent * (dpth + 2)}return "/{url.lstrip("/")}";\n'
-                            )
-                        else:
-                            return (
-                                    f'{indent * (dpth + 1)}if (Object.keys(options).length === '
-                                    f'{len(kwargs)} && '
-                                    f'[{opts_str}].every(value => options.hasOwnProperty(value)))\n'
-                                    f'{indent * (dpth + 2)}return `/{url.lstrip("/")}`;\n'
-                            )
+                            else:
+                                if es5:
+                                    return (
+                                            f'{indent * (dpth + 1)}if (Object.keys(kwargs).length '
+                                            f'=== {len(kwargs)} && [{opts_str}].every('
+                                            f'function(value) {{ '
+                                            f'return kwargs.hasOwnProperty(value);}}))\n'
+                                            f'{indent * (dpth + 2)}return "/{url.lstrip("/")}";\n'
+                                    )
+                                else:
+                                    return (
+                                            f'{indent * (dpth + 1)}if (Object.keys(kwargs).length '
+                                            f'=== {len(kwargs)} && '
+                                            f'[{opts_str}].every('
+                                            f'value => kwargs.hasOwnProperty(value)))\n'
+                                            f'{indent * (dpth + 2)}return `/{url.lstrip("/")}`;\n'
+                                    )
 
-                    except NoReverseMatch:
-                        continue
+                        except NoReverseMatch:
+                            continue
+                except PlaceholderNotFound as pnf:
+                    raise URLGenerationFailed(
+                        f'Unable to generate url for {qname} using pattern {endpoint} '
+                        f'because: {pnf}'
+                    ) from pnf
             else:
                 return (
-                    f'{indent * (dpth + 1)}if (Object.keys(options).length === 0)\n'
+                    f'{indent * (dpth + 1)}if (Object.keys(kwargs).length === 0 && '
+                    f'args.length === 0)\n'
                     f'{indent * (dpth + 2)}return "/{reverse(qname).lstrip("/")}";\n'
                 )
-
-            raise PlaceholderGenerationFailed(
-                f'Unable to generate placeholder for {qname} with options: '
-                f'{params.keys()}!'
+            raise URLGenerationFailed(
+                f'Unable to generate url for {qname} with kwargs: '
+                f'{params.keys()} using pattern {endpoint}!'
             )
 
         for pattern in nodes:

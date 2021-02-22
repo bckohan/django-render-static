@@ -6,7 +6,9 @@ from static_templates.exceptions import PlaceholderNotFound
 __all__ = [
     'register_converter_placeholder',
     'register_variable_placeholder',
-    'resolve_placeholders'
+    'register_unnamed_placeholders',
+    'resolve_placeholders',
+    'resolve_unnamed_placeholders'
 ]
 
 converter_placeholders: Dict[Type, List] = {
@@ -48,6 +50,24 @@ def register_variable_placeholder(
             placeholders.append(placeholder)
 
 
+app_unnamed_placeholders: Dict[str, Dict[str, List]] = {}
+unnamed_placeholders: Dict[str, List] = {}
+
+
+def register_unnamed_placeholders(
+    url_name: str,
+    placeholders: List,
+    app_name: Optional[str] = None
+) -> None:
+    placeholder_lists = unnamed_placeholders.setdefault(url_name, [])
+    if placeholders not in placeholder_lists:
+        placeholder_lists.append(placeholders)
+    if app_name:
+        placeholder_lists = app_unnamed_placeholders.setdefault(app_name, {}).setdefault(url_name, [])
+        if placeholders not in placeholder_lists:
+            placeholder_lists.append(placeholders)
+
+
 def resolve_placeholders(
         var_name: str,
         app_name: Optional[str] = None,
@@ -75,3 +95,30 @@ def resolve_placeholders(
 
     for placeholder in placeholders:
         yield placeholder
+
+
+def resolve_unnamed_placeholders(
+        url_name: str,
+        app_name: Optional[str] = None
+) -> Generator[Any, None, None]:
+
+    placeholders = []
+    if app_name:
+        placeholders.extend(app_unnamed_placeholders.get(app_name, {}).get(url_name, []))
+    placeholders.extend(unnamed_placeholders.get(url_name, []))
+
+    if not placeholders:
+        lookup = {
+            'url_name': url_name,
+            'app_name': app_name
+        }
+        raise PlaceholderNotFound(
+            f'No unnamed placeholders are registered for any of the lookup parameters: {lookup}'
+        )
+
+    for placeholder in placeholders:
+        yield placeholder
+
+
+register_variable_placeholder('app_label', 'site', app_name='admin')
+register_variable_placeholder('app_label', 'auth', app_name='admin')

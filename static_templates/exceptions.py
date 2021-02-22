@@ -1,9 +1,9 @@
-__all__ = ['PlaceholderNotFound', 'PlaceholderGenerationFailed']
+__all__ = ['PlaceholderNotFound', 'URLGenerationFailed']
 
 
 class PlaceholderNotFound(Exception):
     pass
 
 
-class PlaceholderGenerationFailed(Exception):
+class URLGenerationFailed(Exception):
     pass

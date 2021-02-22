@@ -10,3 +10,4 @@ urlpatterns = [
     path('app1/different/detail/<uuid:id>/', TestView.as_view(), name='app1_detail'),
     path('app1/test/converter/<year:year>/', TestView.as_view(), name='custom_tst')
 ]
+

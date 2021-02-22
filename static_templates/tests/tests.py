@@ -719,18 +719,24 @@ class URLSToJavascriptTest(BaseTestCase):
     url_js = None
     es5_mode = False
 
-    def get_url_from_js(self, qname, options=None):  # pragma: no cover
-        if options is None:
-            options = {}
+    def get_url_from_js(self, qname, kwargs, args):  # pragma: no cover
         if USE_NODE_JS:
             shutil.copyfile(GLOBAL_STATIC_DIR/'urls.js', GLOBAL_STATIC_DIR / 'get_url.js')
             accessor_str = ''
             for comp in qname.split(':'):
                 accessor_str += f'["{comp}"]'
             with open(GLOBAL_STATIC_DIR / 'get_url.js', 'a+') as tmp_js:
-                tmp_js.write(
-                    f'\nconsole.log(urls{accessor_str}'
-                    f'({json.dumps(options, cls=BestEffortEncoder)}));\n')
+                if args:
+                    tmp_js.write(
+                        f'\nconsole.log(urls{accessor_str}'
+                        f'({json.dumps(kwargs, cls=BestEffortEncoder)},'
+                        f'{json.dumps(args, cls=BestEffortEncoder)}));\n'
+                    )
+                else:
+                    tmp_js.write(
+                        f'\nconsole.log(urls{accessor_str}'
+                        f'({json.dumps(kwargs, cls=BestEffortEncoder)}));\n'
+                    )
 
             return subprocess.check_output([
                 'node',
@@ -758,21 +764,32 @@ class URLSToJavascriptTest(BaseTestCase):
         func = url_js
         for comp in qname.split(':'):
             func = url_js[comp]
-        return func(options)
+        return func(kwargs, args)
 
-    def compare(self, qname, options=None, object_hook=lambda dct: dct):
-        if options is None:
-            options = {}
-        resp = self.client.get(self.get_url_from_js(qname, options))
+    def compare(
+            self,
+            qname,
+            kwargs=None,
+            args=None,
+            object_hook=lambda dct: dct,
+            args_hook=lambda args: args
+    ):
+        if kwargs is None:
+            kwargs = {}
+        if args is None:
+            args = []
+        resp = self.client.get(self.get_url_from_js(qname, kwargs, args))
         if resp.status_code == 301:
             resp = self.client.get(resp.url)
 
+        resp = resp.json(object_hook=object_hook)
+        resp['args'] = args_hook(resp['args'])
         self.assertEqual({
-                'request': reverse(qname, kwargs=options),
-                'args': [],
-                'kwargs': options
+                'request': reverse(qname, kwargs=kwargs, args=args),
+                'args': args,
+                'kwargs': kwargs
             },
-            resp.json(object_hook=object_hook)
+            resp
         )
 
     @override_settings(STATIC_TEMPLATES={
@@ -802,6 +819,8 @@ class URLSToJavascriptTest(BaseTestCase):
         from static_templates import placeholders as gen
         gen.register_variable_placeholder('strarg', 'a')
         gen.register_variable_placeholder('intarg', 0)
+        gen.register_unnamed_placeholders('re_path_unnamed', ['adf', 143])
+        gen.register_unnamed_placeholders('re_path_unnamed_solo', ['adf', 143])
 
         call_command('generate_static', 'urls.js')
 
@@ -814,6 +833,10 @@ class URLSToJavascriptTest(BaseTestCase):
             if key in dct:
                 dct[key] = int(dct[key])
             return dct
+
+        def convert_idx_to_type(arr, idx, typ):
+            arr[idx] = typ(arr[idx])
+            return arr
 
         #################################################################
         # root urls
@@ -879,6 +902,18 @@ class URLSToJavascriptTest(BaseTestCase):
             're_path_tst',
             {'strarg': 'is', 'intarg': 1337},
             object_hook=lambda dct: convert_to_int(dct, 'intarg')
+        )
+
+        self.compare(
+            're_path_unnamed',
+            args=['af', 5678],
+            args_hook=lambda arr: convert_idx_to_type(arr, 1, int)
+        )
+
+        self.compare(
+            're_path_unnamed_solo',
+            args=['daf', 7120],
+            args_hook=lambda arr: convert_idx_to_type(arr, 1, int)
         )
         #################################################################
 
