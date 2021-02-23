@@ -18,13 +18,14 @@ from django.template.utils import InvalidTemplateEngineError
 from django.test import TestCase, override_settings
 from django.urls import reverse
 from django.utils.module_loading import import_string
+from static_templates import placeholders
 from static_templates.backends import (
     StaticDjangoTemplates,
     StaticJinja2Templates,
 )
 from static_templates.engine import StaticTemplateEngine
 from static_templates.origin import AppOrigin, Origin
-from static_templates.tests import defines
+from static_templates.tests import bad_pattern, defines
 
 APP1_STATIC_DIR = Path(__file__).parent / 'app1' / 'static'  # this dir does not exist and must be cleaned up
 APP2_STATIC_DIR = Path(__file__).parent / 'app2' / 'static'  # this dir exists and is checked in
@@ -34,6 +35,10 @@ EXPECTED_DIR = Path(__file__).parent / 'expected'
 
 
 USE_NODE_JS = True if shutil.which('node') else False
+
+def get_url_mod():
+    from static_templates.tests import urls
+    return urls
 
 
 class BestEffortEncoder(json.JSONEncoder):
@@ -701,25 +706,23 @@ class DefinesToJavascriptTest(BaseTestCase):
         self.assertRaises(CommandError, lambda: call_command('generate_static', 'defines_error.js'))
 
 
-@override_settings(STATIC_TEMPLATES={
-    'ENGINES': [{
-        'BACKEND': 'static_templates.backends.StaticDjangoTemplates',
-        'OPTIONS': {
-            'loaders': [
-                ('static_templates.loaders.StaticLocMemLoader', {
-                    'urls.js': 'var urls = {\n{% urls_to_js indent="  " es5=True%}};'
-                })
-            ],
-            'builtins': ['static_templates.templatetags.static_templates']
-        },
-    }],
-})
-class URLSToJavascriptTest(BaseTestCase):
+class URLJavascriptMixin:
 
     url_js = None
     es5_mode = False
 
-    def get_url_from_js(self, qname, kwargs, args):  # pragma: no cover
+    def clear_placeholder_registries(self):
+        from importlib import reload
+        reload(placeholders)
+
+    def exists(self, *args, **kwargs):
+        return len(self.get_url_from_js(*args, **kwargs)) > 0
+
+    def get_url_from_js(self, qname, kwargs=None, args=None):  # pragma: no cover
+        if kwargs is None:
+            kwargs = {}
+        if args is None:
+            args = []
         if USE_NODE_JS:
             shutil.copyfile(GLOBAL_STATIC_DIR/'urls.js', GLOBAL_STATIC_DIR / 'get_url.js')
             accessor_str = ''
@@ -728,14 +731,18 @@ class URLSToJavascriptTest(BaseTestCase):
             with open(GLOBAL_STATIC_DIR / 'get_url.js', 'a+') as tmp_js:
                 if args:
                     tmp_js.write(
-                        f'\nconsole.log(urls{accessor_str}'
+                        f'\ntry {{'
+                        f'\n  console.log(urls{accessor_str}'
                         f'({json.dumps(kwargs, cls=BestEffortEncoder)},'
                         f'{json.dumps(args, cls=BestEffortEncoder)}));\n'
+                        f'}} catch (error) {{}}\n'
                     )
                 else:
                     tmp_js.write(
-                        f'\nconsole.log(urls{accessor_str}'
+                        f'\ntry {{'
+                        f'\n  console.log(urls{accessor_str}'
                         f'({json.dumps(kwargs, cls=BestEffortEncoder)}));\n'
+                        f'}} catch (error) {{}}\n'
                     )
 
             return subprocess.check_output([
@@ -764,7 +771,10 @@ class URLSToJavascriptTest(BaseTestCase):
         func = url_js
         for comp in qname.split(':'):
             func = url_js[comp]
-        return func(kwargs, args)
+        try:
+            return func(kwargs, args)
+        except Exception:
+            return ''
 
     def compare(
             self,
@@ -779,8 +789,6 @@ class URLSToJavascriptTest(BaseTestCase):
         if args is None:
             args = []
         resp = self.client.get(self.get_url_from_js(qname, kwargs, args))
-        if resp.status_code == 301:
-            resp = self.client.get(resp.url)
 
         resp = resp.json(object_hook=object_hook)
         resp['args'] = args_hook(resp['args'])
@@ -792,13 +800,72 @@ class URLSToJavascriptTest(BaseTestCase):
             resp
         )
 
+    @staticmethod
+    def convert_to_id(dct, key='id'):
+        if key in dct:
+            dct[key] = uuid.UUID(dct[key])
+        return dct
+
+    @staticmethod
+    def convert_to_int(dct, key):
+        if key in dct:
+            dct[key] = int(dct[key])
+        return dct
+
+    @staticmethod
+    def convert_idx_to_type(arr, idx, typ):
+        arr[idx] = typ(arr[idx])
+        return arr
+
+
+@override_settings(STATIC_TEMPLATES={
+    'ENGINES': [{
+        'BACKEND': 'static_templates.backends.StaticDjangoTemplates',
+        'OPTIONS': {
+            'loaders': [
+                ('static_templates.loaders.StaticLocMemLoader', {
+                    'urls.js': 'var urls = {\n{% urls_to_js es5=True%}};'
+                })
+            ],
+            'builtins': ['static_templates.templatetags.static_templates']
+        },
+    }],
+})
+class URLSToJavascriptTest(URLJavascriptMixin, BaseTestCase):
+
+    def setUp(self):
+        self.clear_placeholder_registries()
+        placeholders.register_variable_placeholder('strarg', 'a')
+        placeholders.register_variable_placeholder('intarg', 0)
+        placeholders.register_variable_placeholder('intarg', 0)
+
+        placeholders.register_variable_placeholder('name', 'deadbeef')
+        placeholders.register_variable_placeholder('name', 'name1')
+        placeholders.register_variable_placeholder('name', 'deadbeef', app_name='app1')
+
+        placeholders.register_unnamed_placeholders('re_path_unnamed', ['adf', 143])
+        # repeat for cov
+        placeholders.register_unnamed_placeholders('re_path_unnamed', ['adf', 143])
+        placeholders.register_unnamed_placeholders(
+            're_path_unnamed_solo',
+            ['adf', 143],
+            app_name='bogus_app'  # this should still work because all placeholders that match any
+                                  # criteria are tried
+        )
+        # repeat for coverage
+        placeholders.register_unnamed_placeholders(
+            're_path_unnamed_solo',
+            ['adf', 143],
+            app_name='bogus_app'
+        )
+
     @override_settings(STATIC_TEMPLATES={
         'ENGINES': [{
             'BACKEND': 'static_templates.backends.StaticDjangoTemplates',
             'OPTIONS': {
                 'loaders': [
                     ('static_templates.loaders.StaticLocMemLoader', {
-                        'urls.js': 'var urls = {\n{% urls_to_js indent="  "%}};'
+                        'urls.js': 'var urls = {\n{% urls_to_js %}};'
                     })
                 ],
                 'builtins': ['static_templates.templatetags.static_templates']
@@ -816,27 +883,7 @@ class URLSToJavascriptTest(BaseTestCase):
         self.es5_mode = es5
         self.url_js = None
 
-        from static_templates import placeholders as gen
-        gen.register_variable_placeholder('strarg', 'a')
-        gen.register_variable_placeholder('intarg', 0)
-        gen.register_unnamed_placeholders('re_path_unnamed', ['adf', 143])
-        gen.register_unnamed_placeholders('re_path_unnamed_solo', ['adf', 143])
-
         call_command('generate_static', 'urls.js')
-
-        def convert_to_id(dct, key='id'):
-            if key in dct:
-                dct[key] = uuid.UUID(dct[key])
-            return dct
-
-        def convert_to_int(dct, key):
-            if key in dct:
-                dct[key] = int(dct[key])
-            return dct
-
-        def convert_idx_to_type(arr, idx, typ):
-            arr[idx] = typ(arr[idx])
-            return arr
 
         #################################################################
         # root urls
@@ -852,8 +899,14 @@ class URLSToJavascriptTest(BaseTestCase):
         self.compare(qname)
         self.compare(qname, {'arg1': 143})  # emma
         self.compare(qname, {'arg1': 5678, 'arg2': 'xo'})
-        self.compare('sub1:app1_detail', {'id': uuid.uuid1()}, object_hook=convert_to_id)
+        self.compare('sub1:app1_detail', {'id': uuid.uuid1()}, object_hook=self.convert_to_id)
         self.compare('sub1:custom_tst', {'year': 2021})
+        self.compare('sub1:unreg_conv_tst', {'name': 'name2'})
+        self.compare(
+            'sub1:re_path_unnamed',
+            args=['af', 5678],
+            args_hook=lambda arr: self.convert_idx_to_type(arr, 1, int)
+        )
         #################################################################
 
         #################################################################
@@ -862,8 +915,14 @@ class URLSToJavascriptTest(BaseTestCase):
         self.compare(qname)
         self.compare(qname, {'arg1': 143})  # emma
         self.compare(qname, {'arg1': 5678, 'arg2': 'xo'})
-        self.compare('sub2:app1_detail', {'id': uuid.uuid1()}, object_hook=convert_to_id)
+        self.compare('sub2:app1_detail', {'id': uuid.uuid1()}, object_hook=self.convert_to_id)
         self.compare('sub2:custom_tst', {'year': 1021})
+        self.compare('sub2:unreg_conv_tst', {'name': 'name2'})
+        self.compare(
+            'sub2:re_path_unnamed',
+            args=['af', 5678],
+            args_hook=lambda arr: self.convert_idx_to_type(arr, 1, int)
+        )
         #################################################################
 
         #################################################################
@@ -872,24 +931,30 @@ class URLSToJavascriptTest(BaseTestCase):
         self.compare(qname)
         self.compare(qname, {'arg1': 1})
         self.compare(qname, {'arg1': 12, 'arg2': 'xo'})
-        self.compare('app2:app1:app1_detail', {'id': uuid.uuid1()}, object_hook=convert_to_id)
+        self.compare('app2:app1:app1_detail', {'id': uuid.uuid1()}, object_hook=self.convert_to_id)
         self.compare('app2:app1:custom_tst', {'year': 2999})
+        self.compare('app2:app1:unreg_conv_tst', {'name': 'name1'})
+        self.compare(
+            'app2:app1:re_path_unnamed',
+            args=['af', 5678],
+            args_hook=lambda arr: self.convert_idx_to_type(arr, 1, int)
+        )
         #################################################################
 
         #################################################################
-        # app1 include through app2
+        # app2 include w/ app_name namespace
         qname = 'app2:app2_pth'
         self.compare(qname)
         self.compare(qname, {'arg1': 'adf23'})
         self.compare(
             'app2:app2_pth_diff',
             {'arg2': 'this/is/a/path/', 'arg1': uuid.uuid1()},
-            object_hook=lambda dct: convert_to_id(dct, 'arg1')
+            object_hook=lambda dct: self.convert_to_id(dct, 'arg1')
         )
         self.compare(
             'app2:app2_pth_diff',
             {'arg2': 'so/is/this', 'arg1': uuid.uuid1()},
-            object_hook=lambda dct: convert_to_id(dct, 'arg1')
+            object_hook=lambda dct: self.convert_to_id(dct, 'arg1')
         )
         #################################################################
 
@@ -901,21 +966,542 @@ class URLSToJavascriptTest(BaseTestCase):
         self.compare(
             're_path_tst',
             {'strarg': 'is', 'intarg': 1337},
-            object_hook=lambda dct: convert_to_int(dct, 'intarg')
+            object_hook=lambda dct: self.convert_to_int(dct, 'intarg')
         )
 
         self.compare(
             're_path_unnamed',
             args=['af', 5678],
-            args_hook=lambda arr: convert_idx_to_type(arr, 1, int)
+            args_hook=lambda arr: self.convert_idx_to_type(arr, 1, int)
         )
 
         self.compare(
             're_path_unnamed_solo',
             args=['daf', 7120],
-            args_hook=lambda arr: convert_idx_to_type(arr, 1, int)
+            args_hook=lambda arr: self.convert_idx_to_type(arr, 1, int)
         )
         #################################################################
 
+        #################################################################
+        # app3 urls - these should be included into the null namespace
+        qname = 'app3_i'
+        self.compare('app3_idx')
+        self.compare('app3_arg', {'arg1': 1})
+        self.compare('unreg_conv_tst', {'name': 'name1'})
+        #################################################################
+
+    @override_settings(STATIC_TEMPLATES={
+        'ENGINES': [{
+            'BACKEND': 'static_templates.backends.StaticDjangoTemplates',
+            'OPTIONS': {
+                'loaders': [
+                    ('static_templates.loaders.StaticLocMemLoader', {
+                        'urls.js': 'var urls = {\n'
+                                   '{% urls_to_js '
+                                        'es5=True '
+                                        'include=include '
+                                        'exclude=exclude '
+                                   '%}};'
+                    })
+                ],
+                'builtins': ['static_templates.templatetags.static_templates']
+            },
+        }],
+        'templates': {
+            'urls.js': {
+                'context': {
+                    'include': [
+                        "path_tst",
+                        "app2:app1",
+                        "sub1:app1_detail",
+                        "sub2:app1_pth"
+                    ],
+                    'exclude': [
+                        "app2:app1:custom_tst",
+                        "app2:app1:app1_detail",
+                        "sub2:app1_pth"
+                    ]
+                }
+            }
+        }
+    })
+    def test_filtering(self):
+        self.es5_mode = True
+        self.url_js = None
+
+        call_command('generate_static', 'urls.js')
+
+        self.assertFalse(self.exists('admin:index'))
+
+        qname = 'path_tst'
+        self.assertTrue(self.exists(qname))
+        self.assertTrue(self.exists(qname, {'arg1': 1}))
+        self.assertTrue(self.exists(qname, {'arg1': 12, 'arg2': 'xo'}))
+
+        self.assertFalse(self.exists('app3_idx'))
+        self.assertFalse(self.exists('app3_arg', {'arg1': 1}))
+
+        qname = 'app2:app1:app1_pth'
+        self.assertTrue(self.exists(qname))
+        self.assertTrue(self.exists(qname, {'arg1': 1}))
+        self.assertTrue(self.exists(qname, {'arg1': 12, 'arg2': 'xo'}))
+        self.assertFalse(self.exists('app2:app1:app1_detail', {'id': uuid.uuid1()}))
+        self.assertFalse(self.exists('app2:app1:custom_tst', {'year': 2999}))
+
+        qname = 'sub1:app1_pth'
+        self.assertFalse(self.exists(qname))
+        self.assertFalse(self.exists(qname, {'arg1': 143}))  # emma
+        self.assertFalse(self.exists(qname, {'arg1': 5678, 'arg2': 'xo'}))
+        self.assertTrue(self.exists('sub1:app1_detail', {'id': uuid.uuid1()}))
+        self.assertFalse(self.exists('sub1:custom_tst', {'year': 2021}))
+
+        qname = 'sub2:app1_pth'
+        self.assertFalse(self.exists(qname))
+        self.assertFalse(self.exists(qname, {'arg1': 143}))  # emma
+        self.assertFalse(self.exists(qname, {'arg1': 5678, 'arg2': 'xo'}))
+        self.assertFalse(self.exists('sub2:app1_detail', {'id': uuid.uuid1()}))
+        self.assertFalse(self.exists('sub2:custom_tst', {'year': 1021}))
+
+        qname = 'app2:app2_pth'
+        self.assertFalse(self.exists(qname))
+        self.assertFalse(self.exists(qname, {'arg1': 'adf23'}))
+        self.assertFalse(
+            self.exists(
+                'app2:app2_pth_diff',
+                {'arg2': 'this/is/a/path/', 'arg1': uuid.uuid1()}
+            )
+        )
+        self.assertFalse(
+            self.exists(
+                'app2:app2_pth_diff',
+                {'arg2': 'so/is/this', 'arg1': uuid.uuid1()}
+            )
+        )
+
+        self.assertFalse(self.exists('re_path_tst'))
+        self.assertFalse(self.exists('re_path_tst', {'strarg': 'DEMOPLY'}))
+        self.assertFalse(self.exists('re_path_tst', {'strarg': 'is', 'intarg': 1337}))
+        self.assertFalse(self.exists('re_path_unnamed', args=['af', 5678]))
+        self.assertFalse(self.exists('re_path_unnamed_solo', args=['daf', 7120]))
+
+    @override_settings(STATIC_TEMPLATES={
+        'ENGINES': [{
+            'BACKEND': 'static_templates.backends.StaticDjangoTemplates',
+            'OPTIONS': {
+                'loaders': [
+                    ('static_templates.loaders.StaticLocMemLoader', {
+                        'urls.js': 'var urls = {\n'
+                                   '{% urls_to_js '
+                                        'es5=True '
+                                        'include=include '
+                                        'exclude=exclude '
+                                   '%}};'
+                    })
+                ],
+                'builtins': ['static_templates.templatetags.static_templates']
+            },
+        }],
+        'templates': {
+            'urls.js': {
+                'context': {
+                    'exclude': [
+                        "admin",
+                        "app2:app1:custom_tst",
+                        "app2:app1:app1_detail",
+                        "sub2:app1_pth"
+                    ]
+                }
+            }
+        }
+    })
+    def test_filtering_excl_only(self):
+        self.es5_mode = True
+        self.url_js = None
+
+        call_command('generate_static', 'urls.js')
+
+        self.assertFalse(self.exists('admin:index'))
+
+        qname = 'path_tst'
+        self.assertTrue(self.exists(qname))
+        self.assertTrue(self.exists(qname, {'arg1': 1}))
+        self.assertTrue(self.exists(qname, {'arg1': 12, 'arg2': 'xo'}))
+
+        self.assertTrue(self.exists('app3_idx'))
+        self.assertTrue(self.exists('app3_arg', {'arg1': 1}))
+
+        qname = 'app2:app1:app1_pth'
+        self.assertTrue(self.exists(qname))
+        self.assertTrue(self.exists(qname, {'arg1': 1}))
+        self.assertTrue(self.exists(qname, {'arg1': 12, 'arg2': 'xo'}))
+        self.assertFalse(self.exists('app2:app1:app1_detail', {'id': uuid.uuid1()}))
+        self.assertFalse(self.exists('app2:app1:custom_tst', {'year': 2999}))
+
+        qname = 'sub1:app1_pth'
+        self.assertTrue(self.exists(qname))
+        self.assertTrue(self.exists(qname, {'arg1': 143}))  # emma
+        self.assertTrue(self.exists(qname, {'arg1': 5678, 'arg2': 'xo'}))
+        self.assertTrue(self.exists('sub1:app1_detail', {'id': uuid.uuid1()}))
+        self.assertTrue(self.exists('sub1:custom_tst', {'year': 2021}))
+
+        qname = 'sub2:app1_pth'
+        self.assertFalse(self.exists(qname))
+        self.assertFalse(self.exists(qname, {'arg1': 143}))  # emma
+        self.assertFalse(self.exists(qname, {'arg1': 5678, 'arg2': 'xo'}))
+        self.assertTrue(self.exists('sub2:app1_detail', {'id': uuid.uuid1()}))
+        self.assertTrue(self.exists('sub2:custom_tst', {'year': 1021}))
+
+        qname = 'app2:app2_pth'
+        self.assertTrue(self.exists(qname))
+        self.assertTrue(self.exists(qname, {'arg1': 'adf23'}))
+        self.assertTrue(
+            self.exists(
+                'app2:app2_pth_diff',
+                {'arg2': 'this/is/a/path/', 'arg1': uuid.uuid1()}
+            )
+        )
+        self.assertTrue(
+            self.exists(
+                'app2:app2_pth_diff',
+                {'arg2': 'so/is/this', 'arg1': uuid.uuid1()}
+            )
+        )
+
+        self.assertTrue(self.exists('re_path_tst'))
+        self.assertTrue(self.exists('re_path_tst', {'strarg': 'DEMOPLY'}))
+        self.assertTrue(self.exists('re_path_tst', {'strarg': 'is', 'intarg': 1337}))
+        self.assertTrue(self.exists('re_path_unnamed', args=['af', 5678]))
+        self.assertTrue(self.exists('re_path_unnamed_solo', args=['daf', 7120]))
+
+    @override_settings(STATIC_TEMPLATES={
+        'ENGINES': [{
+            'BACKEND': 'static_templates.backends.StaticDjangoTemplates',
+            'OPTIONS': {
+                'loaders': [
+                    ('static_templates.loaders.StaticLocMemLoader', {
+                        'urls.js': 'var urls = {\n'
+                                   '{% urls_to_js '
+                                        'url_conf=url_mod '
+                                        'include=include '
+                                        'exclude=exclude '
+                                   '%}};'
+                    })
+                ],
+                'builtins': ['static_templates.templatetags.static_templates']
+            },
+        }],
+        'templates': {
+            'urls.js': {
+                'context': {
+                    'url_mod': get_url_mod(),
+                    'include': [''],
+                    'exclude': [
+                        "admin",
+                        "app2",
+                        "sub2",
+                        "sub1"
+                    ]
+                }
+            }
+        }
+    })
+    def test_filtering_null_ns_incl(self):
+        self.es6_mode = True
+        self.url_js = None
+
+        call_command('generate_static', 'urls.js')
+
+        self.assertFalse(self.exists('admin:index'))
+
+        qname = 'path_tst'
+        self.assertTrue(self.exists(qname))
+        self.assertTrue(self.exists(qname, {'arg1': 1}))
+        self.assertTrue(self.exists(qname, {'arg1': 12, 'arg2': 'xo'}))
+
+        self.assertTrue(self.exists('app3_idx'))
+        self.assertTrue(self.exists('app3_arg', {'arg1': 1}))
+
+        qname = 'app2:app1:app1_pth'
+        self.assertFalse(self.exists(qname))
+        self.assertFalse(self.exists(qname, {'arg1': 1}))
+        self.assertFalse(self.exists(qname, {'arg1': 12, 'arg2': 'xo'}))
+        self.assertFalse(self.exists('app2:app1:app1_detail', {'id': uuid.uuid1()}))
+        self.assertFalse(self.exists('app2:app1:custom_tst', {'year': 2999}))
+
+        qname = 'sub1:app1_pth'
+        self.assertFalse(self.exists(qname))
+        self.assertFalse(self.exists(qname, {'arg1': 143}))  # emma
+        self.assertFalse(self.exists(qname, {'arg1': 5678, 'arg2': 'xo'}))
+        self.assertFalse(self.exists('sub1:app1_detail', {'id': uuid.uuid1()}))
+        self.assertFalse(self.exists('sub1:custom_tst', {'year': 2021}))
+
+        qname = 'sub2:app1_pth'
+        self.assertFalse(self.exists(qname))
+        self.assertFalse(self.exists(qname, {'arg1': 143}))  # emma
+        self.assertFalse(self.exists(qname, {'arg1': 5678, 'arg2': 'xo'}))
+        self.assertFalse(self.exists('sub2:app1_detail', {'id': uuid.uuid1()}))
+        self.assertFalse(self.exists('sub2:custom_tst', {'year': 1021}))
+
+        qname = 'app2:app2_pth'
+        self.assertFalse(self.exists(qname))
+        self.assertFalse(self.exists(qname, {'arg1': 'adf23'}))
+        self.assertFalse(
+            self.exists(
+                'app2:app2_pth_diff',
+                {'arg2': 'this/is/a/path/', 'arg1': uuid.uuid1()}
+            )
+        )
+        self.assertFalse(
+            self.exists(
+                'app2:app2_pth_diff',
+                {'arg2': 'so/is/this', 'arg1': uuid.uuid1()}
+            )
+        )
+
+        self.assertTrue(self.exists('re_path_tst'))
+        self.assertTrue(self.exists('re_path_tst', {'strarg': 'DEMOPLY'}))
+        self.assertTrue(self.exists('re_path_tst', {'strarg': 'is', 'intarg': 1337}))
+        self.assertTrue(self.exists('re_path_unnamed', args=['af', 5678]))
+        self.assertTrue(self.exists('re_path_unnamed_solo', args=['daf', 7120]))
+
+
+    @override_settings(STATIC_TEMPLATES={
+        'ENGINES': [{
+            'BACKEND': 'static_templates.backends.StaticDjangoTemplates',
+            'OPTIONS': {
+                'loaders': [
+                    ('static_templates.loaders.StaticLocMemLoader', {
+                        'urls.js': 'var urls = {\n'
+                                   '{% urls_to_js '
+                                        'url_conf="static_templates.tests.urls" '
+                                        'include=include '
+                                        'exclude=exclude '
+                                   '%}};'
+                    })
+                ],
+                'builtins': ['static_templates.templatetags.static_templates']
+            },
+        }],
+        'templates': {
+            'urls.js': {
+                'context': {
+                    'include': ['path_tst']
+                }
+            }
+        }
+    })
+    def test_top_lvl_ns_incl(self):
+        self.es6_mode = True
+        self.url_js = None
+
+        call_command('generate_static', 'urls.js')
+
+        self.assertFalse(self.exists('admin:index'))
+
+        qname = 'path_tst'
+        self.assertTrue(self.exists(qname))
+        self.assertTrue(self.exists(qname, {'arg1': 1}))
+        self.assertTrue(self.exists(qname, {'arg1': 12, 'arg2': 'xo'}))
+
+        self.assertFalse(self.exists('app3_idx'))
+        self.assertFalse(self.exists('app3_arg', {'arg1': 1}))
+
+        qname = 'app2:app1:app1_pth'
+        self.assertFalse(self.exists(qname))
+        self.assertFalse(self.exists(qname, {'arg1': 1}))
+        self.assertFalse(self.exists(qname, {'arg1': 12, 'arg2': 'xo'}))
+        self.assertFalse(self.exists('app2:app1:app1_detail', {'id': uuid.uuid1()}))
+        self.assertFalse(self.exists('app2:app1:custom_tst', {'year': 2999}))
+
+        qname = 'sub1:app1_pth'
+        self.assertFalse(self.exists(qname))
+        self.assertFalse(self.exists(qname, {'arg1': 143}))  # emma
+        self.assertFalse(self.exists(qname, {'arg1': 5678, 'arg2': 'xo'}))
+        self.assertFalse(self.exists('sub1:app1_detail', {'id': uuid.uuid1()}))
+        self.assertFalse(self.exists('sub1:custom_tst', {'year': 2021}))
+
+        qname = 'sub2:app1_pth'
+        self.assertFalse(self.exists(qname))
+        self.assertFalse(self.exists(qname, {'arg1': 143}))  # emma
+        self.assertFalse(self.exists(qname, {'arg1': 5678, 'arg2': 'xo'}))
+        self.assertFalse(self.exists('sub2:app1_detail', {'id': uuid.uuid1()}))
+        self.assertFalse(self.exists('sub2:custom_tst', {'year': 1021}))
+
+        qname = 'app2:app2_pth'
+        self.assertFalse(self.exists(qname))
+        self.assertFalse(self.exists(qname, {'arg1': 'adf23'}))
+        self.assertFalse(
+            self.exists(
+                'app2:app2_pth_diff',
+                {'arg2': 'this/is/a/path/', 'arg1': uuid.uuid1()}
+            )
+        )
+        self.assertFalse(
+            self.exists(
+                'app2:app2_pth_diff',
+                {'arg2': 'so/is/this', 'arg1': uuid.uuid1()}
+            )
+        )
+
+        self.assertFalse(self.exists('re_path_tst'))
+        self.assertFalse(self.exists('re_path_tst', {'strarg': 'DEMOPLY'}))
+        self.assertFalse(self.exists('re_path_tst', {'strarg': 'is', 'intarg': 1337}))
+        self.assertFalse(self.exists('re_path_unnamed', args=['af', 5678]))
+        self.assertFalse(self.exists('re_path_unnamed_solo', args=['daf', 7120]))
+
+    # uncomment to not delete generated js
+    def tearDown(self):
+        pass
+
+
+class URLSToJavascriptOffNominalTest(URLJavascriptMixin, BaseTestCase):
+
+    def setUp(self):
+        self.clear_placeholder_registries()
+
+    @override_settings(STATIC_TEMPLATES={
+        'ENGINES': [{
+            'BACKEND': 'static_templates.backends.StaticDjangoTemplates',
+            'OPTIONS': {
+                'loaders': [
+                    ('static_templates.loaders.StaticLocMemLoader', {
+                        'urls.js': 'var urls = {\n{% urls_to_js include=include %}};'
+                    })
+                ],
+                'builtins': ['static_templates.templatetags.static_templates']
+            },
+        }],
+        'templates': {
+            'urls.js': {
+                'context': {
+                    'include': ['unreg_conv_tst'],
+                }
+            }
+        }
+    })
+    def test_no_placeholders(self):
+
+        self.es6_mode = True
+        self.url_js = None
+
+        # this works even though its registered against a different app
+        # all placeholders that match at least one criteria are tried
+        self.assertRaises(CommandError, lambda: call_command('generate_static', 'urls.js'))
+        placeholders.register_variable_placeholder('name', 'name1', app_name='app1')
+        placeholders.register_variable_placeholder('name', 'name1', app_name='app1')
+        call_command('generate_static', 'urls.js')
+        self.compare('unreg_conv_tst', {'name': 'name1'})
+
+    @override_settings(STATIC_TEMPLATES={
+        'ENGINES': [{
+            'BACKEND': 'static_templates.backends.StaticDjangoTemplates',
+            'OPTIONS': {
+                'loaders': [
+                    ('static_templates.loaders.StaticLocMemLoader', {
+                        'urls.js': 'var urls = {\n{% urls_to_js include=include %}};'
+                    })
+                ],
+                'builtins': ['static_templates.templatetags.static_templates']
+            },
+        }],
+        'templates': {
+            'urls.js': {
+                'context': {
+                    'include': ['sub1:re_path_unnamed'],
+                }
+            }
+        }
+    })
+    def test_no_unnamed_placeholders(self):
+
+        self.assertRaises(CommandError, lambda: call_command('generate_static', 'urls.js'))
+        placeholders.register_unnamed_placeholders('re_path_unnamed', [143, 'adf'])  # shouldnt work
+        placeholders.register_unnamed_placeholders('re_path_unnamed', ['adf', 143])  # but this will
+        call_command('generate_static', 'urls.js')
+        self.compare(
+            'sub1:re_path_unnamed',
+            args=['af', 5678],
+            args_hook=lambda arr: self.convert_idx_to_type(arr, 1, int)
+        )
+
+    @override_settings(STATIC_TEMPLATES={
+        'ENGINES': [{
+            'BACKEND': 'static_templates.backends.StaticDjangoTemplates',
+            'OPTIONS': {
+                'loaders': [
+                    ('static_templates.loaders.StaticLocMemLoader', {
+                        'urls.js': 'var urls = {\n{% urls_to_js include=include %}};'
+                    })
+                ],
+                'builtins': ['static_templates.templatetags.static_templates']
+            },
+        }],
+        'templates': {
+            'urls.js': {
+                'context': {
+                    'include': ['sub1:re_path_unnamed'],
+                }
+            }
+        }
+    })
+    def test_bad_only_bad_unnamed_placeholders(self):
+
+        placeholders.register_unnamed_placeholders('re_path_unnamed', [])  # shouldnt work
+        self.assertRaises(CommandError, lambda: call_command('generate_static', 'urls.js'))
+
+    @override_settings(STATIC_TEMPLATES={
+        'ENGINES': [{
+            'BACKEND': 'static_templates.backends.StaticDjangoTemplates',
+            'OPTIONS': {
+                'loaders': [
+                    ('static_templates.loaders.StaticLocMemLoader', {
+                        'urls.js': 'var urls = {\n{% urls_to_js url_conf=url_mod %}};'
+                    })
+                ],
+                'builtins': ['static_templates.templatetags.static_templates']
+            },
+        }],
+        'templates': {
+            'urls.js': {
+                'context': {
+                    'url_mod': placeholders,
+                }
+            }
+        }
+    })
+    def test_no_urlpatterns(self):
+        self.assertRaises(CommandError, lambda: call_command('generate_static', 'urls.js'))
+
+    @override_settings(STATIC_TEMPLATES={
+        'ENGINES': [{
+            'BACKEND': 'static_templates.backends.StaticDjangoTemplates',
+            'OPTIONS': {
+                'loaders': [
+                    ('static_templates.loaders.StaticLocMemLoader', {
+                        'urls.js': 'var urls = {\n{% urls_to_js url_conf=url_mod %}};'
+                    })
+                ],
+                'builtins': ['static_templates.templatetags.static_templates']
+            },
+        }],
+        'templates': {
+            'urls.js': {
+                'context': {
+                    'url_mod': bad_pattern,
+                }
+            }
+        }
+    })
+    def test_unknown_pattern(self):
+        self.assertRaises(CommandError, lambda: call_command('generate_static', 'urls.js'))
+
+    def test_register_bogus_converter(self):
+        from static_templates import placeholders as gen
+        self.assertRaises(
+            ValueError,
+            lambda: placeholders.register_converter_placeholder('Not a converter type!', 1234)
+        )
+
+    # uncomment to not delete generated js
     def tearDown(self):
         pass

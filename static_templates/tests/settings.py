@@ -60,3 +60,5 @@ AUTHENTICATION_BACKENDS = (
 
 STATIC_ROOT = Path(__file__).parent / 'global_static'
 STATIC_URL = '/static/'
+
+DEBUG = True

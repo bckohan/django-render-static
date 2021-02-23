@@ -344,14 +344,14 @@ class StaticTemplateEngine:
                 dest = Path(app.path) / 'static' / template_name
             else:
                 dest = getattr(settings, 'STATIC_ROOT', None)
-                if dest is None:
+                if dest:
+                    dest = Path(dest) / template_name
+                else:
                     raise ImproperlyConfigured(
                         f"Template {template_name} must either be configured with a 'dest' or "
                         f"STATIC_ROOT must be defined in settings, because it was not loaded "
                         f"from an app!"
                     )
-                else:
-                    dest = Path(dest) / template_name
 
         if isinstance(dest, str):
             dest = Path(dest)

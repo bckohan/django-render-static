@@ -6,7 +6,7 @@ import json
 import re
 from importlib import import_module
 from types import ModuleType
-from typing import Dict, Iterable, Optional, Type, Union, Tuple
+from typing import Dict, Iterable, Optional, Tuple, Type, Union
 
 from django import template
 from django.conf import settings
@@ -15,8 +15,11 @@ from django.urls.exceptions import NoReverseMatch
 from django.urls.resolvers import RegexPattern, RoutePattern
 from django.utils.module_loading import import_string
 from django.utils.safestring import SafeString
-from static_templates.exceptions import URLGenerationFailed, PlaceholderNotFound
-from static_templates.placeholders import resolve_placeholders, resolve_unnamed_placeholders
+from static_templates.exceptions import PlaceholderNotFound, URLGenerationFailed
+from static_templates.placeholders import (
+    resolve_placeholders,
+    resolve_unnamed_placeholders,
+)
 
 register = template.Library()
 
@@ -107,16 +110,16 @@ def modules_to_js(modules: Iterable[Union[ModuleType, str]], indent: str = '') -
 
 
 @register.simple_tag
-def urls_to_js(  # pylint: disable=R0913
+def urls_to_js(  # pylint: disable=R0913,R0915
         url_conf: Optional[Union[ModuleType, str]] = None,
-        indent: str = '  ',
+        indent: str = '\t',
         depth: int = 0,
         include: Optional[Iterable[str]] = None,
         exclude: Optional[Iterable[str]] = None,
         es5: bool = False
 ) -> str:
     """
-    Dump reversable URLs to javascript. The javascript generated provides functions for each fully
+    Dump reversible URLs to javascript. The javascript generated provides functions for each fully
     qualified URL name that perform the same service as Django's URL `reverse` function. The
     javascript output by this tag isn't standalone. It is up to the caller to embed it in another
     object. For instance, given the following urls.py:
@@ -223,6 +226,9 @@ def urls_to_js(  # pylint: disable=R0913
     :param es5: if True, dump es5 valid javascript, if False javascript will be es6
     :return: A javascript object containing functions that generate urls with and without parameters
     """
+
+    nl = '\n' if indent else ''  # pylint: disable=C0103
+
     if url_conf is None:
         url_conf = settings.ROOT_URLCONF
 
@@ -230,13 +236,13 @@ def urls_to_js(  # pylint: disable=R0913
         url_conf = import_module(url_conf)
 
     def normalize_ns(namespaces: str) -> Iterable[str]:
-        return ':'.join([ns for ns in namespaces.split(':') if ns])
+        return ':'.join([nmsp for nmsp in namespaces.split(':') if nmsp])
 
     includes = []
     excludes = []
     if include:
         includes = [normalize_ns(incl) for incl in include]
-    elif exclude:
+    if exclude:
         excludes = [normalize_ns(excl) for excl in exclude]
 
     patterns = getattr(url_conf, 'urlpatterns', None)
@@ -245,19 +251,46 @@ def urls_to_js(  # pylint: disable=R0913
 
     def build_tree(
             nodes: Iterable[URLPattern],
+            included: bool,
             branch: Tuple[Dict, Dict, Optional[str]],
             namespace: Optional[str] = None,
             qname: str = '',
             app_name: Optional[str] = None
     ) -> Tuple[Dict, Dict, Optional[str]]:
+        """
+        Recursively Walk the urlpatterns and generate a tree where the branches are namespaces and
+        the leaves are collections of URLs registered against fully qualified reversible names.
 
-        if namespace:
-            qname += f"{':' if qname else ''}{namespace}"
+        The tree structure will look like this:
 
-        if includes and qname not in includes:
-            return branch
-        if excludes and qname in excludes:
-            return branch
+        ..code-block::
+
+            [
+                { # first dict contains child branches
+                    'namespace1': [{...}, {...}, 'incl_app_name1'],
+                    'namespace2': [{...}, {...}, None] # no app_name specified for this include
+                },
+                {
+                    'url_name1': [URLPattern, URLPattern, ...] #URLPatterns for this qname
+                    'url_name2': [URLPattern, ...]
+                },
+                None # no root app_name
+            ]
+
+        ..todo::
+            Linters appropriately flag this function for complexity violations. A useful refactor
+            would break the components apart and implement a pluggable visitor pattern for code
+            generation.
+
+        :param nodes: The urls that are leaves of this branch
+        :param included: True if this branch has been implicitly included, by includes higher up the
+            tree
+        :param branch: The branch to build
+        :param namespace: the namespace of this branch (if any)
+        :param qname: the fully qualified name of the parent branch
+        :param app_name: app_name for the branch if any
+        :return:
+        """
 
         if namespace:
             branch[0].setdefault(namespace, [{}, {}, app_name])
@@ -269,49 +302,107 @@ def urls_to_js(  # pylint: disable=R0913
                 if name is None:
                     continue
 
-                qname_wild = f"{qname}{':' if qname else ''}{'*'}"
-                qname += f"{':' if qname else ''}{name}"
-                if includes and qname not in includes and qname_wild not in includes:
+                url_qname = f"{f'{qname}:' if qname else ''}{pattern.name}"
+
+                # if we aren't implicitly included we must be explicitly included and not explicitly
+                # excluded - note if we were implicitly excluded - we wouldnt get this far
+                if (not included and url_qname not in includes or
+                        (excludes and url_qname in excludes)):
                     continue
-                if excludes and (qname in excludes or qname_wild in excludes):
-                    continue
+
                 branch[1].setdefault(pattern.name, []).append(pattern)
 
             elif isinstance(pattern, URLResolver):
+                ns_qname = qname
+                if pattern.namespace:
+                    ns_qname += f"{':' if qname else ''}{pattern.namespace}"
+
+                if excludes and ns_qname in excludes:
+                    continue
+
                 build_tree(
                     pattern.url_patterns,
+                    included or (not includes or ns_qname in includes),
                     branch,
                     namespace=pattern.namespace,
-                    qname=qname,
+                    qname=ns_qname,
                     app_name=pattern.app_name
                 )
 
         return branch
 
+    def prune_tree(
+            tree: Tuple[Dict, Dict, Optional[str]]
+    ) -> Tuple[Tuple[Dict, Dict, Optional[str]], int]:
+        """
+        Remove any branches that don't have any URLs under them.
+        :param tree: branch to prune
+        :return: A 2-tuple containing (the pruned branch, number of urls below)
+        """
+
+        num_urls = 0
+        for named_nodes in tree[1]:
+            num_urls += len(named_nodes[1])
+
+        if tree[0]:
+            to_delete = []
+            for nmsp, branch in tree[0].items():
+                branch, branch_urls = prune_tree(branch)
+                if branch_urls == 0:
+                    to_delete.append(nmsp)
+                num_urls += branch_urls
+            for nmsp in to_delete:
+                del tree[0][nmsp]
+
+        return tree, num_urls
+
     def nodes_to_js(
             nodes: Iterable[URLPattern],
             qname: str,
-            dpth: int,
             app_name: Optional[str] = None
     ) -> str:
+        """
+        Convert a list of URLPatterns all corresponding to the same qualified name to javascript.
+
+        :param nodes: The list of URLPattern objects
+        :param qname: The fully qualified name of all the URLs
+        :param app_name: The app_name the URLs belong to, if any
+        :return: A javascript function that reverses the URLs based on kwarg or arg inputs
+        """
+
+        dpth = depth + qname.count(':') + 1
 
         if es5:
-            p_js = f'{indent * dpth}"{qname.split(":")[-1]}": function(kwargs, args) {{\n'
-            p_js += f'{indent * (dpth+1)}kwargs = kwargs || {{}};\n'
-            p_js += f'{indent * (dpth+1)}args = args || [];\n'
+            p_js = f'{indent * dpth}"{qname.split(":")[-1]}": function(kwargs, args) {{{nl}'
+            p_js += f'{indent * (dpth+1)}kwargs = kwargs || {{}};{nl}'
+            p_js += f'{indent * (dpth+1)}args = args || [];{nl}'
         else:
-            p_js = f'{indent * dpth}"{qname.split(":")[-1]}": function(kwargs={{}}, args=[]) {{\n'
+            p_js = f'{indent * dpth}"{qname.split(":")[-1]}": function(kwargs={{}}, args=[]) {{{nl}'
 
-        def reversable(endpoint):
-            # django doesnt allow mixing unnamed and named parameters when reversing a url
+        def reversible(endpoint: URLPattern) -> bool:
+            """
+            Not every valid Django URL is reversible, For instance Django doesnt allow mixing
+            unnamed and named parameters when reversing a url
+
+            :param endpoint: The URLPattern to test for reversibility
+            :return: True if reversible, false otherwise
+            """
             num_named = len(endpoint.pattern.regex.groupindex)
             if num_named and num_named != endpoint.pattern.regex.groups:
                 return False
             return True
 
-        def add_pattern(endpoint: URLPattern):
-            if not reversable(endpoint):
-                return ''
+        def add_pattern(endpoint: URLPattern) -> str:  # pylint: disable=R0914,R0912
+            """
+            Generate code for a URLPattern to be added to the javascript reverse function that
+            corresponds to its qualified name.
+
+            :param endpoint: The URLPattern to add
+            :return: Javascript code that returns the URL with any arguments substituted if the
+                arguments correspond to the URLPattern
+            """
+            if not reversible(endpoint):
+                return f'{indent*(dpth+1)}/* this path is not reversible */'
             if isinstance(endpoint.pattern, RoutePattern):
                 params = {
                     var: {
@@ -326,10 +417,10 @@ def urls_to_js(  # pylint: disable=R0913
                     } for var in endpoint.pattern.regex.groupindex.keys()
                 }
             else:
-                raise URLGenerationFailed(f'Unrecognized URLPattern type: {type(endpoint)}')
+                raise URLGenerationFailed(f'Unrecognized pattern type: {type(endpoint.pattern)}')
 
             unnamed = endpoint.pattern.regex.groups > 0 and not params
-            if params or unnamed:
+            if params or unnamed:  # pylint: disable=R1702
                 try:
                     if unnamed:
                         resolved_placeholders = resolve_unnamed_placeholders(
@@ -357,19 +448,13 @@ def urls_to_js(  # pylint: disable=R0913
                             # removing it because we're matching against full url strings
                             mtch = endpoint.pattern.regex.search(placeholder_url.lstrip('/'))
                             if not mtch:
-                                endpoint.pattern.regex.search(placeholder_url)
-                            if not mtch:
                                 mtch = re.search(
                                     endpoint.pattern.regex.pattern.lstrip('^'),
                                     placeholder_url.lstrip('/')
                                 )
+
                             if not mtch:
-                                mtch = re.search(
-                                    endpoint.pattern.regex.pattern.lstrip('^'),
-                                    placeholder_url
-                                )
-                            if not mtch:
-                                continue  # try another placeholder
+                                continue  # pragma: no cover - hopefully impossible to get here!
                             url = ''
                             # there might be group matches that aren't part of our kwargs, we go
                             # through this extra work to make sure we aren't subbing spans that
@@ -378,7 +463,10 @@ def urls_to_js(  # pylint: disable=R0913
                                 idx: var for var, idx in endpoint.pattern.regex.groupindex.items()
                             }
                             replacements = []
-                            for idx, value in enumerate(mtch.groups(), start=1):
+                            for idx, value in enumerate(  # pylint: disable=W0612
+                                    mtch.groups(),
+                                    start=1
+                            ):
                                 if unnamed:
                                     replacements.append(
                                         (
@@ -390,7 +478,10 @@ def urls_to_js(  # pylint: disable=R0913
                                             )
                                         )
                                     )
-                                elif idx in grp_mp and grp_mp[idx] in kwargs:
+                                elif (
+                                        idx in grp_mp and
+                                        grp_mp[idx] in kwargs
+                                ):  # pragma: no cover - should be impossible for this to eval as F
                                     replacements.append(
                                         (
                                             mtch.span(idx),
@@ -408,32 +499,32 @@ def urls_to_js(  # pylint: disable=R0913
                                     url_idx += 1
                                 url += rpl[1]
                                 url_idx += (rpl[0][1]-rpl[0][0])
+                            if url_idx < len(placeholder_url):
+                                url += placeholder_url[url_idx:]
                             opts_str = ",".join([f"'{param}'" for param in kwargs.keys()])
                             if unnamed:
-                                qt = '"' if es5 else '`'
+                                quote = '"' if es5 else '`'
                                 return (
                                         f'{indent * (dpth + 1)}if (args.length === '
-                                        f'{len(placeholders)})\n'
+                                        f'{len(placeholders)}){nl}'
                                         f'{indent * (dpth + 2)}'
-                                        f'return {qt}/{url.lstrip("/")}{qt};\n'
+                                        f'return {quote}/{url.lstrip("/")}{quote};{nl}'
                                 )
-                            else:
-                                if es5:
-                                    return (
-                                            f'{indent * (dpth + 1)}if (Object.keys(kwargs).length '
-                                            f'=== {len(kwargs)} && [{opts_str}].every('
-                                            f'function(value) {{ '
-                                            f'return kwargs.hasOwnProperty(value);}}))\n'
-                                            f'{indent * (dpth + 2)}return "/{url.lstrip("/")}";\n'
-                                    )
-                                else:
-                                    return (
-                                            f'{indent * (dpth + 1)}if (Object.keys(kwargs).length '
-                                            f'=== {len(kwargs)} && '
-                                            f'[{opts_str}].every('
-                                            f'value => kwargs.hasOwnProperty(value)))\n'
-                                            f'{indent * (dpth + 2)}return `/{url.lstrip("/")}`;\n'
-                                    )
+                            if es5:
+                                return (
+                                        f'{indent * (dpth + 1)}if (Object.keys(kwargs).length '
+                                        f'=== {len(kwargs)} && [{opts_str}].every('
+                                        f'function(value) {{ '
+                                        f'return kwargs.hasOwnProperty(value);}})){nl}'
+                                        f'{indent * (dpth + 2)}return "/{url.lstrip("/")}";{nl}'
+                                )
+                            return (
+                                    f'{indent * (dpth + 1)}if (Object.keys(kwargs).length '
+                                    f'=== {len(kwargs)} && '
+                                    f'[{opts_str}].every('
+                                    f'value => kwargs.hasOwnProperty(value))){nl}'
+                                    f'{indent * (dpth + 2)}return `/{url.lstrip("/")}`;{nl}'
+                            )
 
                         except NoReverseMatch:
                             continue
@@ -445,8 +536,8 @@ def urls_to_js(  # pylint: disable=R0913
             else:
                 return (
                     f'{indent * (dpth + 1)}if (Object.keys(kwargs).length === 0 && '
-                    f'args.length === 0)\n'
-                    f'{indent * (dpth + 2)}return "/{reverse(qname).lstrip("/")}";\n'
+                    f'args.length === 0){nl}'
+                    f'{indent * (dpth + 2)}return "/{reverse(qname).lstrip("/")}";{nl}'
                 )
             raise URLGenerationFailed(
                 f'Unable to generate url for {qname} with kwargs: '
@@ -456,38 +547,56 @@ def urls_to_js(  # pylint: disable=R0913
         for pattern in nodes:
             p_js += add_pattern(pattern)
 
-        return f'{p_js}\n{indent*dpth}}},\n'
+        return f'{p_js}{nl}{indent*dpth}}},{nl}'
 
     def write_javascript(
             tree: Tuple[Dict, Dict, Optional[str]],
             namespace: Optional[str] = None,
-            dpth: int = 1,
-            qname: str = '',
+            parent_qname: str = '',
     ) -> str:
+        """
+        Walk the tree, writing javascript for URLs indexed by their nested namespaces.
 
-        js = ''
+        :param tree: The tree, or branch to build javascript from
+        :param namespace: The namespace of this branch
+        :param parent_qname: The parent qualified name of the parent of this branch. Can be thought
+            of as the path in the tree.
+        :return: javascript object containing functions for URLs and objects for namespaces at and
+            below this tree (branch)
+        """
+
+        j_scrpt = ''
 
         if namespace:
-            qname += f"{':' if qname else ''}{namespace}"
+            parent_qname += f"{':' if parent_qname else ''}{namespace}"
 
         for name, nodes in tree[1].items():
-            js += nodes_to_js(nodes, f"{f'{qname}:' if qname else ''}{name}", dpth+1, tree[2])
+            j_scrpt += nodes_to_js(
+                nodes,
+                f"{f'{parent_qname}:' if parent_qname else ''}{name}",
+                tree[2]
+            )
 
         if tree[0]:
-            for ns, branch in tree[0].items():
-                js += f'{indent*dpth}"{ns}": {{\n'
-                js += write_javascript(branch, ns, dpth+1, qname)
-                js += f'{indent*dpth}}},\n'
+            for nmsp, branch in tree[0].items():
+                dpth = depth + (
+                    parent_qname + f':{nmsp}' if parent_qname else ''
+                ).count(':') + 1
+                j_scrpt += f'{indent*dpth}"{nmsp}": {{{nl}'
+                j_scrpt += write_javascript(branch, nmsp, parent_qname)
+                j_scrpt += f'{indent*dpth}}},{nl}'
 
-        return js
+        return j_scrpt
 
     return SafeString(
         write_javascript(
-            build_tree(
-                patterns,
-                ({}, {}, getattr(url_conf, 'app_name', None))
-            ),
-            '',
-            dpth=depth+1
+            prune_tree(
+                build_tree(
+                    patterns,
+                    not includes or '' in includes,
+                    ({}, {}, getattr(url_conf, 'app_name', None))
+                )
+            )[0],
+            ''
         )
     )
