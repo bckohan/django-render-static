@@ -23,16 +23,31 @@ from static_templates.placeholders import (
 
 register = template.Library()
 
-__all__ = ['classes_to_js', 'modules_to_js', 'urls_to_js']
+__all__ = ['split', 'classes_to_js', 'modules_to_js', 'urls_to_js']
 
 
-def to_js(classes: dict, indent: str = ''):
+@register.filter(name='split')
+def split(to_split: str, sep: Optional[str] = None) -> Iterable[str]:
+    """
+    Django template for python's standard split function. Splits a string into a list of strings
+    around a separator.
+
+    :param to_split: The string to split
+    :param sep: The separator characters to use as split markers.
+    :return: A list of strings
+    """
+    if sep:
+        return to_split.split(sep)
+    return to_split.split()
+
+
+def to_js(classes: dict, indent: str = '\t'):
     """
     Convert python class defines to javascript.
 
     :param classes: A dictionary of class types mapped to a list of members that should be
         translated into javascript
-    :param indent: An indent sequence that will be prepended to all lines
+    :param indent: An indent sequence that will be prepended to all lines, default: \t
     :return: The classes represented in javascript
     """
     j_script = ''
@@ -59,7 +74,7 @@ def to_js(classes: dict, indent: str = ''):
 
 
 @register.filter(name='classes_to_js')
-def classes_to_js(classes: Iterable[Union[Type, str]], indent: str = '') -> str:
+def classes_to_js(classes: Iterable[Union[Type, str]], indent: str = '\t') -> str:
     """
     Convert a list of classes to javascript. Only upper case, non-callable members will be
     translated.
@@ -69,7 +84,7 @@ def classes_to_js(classes: Iterable[Union[Type, str]], indent: str = '') -> str:
         {{ classes|classes_to_js:"  " }}
 
     :param classes: An iterable of class types, or class string paths to convert
-    :param indent: A sequence that will be prepended to all output lines
+    :param indent: A sequence that will be prepended to all output lines, default: \t
     :return: The translated javascript
     """
     clss = {}
@@ -84,7 +99,7 @@ def classes_to_js(classes: Iterable[Union[Type, str]], indent: str = '') -> str:
 
 
 @register.filter(name='modules_to_js')
-def modules_to_js(modules: Iterable[Union[ModuleType, str]], indent: str = '') -> str:
+def modules_to_js(modules: Iterable[Union[ModuleType, str]], indent: str = '\t') -> str:
     """
     Convert a list of python modules to javascript. Only upper case, non-callable class members will
     be translated. If a class has no qualifying members it will not be included.
@@ -94,7 +109,7 @@ def modules_to_js(modules: Iterable[Union[ModuleType, str]], indent: str = '') -
         {{ modules|modules_to_js:"  " }}
 
     :param modules: An iterable of python modules or string paths of modules to convert
-    :param indent: A sequence that will be prepended to all output lines
+    :param indent: A sequence that will be prepended to all output lines, default: \t
     :return: The translated javascript
     """
     classes = {}
@@ -124,7 +139,7 @@ def urls_to_js(  # pylint: disable=R0913,R0915
     javascript output by this tag isn't standalone. It is up to the caller to embed it in another
     object. For instance, given the following urls.py:
 
-    ..code-block::
+    .. code-block::
 
         from django.urls import include, path
         from views import MyView
@@ -137,7 +152,7 @@ def urls_to_js(  # pylint: disable=R0913,R0915
 
     And the other app's urls.py:
 
-    ..code-block::
+    .. code-block::
 
         from django.urls import path
         from views import MyView
@@ -148,15 +163,15 @@ def urls_to_js(  # pylint: disable=R0913,R0915
 
     And the following template:
 
-    ..code-block::
+    .. code-block::
 
         var urls =  {
             {% urls_to_js %}
         };
 
-    The generated javascript would look like:
+    The generated javascript would look like (without the log statements):
 
-    ..code-block::
+    .. code-block::
 
         var urls = {
             "my_url": function(kwargs={}, args=[]) {
@@ -165,7 +180,10 @@ def urls_to_js(  # pylint: disable=R0913,R0915
                 if (Object.keys(kwargs).length === 1 && ['arg1'].every(
                     value => kwargs.hasOwnProperty(value))
                 )
-                return `/url/with/arg/${kwargs["arg1"]}`;
+                    return `/url/with/arg/${kwargs["arg1"]}`;
+                throw new TypeError(
+                    "No reversal available for parameters at path: other:detail"
+                );
             },
             "other": {
                 "detail": function(kwargs={}, args=[]) {
@@ -173,6 +191,9 @@ def urls_to_js(  # pylint: disable=R0913,R0915
                         value => kwargs.hasOwnProperty(value))
                     )
                         return `/sub/detail/${kwargs["id"]}`;
+                    throw new TypeError(
+                        "No reversal available for parameters at path: other:detail"
+                    );
                 },
             },
         };
@@ -188,7 +209,7 @@ def urls_to_js(  # pylint: disable=R0913,R0915
         console.log(urls.other.detail({'id': 'aaaaaaaa-aaaa-aaaa-aaaa-aaaaaaaaaaaa'}));
 
 
-    ..note::
+    .. note::
         Care has been taken to harden this process to changes to the Django url resolution
         source and to ensure that it just works with minimal intervention.
 
@@ -216,13 +237,18 @@ def urls_to_js(  # pylint: disable=R0913,R0915
         none seem reliable or stable enough to include as a dependency.
 
 
+    .. todo::
+        Linters appropriately flag this function for complexity violations. A useful refactor
+        would break the components apart and implement a pluggable visitor pattern for code
+        generation.
+
     :param url_conf: The root url module to dump urls from, default: settings.ROOT_URLCONF
     :param indent: string to use for indentation in javascript, default: '  '
     :param depth: the starting indentation depth, default: 0
-    :param include: A list of url names to include, namespaces without url names will be treated as
-        every url under the namespace. Default: include everything
-    :param exclude: A list of url names to exclude, namespaces without url names will be treated as
-        every url under the namespace. Default: exclude nothing
+    :param include: A list of path names to include, namespaces without path names will be treated
+        as every path under the namespace. Default: include everything
+    :param exclude: A list of path names to exclude, namespaces without path names will be treated
+        as every path under the namespace. Default: exclude nothing
     :param es5: if True, dump es5 valid javascript, if False javascript will be es6
     :return: A javascript object containing functions that generate urls with and without parameters
     """
@@ -276,11 +302,6 @@ def urls_to_js(  # pylint: disable=R0913,R0915
                 },
                 None # no root app_name
             ]
-
-        ..todo::
-            Linters appropriately flag this function for complexity violations. A useful refactor
-            would break the components apart and implement a pluggable visitor pattern for code
-            generation.
 
         :param nodes: The urls that are leaves of this branch
         :param included: True if this branch has been implicitly included, by includes higher up the
@@ -547,7 +568,12 @@ def urls_to_js(  # pylint: disable=R0913,R0915
         for pattern in nodes:
             p_js += add_pattern(pattern)
 
-        return f'{p_js}{nl}{indent*dpth}}},{nl}'
+        return (
+            f'{p_js}'
+            f'{indent*(dpth+1)}throw new TypeError('
+            f'"No reversal available for parameters at path: {qname}");{nl}'
+            f'{indent*dpth}}},{nl}'
+        )
 
     def write_javascript(
             tree: Tuple[Dict, Dict, Optional[str]],

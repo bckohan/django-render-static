@@ -43,8 +43,6 @@ static engine including a global context available to all static templates and a
 specific configuration parameters. It's advisable to first read about Django's ``TEMPLATES``
 setting.
 
-In the above example
-
 Minimal Configuration
 ---------------------
 

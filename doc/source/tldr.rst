@@ -1,59 +1,10 @@
-django-static-templates
-#######################
+.. _ref-usage:
 
-`django-static-templates` enables Django's dynamic templates to be used to generate static files.
-That is, files that are collected during the ``collectstatic`` routine and likely served above
-Django on the stack. Static templates should be rendered preceding any run of ``collectstatic``.
+=====
+TL/DR
+=====
 
-For example, a frequently occurring pattern that violates the DRY principle is the presence of
-defines, or enum like structures in server side Python code that are simply replicated in client
-side JavaScript. Single-sourcing these structures by generating client side code from the server
-side code maintains DRYness.
-
-Have you ever wished you could replicate Django's `reverse` function in a JavaScript library for
-your site? Now you can with the `urls_to_js` template tag included with `django-static-templates`.
-
-You can report bugs and discuss features on the
-`issues page <https://github.com/bckohan/django-static-templates/issues>`_.
-
-`Contributions <https://github.com/bckohan/django-static-templates/blob/main/CONTRIBUTING.rst>`_ are
-encouraged! Especially additional template tags and filters!
-
-Installation
-------------
-
-1. Clone django-static-templates from GitHub_ or install a release off PyPI_ ::
-
-       pip install django-static-templates
-
-
-2. Add 'static_templates' to your ``INSTALLED_APPS`` ::
-
-       INSTALLED_APPS = [
-           'static_templates',
-       ]
-
-3. Add a ``STATIC_TEMPLATES`` configuration directive to your settings file::
-
-        STATIC_TEMPLATES = {
-            'templates' : {
-                'path/to/template': {
-                    'context' { 'variable': 'value' }
-                }
-        }
-
-4. Run ``generate_static`` preceding every run of ``collectstatic`` ::
-
-        manage.py generate_static
-        manage.py collectstatic
-
-
-.. _GitHub: http://github.com/bckohan/django-static-templates
-.. _PyPI: http://pypi.python.org/pypi/django-static-templates
-
-
-Usage
------
+First go back to the install page and install `django-static-templates` you lazy bum.
 
 Generating Javascript Defines
 -----------------------------

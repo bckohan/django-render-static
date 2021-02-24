@@ -705,6 +705,55 @@ class DefinesToJavascriptTest(BaseTestCase):
     def test_classes_to_js_error(self):
         self.assertRaises(CommandError, lambda: call_command('generate_static', 'defines_error.js'))
 
+    [defines, 'static_templates.tests.defines2']
+    @override_settings(STATIC_TEMPLATES={
+        'ENGINES': [{
+            'BACKEND': 'static_templates.backends.StaticDjangoTemplates',
+            'OPTIONS': {
+                'loaders': [
+                    ('static_templates.loaders.StaticLocMemLoader', {
+                        'defines1.js': ('var defines = '
+                                        '{\n{{ '
+                                        '"static_templates.tests.defines.MoreDefines,'
+                                        'static_templates.tests.defines.ExtendedDefines"|split:","'
+                                        '|classes_to_js:"  " }}};'
+                        ),
+                        'defines2.js': ('var defines = '
+                                        '{\n{{ '
+                                        '"static_templates.tests.defines '
+                                        'static_templates.tests.defines2"|split'
+                                        '|modules_to_js:"  " }}};'
+                        )
+                    })
+                ],
+                'builtins': ['static_templates.templatetags.static_templates']
+            },
+        }],
+        'templates': {
+            'defines1.js': {'dest': GLOBAL_STATIC_DIR / 'defines1.js'},
+            'defines2.js': {'dest': GLOBAL_STATIC_DIR / 'defines2.js'}
+        }
+    })
+    def test_split(self):
+        call_command('generate_static', 'defines1.js', 'defines2.js')
+        self.assertEqual(
+            self.diff_classes(
+                js_file=GLOBAL_STATIC_DIR / 'defines1.js',
+                py_classes=[defines.MoreDefines, defines.ExtendedDefines]
+            ),
+            {}
+        )
+        self.assertEqual(
+            self.diff_modules(
+                js_file=GLOBAL_STATIC_DIR / 'defines2.js',
+                py_modules=['static_templates.tests.defines', 'static_templates.tests.defines2']
+            ),
+            {}
+        )
+
+    def tearDown(self):
+        pass
+
 
 class URLJavascriptMixin:
 
@@ -1350,8 +1399,8 @@ class URLSToJavascriptTest(URLJavascriptMixin, BaseTestCase):
         self.assertFalse(self.exists('re_path_unnamed_solo', args=['daf', 7120]))
 
     # uncomment to not delete generated js
-    def tearDown(self):
-        pass
+    #def tearDown(self):
+    #    pass
 
 
 class URLSToJavascriptOffNominalTest(URLJavascriptMixin, BaseTestCase):
@@ -1503,5 +1552,5 @@ class URLSToJavascriptOffNominalTest(URLJavascriptMixin, BaseTestCase):
         )
 
     # uncomment to not delete generated js
-    def tearDown(self):
-        pass
+    #def tearDown(self):
+    #    pass

@@ -82,8 +82,3 @@ you would do:
     poetry run pytest static_templates/tests/tests.py::DefinesToJavascriptTest
     poetry run pytest static_templates/tests/tests.py::DefinesToJavascriptTest::test_classes_to_js
 
-
-Continuous Integration
-----------------------
-
-TODO

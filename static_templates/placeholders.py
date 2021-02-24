@@ -12,7 +12,7 @@ painless as possible. All of the builtin converters already have placeholders re
 Custom converters can simply add a `placeholder` class attribute that will be used without requiring
 an explicit registration.
 
-    ..note::
+    .. note::
         Many placeholders may be registered for a variable name/app_name. They'll be tried until one
         is found to work, and prioritized in the order of most specific registration. This means
         a placeholder registered against app1 and variable name var1 will be tried before the

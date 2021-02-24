@@ -17,8 +17,8 @@ class MoreDefines(object):
     MDEF3 = 'MD3'
     MDEFS = [
         (MDEF1, 'MDefine 1'),
-        (MDEF1, 'MDefine 2'),
-        (MDEF1, 'MDefine 3'),
+        (MDEF2, 'MDefine 2'),
+        (MDEF3, 'MDefine 3'),
     ]
 
 
