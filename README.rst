@@ -1,5 +1,7 @@
-|Github all releases|
+|Github all releases| |MIT license|
 
+.. |MIT license| image:: https://img.shields.io/badge/License-MIT-blue.svg
+   :target: https://lbesson.mit-license.org/
 .. |Github all releases| image:: https://img.shields.io/github/downloads/Naereen/StrapDown.js/total.svg
    :target: https://GitHub.com/Naereen/StrapDown.js/releases/)
 
