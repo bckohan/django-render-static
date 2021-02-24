@@ -27,13 +27,17 @@ Installation
        pip install django-static-templates
 
 
-2. Add 'static_templates' to your ``INSTALLED_APPS`` ::
+2. Add 'static_templates' to your ``INSTALLED_APPS`` :
+
+.. code-block::
 
        INSTALLED_APPS = [
            'static_templates',
        ]
 
-3. Add a ``STATIC_TEMPLATES`` configuration directive to your settings file::
+3. Add a ``STATIC_TEMPLATES`` configuration directive to your settings file:
+
+.. code-block::
 
         STATIC_TEMPLATES = {
             'templates' : {
@@ -75,7 +79,9 @@ looks like this::
         └── urls.py
 
 
-Your defines/model classes might look like this::
+Your defines/model classes might look like this:
+
+.. code-block::
 
     class Defines:
 
@@ -100,7 +106,9 @@ And your defines.js template might look like this::
 
 
 If someone wanted to use your defines template to generate a JavaScript version of your Python
-class their settings file might look like this::
+class their settings file might look like this:
+
+.. code-block::
 
     STATIC_TEMPLATES = {
         'templates': {
@@ -142,7 +150,9 @@ URL reverse functions
 You'd like to be able to call something like `reverse` on path names from your client JavaScript
 code the same way you do from Python Django code. You don't want to expose your admin paths though.
 
-Your settings file might look like::
+Your settings file might look like:
+
+.. code-block::
 
     from pathlib import Path
 
@@ -182,7 +192,9 @@ Then call `generate_static` before `collectstatic`::
     $> ./manage.py generate_static
     $> ./manage.py collectstatic
 
-If your root urls.py looks like this::
+If your root urls.py looks like this:
+
+.. code-block::
 
     from django.contrib import admin
     from django.urls import include, path
