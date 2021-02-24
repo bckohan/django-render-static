@@ -24,33 +24,35 @@ Installation
 
 1. Clone django-static-templates from GitHub_ or install a release off PyPI_ ::
 
+```bash
        pip install django-static-templates
-
+```
 
 2. Add 'static_templates' to your ``INSTALLED_APPS`` :
 
-.. code-block::
-
+```python
        INSTALLED_APPS = [
            'static_templates',
        ]
+```
 
 3. Add a ``STATIC_TEMPLATES`` configuration directive to your settings file:
 
-.. code-block::
-
+```python
         STATIC_TEMPLATES = {
             'templates' : {
                 'path/to/template': {
                     'context' { 'variable': 'value' }
                 }
         }
+```
 
-4. Run ``generate_static`` preceding every run of ``collectstatic`` ::
+4. Run ``generate_static`` preceding every run of ``collectstatic`` :
 
-        manage.py generate_static
-        manage.py collectstatic
-
+```bash
+        $> manage.py generate_static
+        $> manage.py collectstatic
+```
 
 .. _GitHub: http://github.com/bckohan/django-static-templates
 .. _PyPI: http://pypi.python.org/pypi/django-static-templates
@@ -81,8 +83,7 @@ looks like this::
 
 Your defines/model classes might look like this:
 
-.. code-block::
-
+```python
     class Defines:
 
         DEFINE1 = 'D1'
@@ -97,6 +98,7 @@ Your defines/model classes might look like this:
     class MyModel(Defines, models.Model):
 
         define_field = models.CharField(choices=Defines.DEFINES, max_length=2)
+```
 
 And your defines.js template might look like this::
 
@@ -108,18 +110,20 @@ And your defines.js template might look like this::
 If someone wanted to use your defines template to generate a JavaScript version of your Python
 class their settings file might look like this:
 
-.. code-block::
-
+```python
     STATIC_TEMPLATES = {
         'templates': {
             'my_app/defines.js': {}
         }
     }
+```
 
-And then of course they would call `generate_static` before `collectstatic`::
+And then of course they would call `generate_static` before `collectstatic`:
 
+```bash
     $> ./manage.py generate_static
     $> ./manage.py collectstatic
+```
 
 This would create the following file::
 
@@ -129,8 +133,9 @@ This would create the following file::
             └── my_app
                 └── defines.js
 
-Which would look like this::
+Which would look like this:
 
+```javascript
     var defines = {
         Defines: {
             DEFINE1: 'D1'
@@ -143,6 +148,7 @@ Which would look like this::
             ]
         }
     };
+```
 
 URL reverse functions
 ---------------------
@@ -152,8 +158,7 @@ code the same way you do from Python Django code. You don't want to expose your 
 
 Your settings file might look like:
 
-.. code-block::
-
+```python
     from pathlib import Path
 
     BASE_DIR = Path(__file__).parent
@@ -186,6 +191,7 @@ Your settings file might look like:
                 }
             }
         }]
+```
 
 Then call `generate_static` before `collectstatic`::
 
@@ -194,8 +200,7 @@ Then call `generate_static` before `collectstatic`::
 
 If your root urls.py looks like this:
 
-.. code-block::
-
+```python
     from django.contrib import admin
     from django.urls import include, path
 
@@ -207,9 +212,11 @@ If your root urls.py looks like this:
         path('simple/<int:arg1>', MyView.as_view(), name='simple'),
         path('different/<int:arg1>/<str:arg2>', MyView.as_view(), name='different'),
     ]
+```
 
-Then urls.js will look like this::
+Then urls.js will look like this:
 
+```javascript
     var urls = {
         "simple": function(kwargs={}, args=[]) {
             if (Object.keys(kwargs).length === 0 && args.length === 0)
@@ -230,11 +237,14 @@ Then urls.js will look like this::
             throw new TypeError("No reversal available for parameters at path: different");
         }
     }
+```
 
-So you can now fetch paths like this::
+So you can now fetch paths like this:
 
+```javascript
     // /different/143/emma
     urls.different({'arg1': 143, 'arg2': 'emma'});
+```
 
 .. note::
     If you get an exception when you run generate_static that originated from a PlaceholderNotFound
