@@ -132,7 +132,7 @@ Which would look like this::
                 ['D1', 'Define 1'],
                 ['D2', 'Define 2'],
                 ['D3', 'Define 3']
-            )
+            ]
         }
     };
 
