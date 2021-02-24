@@ -158,7 +158,11 @@ Your settings file might look like::
             'OPTIONS': {
                 'loaders': [
                     ('static_templates.loaders.StaticLocMemLoader', {
-                        'urls.js': 'var urls = {\n{% urls_to_js exclude=exclude %}\n};'
+                        'urls.js': (
+                            'var urls = {\n
+                                {% urls_to_js exclude=exclude %}
+                            \n};'
+                        )
                     })
                  ],
                 'builtins': ['static_templates.templatetags.static_templates']
