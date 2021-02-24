@@ -25,12 +25,14 @@ Installation
 1. Clone django-static-templates from GitHub_ or install a release off PyPI_ ::
 
 .. code:: bash
+
        pip install django-static-templates
 
 
 2. Add 'static_templates' to your ``INSTALLED_APPS`` :
 
 .. code:: python
+
        INSTALLED_APPS = [
            'static_templates',
        ]
@@ -39,6 +41,7 @@ Installation
 3. Add a ``STATIC_TEMPLATES`` configuration directive to your settings file:
 
 .. code:: python
+
         STATIC_TEMPLATES = {
             'templates' : {
                 'path/to/template': {
@@ -50,6 +53,7 @@ Installation
 4. Run ``generate_static`` preceding every run of ``collectstatic`` :
 
 .. code:: bash
+
         $> manage.py generate_static
         $> manage.py collectstatic
 
@@ -84,6 +88,7 @@ looks like this::
 Your defines/model classes might look like this:
 
 .. code:: python
+
     class Defines:
 
         DEFINE1 = 'D1'
@@ -111,6 +116,7 @@ If someone wanted to use your defines template to generate a JavaScript version 
 class their settings file might look like this:
 
 .. code:: python
+
     STATIC_TEMPLATES = {
         'templates': {
             'my_app/defines.js': {}
@@ -121,6 +127,7 @@ class their settings file might look like this:
 And then of course they would call `generate_static` before `collectstatic`:
 
 .. code:: bash
+
     $> ./manage.py generate_static
     $> ./manage.py collectstatic
 
@@ -136,6 +143,7 @@ This would create the following file::
 Which would look like this:
 
 .. code:: javascript
+
     var defines = {
         Defines: {
             DEFINE1: 'D1'
@@ -159,6 +167,7 @@ code the same way you do from Python Django code. You don't want to expose your 
 Your settings file might look like:
 
 .. code:: python
+
     from pathlib import Path
 
     BASE_DIR = Path(__file__).parent
@@ -201,6 +210,7 @@ Then call `generate_static` before `collectstatic`::
 If your root urls.py looks like this:
 
 .. code:: python
+
     from django.contrib import admin
     from django.urls import include, path
 
@@ -217,6 +227,7 @@ If your root urls.py looks like this:
 Then urls.js will look like this:
 
 .. code:: javascript
+
     var urls = {
         "simple": function(kwargs={}, args=[]) {
             if (Object.keys(kwargs).length === 0 && args.length === 0)
@@ -242,10 +253,12 @@ Then urls.js will look like this:
 So you can now fetch paths like this:
 
 .. code:: javascript
+
     // /different/143/emma
     urls.different({'arg1': 143, 'arg2': 'emma'});
 
 
 .. note::
+
     If you get an exception when you run generate_static that originated from a PlaceholderNotFound
     exception, you need to register some :ref:`placeholders` before calling :ref:`urls_to_js`.
