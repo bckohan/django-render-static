@@ -256,9 +256,3 @@ So you can now fetch paths like this:
 
     // /different/143/emma
     urls.different({'arg1': 143, 'arg2': 'emma'});
-
-
-.. note::
-
-    If you get an exception when you run generate_static that originated from a PlaceholderNotFound
-    exception, you need to register some :ref:`placeholders` before calling :ref:`urls_to_js`.
