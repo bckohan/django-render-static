@@ -59,9 +59,9 @@ class their settings file might look like this::
         }
     }
 
-And then of course they would call `generate_static` before `collectstatic`::
+And then of course they would call `render_static` before `collectstatic`::
 
-    $> ./manage.py generate_static
+    $> ./manage.py render_static
     $> ./manage.py collectstatic
 
 This would create the following file::
@@ -128,9 +128,9 @@ Your settings file might look like::
             }
         }]
 
-Then call `generate_static` before `collectstatic`::
+Then call `render_static` before `collectstatic`::
 
-    $> ./manage.py generate_static
+    $> ./manage.py render_static
     $> ./manage.py collectstatic
 
 If your root urls.py looks like this::
@@ -178,5 +178,5 @@ So you can now fetch paths like this::
 
 .. note::
 
-    If you get an exception when you run generate_static that originated from a PlaceholderNotFound
+    If you get an exception when you run render_static that originated from a PlaceholderNotFound
     exception, you need to register some :ref:`placeholders` before calling :ref:`urls_to_js`.

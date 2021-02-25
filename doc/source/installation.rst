@@ -25,9 +25,9 @@ Installation
                 }
         }
 
-4. Run ``generate_static`` preceding every run of ``collectstatic`` ::
+4. Run ``render_static`` preceding every run of ``collectstatic`` ::
 
-        manage.py generate_static
+        manage.py render_static
         manage.py collectstatic
 
 

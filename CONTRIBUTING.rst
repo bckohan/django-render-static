@@ -53,6 +53,10 @@ or warnings where justified is acceptable:
     poetry run isort static_templates
     poetry run mypy static_templates
     poetry run pylint static_templates
+    poetry run doc8 -q doc
+    poetry check
+    poetry run pip check
+    poetry run safety check --full-report
 
 
 Running Tests

@@ -46,7 +46,7 @@ setting.
 Minimal Configuration
 ---------------------
 
-To run generate_static, ``STATIC_TEMPLATES`` must be defined in settings. If it's an empty
+To run render_static, ``STATIC_TEMPLATES`` must be defined in settings. If it's an empty
 dictionary (or None):
 
 .. code-block:: python
@@ -129,13 +129,13 @@ so stuffing dynamic database information in static template contexts is not advi
 ``templates``
 -------------
 
-The ``templates`` dictionary lists all templates that should be generated when generate_static is
+The ``templates`` dictionary lists all templates that should be generated when render_static is
 run with no arguments. If specific configuration directives including rendered path and context are
 needed for a template they must be specified here.
 
 .. note::
 
-    `generate_static` will be able to generate templates not listed in ``templates``, but only if
+    `render_static` will be able to generate templates not listed in ``templates``, but only if
     supplied by name on the command line. Only the default context will be available to them.
 
 ``dest``

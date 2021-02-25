@@ -57,11 +57,11 @@ Installation
         }
 
 
-4. Run ``generate_static`` preceding every run of ``collectstatic`` :
+4. Run ``render_static`` preceding every run of ``collectstatic`` :
 
 .. code:: bash
 
-        $> manage.py generate_static
+        $> manage.py render_static
         $> manage.py collectstatic
 
 
@@ -131,11 +131,11 @@ class their settings file might look like this:
     }
 
 
-And then of course they would call `generate_static` before `collectstatic`:
+And then of course they would call `render_static` before `collectstatic`:
 
 .. code:: bash
 
-    $> ./manage.py generate_static
+    $> ./manage.py render_static
     $> ./manage.py collectstatic
 
 
@@ -209,9 +209,9 @@ Your settings file might look like:
         }]
 
 
-Then call `generate_static` before `collectstatic`::
+Then call `render_static` before `collectstatic`::
 
-    $> ./manage.py generate_static
+    $> ./manage.py render_static
     $> ./manage.py collectstatic
 
 If your root urls.py looks like this:

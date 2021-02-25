@@ -4,16 +4,16 @@
 Commands
 ========
 
-generate_static
+render_static
 ---------------
 
-.. automodule:: static_templates.management.commands.generate_static
+.. automodule:: static_templates.management.commands.render_static
 
 Usage
 ~~~~~
 
 .. argparse::
-    :module: static_templates.management.commands.generate_static
+    :module: static_templates.management.commands.render_static
     :func: get_parser
     :prog: manage.py
 
@@ -24,12 +24,12 @@ To generate all templates configured in ``STATIC_TEMPLATES`` settings:
 
 .. code::
 
-    $ manage.py generate_static
+    $ manage.py render_static
 
 Alternatively individual templates can be generated, regardless of their presence
 in ``STATIC_TEMPLATES``. They will be given the global context:
 
 .. code::
 
-    $ manage.py generate_static name/of/template1.js name/of/template2.js
+    $ manage.py render_static name/of/template1.js name/of/template2.js
 

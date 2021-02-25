@@ -3,8 +3,8 @@ Generate documents from templates and write them to disk at either pre-configure
 their associated Django app's static directory if residing within an app. This command should be run
 during the deployment phase and always before collectstatic is run.
 
-This command accepts a list of template names to generate. If no names are specified all templates
-as specified in ``STATIC_TEMPLATES`` will be generated. A template name supplied as an argument does
+This command accepts a list of template names to render. If no names are specified all templates
+as specified in ``STATIC_TEMPLATES`` will be rendered. A template name supplied as an argument does
 not need to be specified in ``STATIC_TEMPLATES`` for it to be found and rendered. Such templates
 will be given the global context as specified in ``STATIC_TEMPLATES``.
 """
@@ -18,7 +18,7 @@ def get_parser():
     docs for it.
     """
     cmd = Command()
-    parser = cmd.create_parser('manage.py', 'generate_static')
+    parser = cmd.create_parser('manage.py', 'render_static')
     return parser
 
 
@@ -34,7 +34,7 @@ class Command(BaseCommand):
             metavar='T',
             nargs='*',
             type=str,
-            help='The template names to generate. Default: All templates specified in settings.'
+            help='The template names to render. Default: All templates specified in settings.'
         )
 
     def handle(self, *args, **options):
