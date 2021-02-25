@@ -50,3 +50,4 @@ jobs:
       uses: codecov/codecov-action@v1
       with:
         file: ./coverage.xml
+        CODECOV_TOKEN: '266a1d60-b5bc-42fb-b582-54cead5eee28'
