@@ -118,11 +118,14 @@ This tag spits out a JavaScript object that can be used in the same manner as Dj
 
 It accepts a number of different parameters:
 
-    - **url_conf** The root url module to dump urls from. Can be an import string or an actual module type. default: settings.ROOT_URLCONF
+    - **url_conf** The root url module to dump urls from. Can be an import string or an actual
+      module type. default: settings.ROOT_URLCONF
     - **indent** String to use for indentation in javascript, default: '\\t'
     - **depth** The starting indentation depth, default: 0
-    - **include** A list of path names to include, namespaces without path names will be treated as every path under the namespace. Default: include everything
-    - **exclude** A list of path names to exclude, namespaces without path names will be treated as every path under the namespace. Excludes override includes. Default: exclude nothing
+    - **include** A list of path names to include, namespaces without path names will be treated as
+      every path under the namespace. Default: include everything
+    - **exclude** A list of path names to exclude, namespaces without path names will be treated as
+      every path under the namespace. Excludes override includes. Default: exclude nothing
     - **es5** If True, dump es5 valid JavaScript, if False JavaScript will be es6, default: False
 
 Includes and excludes are hierarchical strings that contain the fully qualified name of a namespace
@@ -216,8 +219,8 @@ Note the ``placeholder`` attribute. This attribute is used by `urls_to_js` to re
 generated JavaScript. By including the attribute on your converter you ensure that anyone using your
 converter will be able to run `urls_to_js` without error. And you don't even have to
 include `django-static-templates` as a dependency if you aren't using it! Alternatively if you're
-using someone else's converter and they haven't supplied a ``placeholder`` attribute, you can register
-one::
+using someone else's converter and they haven't supplied a ``placeholder`` attribute, you can
+register one::
 
     from static_templates.placeholders import register_converter_placeholder
     register_converter_placeholder(YearConverter, 2000)

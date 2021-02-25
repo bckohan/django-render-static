@@ -20,8 +20,6 @@ You can report bugs and discuss features on the
 `Contributions <https://github.com/bckohan/django-static-templates/blob/main/CONTRIBUTING.rst>`_ are
 encouraged! Especially additional template tags and filters!
 
-..include:
-
 .. toctree::
    :maxdepth: 2
    :caption: Contents:
