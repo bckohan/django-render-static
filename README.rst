@@ -1,5 +1,5 @@
 |MIT license| |PyPI version fury.io| |PyPI pyversions| |PyPI status| |Documentation Status|
-|Code Cov| |Tests Status|
+|Code Cov| |Test Status|
 
 .. |MIT license| image:: https://img.shields.io/badge/License-MIT-blue.svg
    :target: https://lbesson.mit-license.org/
@@ -19,7 +19,7 @@
 .. |Code Cov| image:: https://codecov.io/gh/bckohan/django-render-static/branch/main/graph/badge.svg?token=0IZOKN2DYL
    :target: https://codecov.io/gh/bckohan/django-render-static
 
-.. |Tests Status| image:: https://github.com/bckohan/django-render-static/workflows/test/badge.svg?branch=master&event=push
+.. |Test Status| image:: https://github.com/bckohan/django-render-static/workflows/test/badge.svg?branch=master&event=push
    :target: https://github.com/bckohan/django-render-static/actions?query=workflow%3Atest
 
 django-render-static
