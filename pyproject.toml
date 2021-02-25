@@ -1,7 +1,8 @@
 [tool.poetry]
 name = "django-render-static"
 version = "0.1.0"
-description = "Use Django's template engine to generate static files at deployment time."
+description = """Use Django's template engine to render static files at deployment time. Extend
+Django's url reverse mechanism to JavaScript."""
 authors = ["Brian Kohan <bckohan@gmail.com>"]
 license = "MIT"
 readme = "README.rst"
