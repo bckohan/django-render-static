@@ -19,7 +19,7 @@
 .. |Code Cov| image:: https://codecov.io/gh/bckohan/django-render-static/branch/main/graph/badge.svg?token=0IZOKN2DYL
    :target: https://codecov.io/gh/bckohan/django-render-static
 
-.. |Test Status| image:: https://github.com/bckohan/django-render-static/workflows/test/badge.svg?branch=master&event=push
+.. |Test Status| image:: https://github.com/bckohan/django-render-static/workflows/test/badge.svg
    :target: https://github.com/bckohan/django-render-static/actions
 
 django-render-static
