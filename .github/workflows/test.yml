@@ -39,6 +39,8 @@ jobs:
     - name: Run Unit Tests
       run: |
         poetry run pytest
+    - name: Run Static Analysis
+      run: |
         poetry run pylint static_templates
         poetry run mypy static_templates
         poetry run doc8 -q doc
