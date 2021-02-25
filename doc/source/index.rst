@@ -2,7 +2,7 @@
 Introduction
 ============
 
-`django-static-templates` enables Django's dynamic templates to be used to generate static files.
+`django-render-static` enables Django's dynamic templates to be used to generate static files.
 That is, files that are collected during the ``collectstatic`` routine and likely served above
 Django on the stack. Static templates should be rendered preceding any run of ``collectstatic``.
 
@@ -12,12 +12,12 @@ side JavaScript. Single-sourcing these structures by generating client side code
 side code maintains DRYness.
 
 Have you ever wished you could replicate Django's `reverse` function in a JavaScript library for
-your site? Now you can with the `urls_to_js` template tag included with `django-static-templates`.
+your site? Now you can with the `urls_to_js` template tag included with `django-render-static`.
 
 You can report bugs and discuss features on the
-`issues page <https://github.com/bckohan/django-static-templates/issues>`_.
+`issues page <https://github.com/bckohan/django-render-static/issues>`_.
 
-`Contributions <https://github.com/bckohan/django-static-templates/blob/main/CONTRIBUTING.rst>`_ are
+`Contributions <https://github.com/bckohan/django-render-static/blob/main/CONTRIBUTING.rst>`_ are
 encouraged! Especially additional template tags and filters!
 
 .. toctree::

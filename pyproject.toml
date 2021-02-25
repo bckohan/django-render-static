@@ -1,12 +1,12 @@
 [tool.poetry]
-name = "django-static-templates"
+name = "django-render-static"
 version = "0.1.0"
 description = "Use Django's template engine to generate static files at deployment time."
 authors = ["Brian Kohan <bckohan@gmail.com>"]
 license = "MIT"
 readme = "README.rst"
-repository = "https://github.com/bckohan/django-static-templates"
-homepage = "https://django-static-templates.readthedocs.io"
+repository = "https://github.com/bckohan/django-render-static"
+homepage = "https://django-render-static.readthedocs.io"
 keywords = ["django", "static", "templates", "javascript", "url", "reverse", "defines"]
 classifiers = [
     "Environment :: Console",
@@ -34,6 +34,10 @@ classifiers = [
 include = [
     "LICENSE",
 ]
+packages = [
+    { include = "render_static" }
+]
+
 
 [tool.poetry.dependencies]
 python = "^3.6"

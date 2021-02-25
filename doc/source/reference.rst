@@ -9,7 +9,7 @@ Reference
 engine
 --------------------------------
 
-.. automodule:: static_templates.engine
+.. automodule:: render_static.engine
 
    .. autoclass:: StaticTemplateEngine
 
@@ -18,7 +18,7 @@ engine
 backends
 ----------------------------------
 
-.. automodule:: static_templates.backends
+.. automodule:: render_static.backends
 
    .. autoclass:: StaticDjangoTemplates
    .. autoclass:: StaticJinja2Templates
@@ -29,7 +29,7 @@ backends
 loaders
 ---------------------------------
 
-.. automodule:: static_templates.loaders
+.. automodule:: render_static.loaders
 
    .. autoclass:: StaticAppDirectoriesLoader
    .. autoclass:: StaticFilesystemLoader
@@ -40,7 +40,7 @@ loaders
 origin
 --------------------------------
 
-.. automodule:: static_templates.origin
+.. automodule:: render_static.origin
 
    .. autoclass:: AppOrigin
 
@@ -49,7 +49,7 @@ origin
 templatetags.django\_static\_templates
 ----------------------------------------------------------------
 
-.. automodule:: static_templates.templatetags.static_templates
+.. automodule:: render_static.templatetags.render_static
 
    .. autofunction:: split
    .. autofunction:: to_js
@@ -62,7 +62,7 @@ templatetags.django\_static\_templates
 exceptions
 ----------------------------------------------------------------
 
-.. automodule:: static_templates.exceptions
+.. automodule:: render_static.exceptions
 
    .. autoclass:: PlaceholderNotFound
    .. autoclass:: URLGenerationFailed
@@ -73,7 +73,7 @@ exceptions
 placeholders
 ----------------------------------------------------------------
 
-.. automodule:: static_templates.placeholders
+.. automodule:: render_static.placeholders
 
    .. autofunction:: register_converter_placeholder
    .. autofunction:: register_variable_placeholder

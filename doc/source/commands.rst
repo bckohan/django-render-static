@@ -7,13 +7,13 @@ Commands
 render_static
 ---------------
 
-.. automodule:: static_templates.management.commands.render_static
+.. automodule:: render_static.management.commands.render_static
 
 Usage
 ~~~~~
 
 .. argparse::
-    :module: static_templates.management.commands.render_static
+    :module: render_static.management.commands.render_static
     :func: get_parser
     :prog: manage.py
 

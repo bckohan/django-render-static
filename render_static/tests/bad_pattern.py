@@ -1,7 +1,7 @@
 import re
 
 from django.urls import path
-from static_templates.tests.views import TestView
+from render_static.tests.views import TestView
 
 
 class Unrecognized:

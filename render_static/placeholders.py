@@ -22,7 +22,7 @@ an explicit registration.
 from typing import Any, Dict, Iterable, List, Optional, Type
 
 from django.urls import converters
-from static_templates.exceptions import PlaceholderNotFound
+from render_static.exceptions import PlaceholderNotFound
 
 __all__ = [
     'register_converter_placeholder',

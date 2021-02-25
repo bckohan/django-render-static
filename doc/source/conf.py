@@ -1,5 +1,5 @@
 from datetime import datetime
-import static_templates
+import render_static
 # Configuration file for the Sphinx documentation builder.
 #
 # This file only contains a selection of the most common options. For a full
@@ -19,12 +19,12 @@ import static_templates
 
 # -- Project information -----------------------------------------------------
 
-project = 'django-static-templates'
+project = 'django-render-static'
 copyright = f'2020-{datetime.now().year}, Brian Kohan'
 author = 'Brian Kohan'
 
 # The full version, including alpha/beta/rc tags
-release = static_templates.__version__
+release = render_static.__version__
 
 
 # -- General configuration ---------------------------------------------------

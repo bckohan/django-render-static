@@ -26,14 +26,14 @@ class StaticTemplateEngine:
 
     .. code-block::
 
-        from static_templates.engine import StaticTemplateEngine
+        from render_static.engine import StaticTemplateEngine
         from django.conf import settings
         from pathlib import Path
 
         engine = StaticTemplateEngine()  # This engine uses the settings.STATIC_TEMPLATE config
         engine = StaticTemplateEngine({  # This engine uses a custom configuration
             'ENGINES': [{
-                'BACKEND': 'static_templates.backends.StaticJinja2Templates',
+                'BACKEND': 'render_static.backends.StaticJinja2Templates',
                 'APP_DIRS': True
             }],
             'context': {
@@ -70,11 +70,11 @@ class StaticTemplateEngine:
     config_: Dict = {}
 
     DEFAULT_ENGINE_CONFIG = [{
-        'BACKEND': 'static_templates.backends.StaticDjangoTemplates',
+        'BACKEND': 'render_static.backends.StaticDjangoTemplates',
         'DIRS': [],
         'OPTIONS': {
-            'loaders': ['static_templates.loaders.StaticAppDirectoriesLoader'],
-            'builtins': ['static_templates.templatetags.static_templates']
+            'loaders': ['render_static.loaders.StaticAppDirectoriesLoader'],
+            'builtins': ['render_static.templatetags.render_static']
         },
     }]
 

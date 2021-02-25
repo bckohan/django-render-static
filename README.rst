@@ -53,12 +53,12 @@ Installation
        pip install django-render-static
 
 
-2. Add 'static_templates' to your ``INSTALLED_APPS`` :
+2. Add 'render_static' to your ``INSTALLED_APPS`` :
 
 .. code:: python
 
        INSTALLED_APPS = [
-           'static_templates',
+           'render_static',
        ]
 
 
@@ -202,10 +202,10 @@ Your settings file might look like:
 
     STATIC_TEMPLATES = {
         'ENGINES': [{
-            'BACKEND': 'static_templates.backends.StaticDjangoTemplates',
+            'BACKEND': 'render_static.backends.StaticDjangoTemplates',
             'OPTIONS': {
                 'loaders': [
-                    ('static_templates.loaders.StaticLocMemLoader', {
+                    ('render_static.loaders.StaticLocMemLoader', {
                         'urls.js': (
                             'var urls = {\n
                                 {% urls_to_js exclude=exclude %}
@@ -213,7 +213,7 @@ Your settings file might look like:
                         )
                     })
                  ],
-                'builtins': ['static_templates.templatetags.static_templates']
+                'builtins': ['render_static.templatetags.render_static']
             },
         },
         'templates': {

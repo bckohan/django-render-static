@@ -1,5 +1,5 @@
 """
-Define exceptions thrown by `django-static-templates`
+Define exceptions thrown by `django-render-static`
 """
 
 __all__ = ['PlaceholderNotFound', 'URLGenerationFailed']

@@ -9,7 +9,7 @@ not need to be specified in ``STATIC_TEMPLATES`` for it to be found and rendered
 will be given the global context as specified in ``STATIC_TEMPLATES``.
 """
 from django.core.management.base import BaseCommand, CommandError
-from static_templates.engine import StaticTemplateEngine
+from render_static.engine import StaticTemplateEngine
 
 
 def get_parser():

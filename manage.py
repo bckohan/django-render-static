@@ -5,7 +5,7 @@ from django.core import management
 
 
 def main():
-    os.environ['DJANGO_SETTINGS_MODULE'] = 'static_templates.tests.settings'
+    os.environ['DJANGO_SETTINGS_MODULE'] = 'render_static.tests.settings'
     management.execute_from_command_line()
 
 

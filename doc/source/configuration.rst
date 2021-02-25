@@ -4,24 +4,24 @@
 Configuration
 =============
 
-`django-static-templates` settings are set in the ``STATIC_TEMPLATES`` dictionary in your site
+`django-render-static` settings are set in the ``STATIC_TEMPLATES`` dictionary in your site
 settings:
 
 .. code-block:: python
 
       STATIC_TEMPLATES = {
         'ENGINES': [
-            'BACKEND': 'static_templates.backends.StaticDjangoTemplates',
+            'BACKEND': 'render_static.backends.StaticDjangoTemplates',
             'DIRS': [BASE_DIR / 'tmpls' ], # look here for templates
             'OPTIONS': {
-                'app_dir': 'static_tmplates',  # search this directory in apps for templates
+                'app_dir': 'static_templates',  # search this directory in apps for templates
                 'loaders': [
                     # search apps for templates
-                    'static_templates.loaders.StaticAppDirectoriesLoader',
+                    'render_static.loaders.StaticAppDirectoriesLoader',
                     # search DIRS for templates
-                    'static_templates.loaders.StaticFilesystemLoader'
+                    'render_static.loaders.StaticFilesystemLoader'
                  ],
-                'builtins': ['static_templates.templatetags.static_templates']
+                'builtins': ['render_static.templatetags.render_static']
             },
         ],
         'context': {
@@ -60,11 +60,11 @@ then the default engine and loaders will be used which is equivalent to:
 
     STATIC_TEMPALTES = {
         'ENGINES': [
-            'BACKEND': 'static_templates.backends.StaticDjangoTemplates',
+            'BACKEND': 'render_static.backends.StaticDjangoTemplates',
             'DIRS': [],
             'OPTIONS': {
-                'loaders': ['static_templates.loaders.StaticAppDirectoriesLoader'],
-                'builtins': ['static_templates.templatetags.static_templates']
+                'loaders': ['render_static.loaders.StaticAppDirectoriesLoader'],
+                'builtins': ['render_static.templatetags.render_static']
             },
         ]
     }
@@ -81,11 +81,11 @@ inherited from the standard Django ``TEMPLATES`` configuration.
 ``BACKEND``
 ~~~~~~~~~~~
 The backend classes that render templates. The standard ``TEMPLATES`` engines should not be used
-here, instead use the two engines provided by `django-static-templates`:
+here, instead use the two engines provided by `django-render-static`:
 
-- ``static_templates.backends.StaticDjangoTemplates``
+- ``render_static.backends.StaticDjangoTemplates``
     - default app directory: ``static_templates``
-- ``static_templates.backends.StaticJinja2Templates``
+- ``render_static.backends.StaticJinja2Templates``
     - default app directory: ``static_jinja2``
 
 If ``APP_DIRS`` is true, or if an app directories loader is used such that templates are searched
@@ -106,10 +106,10 @@ parameters are inherited from the standard Django template backends. One additio
 Works the same way as the ``loaders`` parameter on ``TEMPLATES``. Except when using the standard
 template backend the loaders have been extended and static specific loaders should be used instead:
 
-- ``static_templates.backends.StaticDjangoTemplates``
-    - ``static_templates.loaders.StaticAppDirectoriesLoader``
-    - ``static_templates.loaders.StaticFilesystemLoader``
-    - ``static_templates.loaders.StaticLocMemLoader``
+- ``render_static.backends.StaticDjangoTemplates``
+    - ``render_static.loaders.StaticAppDirectoriesLoader``
+    - ``render_static.loaders.StaticFilesystemLoader``
+    - ``render_static.loaders.StaticLocMemLoader``
 
 The normal Jinja2 loaders are used for the ``StaticJinja2Templates`` backend.
 
@@ -129,7 +129,7 @@ so stuffing dynamic database information in static template contexts is not advi
 ``templates``
 -------------
 
-The ``templates`` dictionary lists all templates that should be generated when render_static is
+The ``templates`` dictionary lists all templates that should be generated when `render_static` is
 run with no arguments. If specific configuration directives including rendered path and context are
 needed for a template they must be specified here.
 

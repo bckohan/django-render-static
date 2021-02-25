@@ -139,5 +139,5 @@ dmypy.json
 
 # Cython debug symbols
 cython_debug/
-/static_templates/tests/app1/static/
-/static_templates/tests/global_static/
+/render_static/tests/app1/static/
+/render_static/tests/global_static/

@@ -8,10 +8,10 @@ urlpatterns = [
     path('test/simple/', TestView.as_view(), name='path_tst'),
     path('test/simple/<int:arg1>', TestView.as_view(), name='path_tst'),
     path('test/different/<int:arg1>/<str:arg2>', TestView.as_view(), name='path_tst'),
-    path('sub1/', include('static_templates.tests.app1.urls', namespace='sub1')),
-    path('sub2/', include('static_templates.tests.app1.urls', namespace='sub2')),
-    path('sub3/', include('static_templates.tests.app2.urls')),
-    path('', include('static_templates.tests.app3.urls')),  # included into the default ns
+    path('sub1/', include('render_static.tests.app1.urls', namespace='sub1')),
+    path('sub2/', include('render_static.tests.app1.urls', namespace='sub2')),
+    path('sub3/', include('render_static.tests.app2.urls')),
+    path('', include('render_static.tests.app3.urls')),  # included into the default ns
     re_path(r'^re_path/[adfa]{2,3}$', TestView.as_view(), name='re_path_tst'),
     re_path(r'^re_path/(?P<strarg>\w+)/$', TestView.as_view(), name='re_path_tst'),
     re_path(r'^re_path/(?P<strarg>\w+)/(?P<intarg>\d+)/$', TestView.as_view(), name='re_path_tst'),

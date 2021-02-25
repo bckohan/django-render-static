@@ -2,6 +2,6 @@
 from django.apps import AppConfig
 
 
-class StaticTemplatesConfig(AppConfig):
+class RenderStaticConfig(AppConfig):
     # pylint: disable=C0115
-    name = 'static_templates'
+    name = 'render_static'

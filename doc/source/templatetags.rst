@@ -4,7 +4,7 @@
 Built-in Filters & Tags
 =======================
 
-`django-static-templates` includes several built-in template filters and tags. These are described
+`django-render-static` includes several built-in template filters and tags. These are described
 here.
 
 .. _filters:
@@ -218,16 +218,16 @@ easy to implement new ones::
 Note the ``placeholder`` attribute. This attribute is used by `urls_to_js` to reverse paths for the
 generated JavaScript. By including the attribute on your converter you ensure that anyone using your
 converter will be able to run `urls_to_js` without error. And you don't even have to
-include `django-static-templates` as a dependency if you aren't using it! Alternatively if you're
+include `django-render-static` as a dependency if you aren't using it! Alternatively if you're
 using someone else's converter and they haven't supplied a ``placeholder`` attribute, you can
 register one::
 
-    from static_templates.placeholders import register_converter_placeholder
+    from render_static.placeholders import register_converter_placeholder
     register_converter_placeholder(YearConverter, 2000)
 
 Of if you're using `re_path` instead::
 
-    from static_templates.placeholders import register_variable_placeholder
+    from render_static.placeholders import register_variable_placeholder
 
     app_name = 'year_app'
     urlpatterns = [

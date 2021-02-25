@@ -2,5 +2,5 @@ from django.apps import AppConfig
 
 
 class App2Config(AppConfig):
-    name = 'static_templates.tests.app2'
+    name = 'render_static.tests.app2'
     label = name.replace('.', '_')

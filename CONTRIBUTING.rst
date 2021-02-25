@@ -21,7 +21,7 @@ We are actively seeking additional maintainers. If you're interested, please con
 Installation
 ------------
 
-`django-static-templates` uses Poetry_ for environment, package and dependency management. Poetry_
+`django-render-static` uses Poetry_ for environment, package and dependency management. Poetry_
 greatly simplifies environment bootstrapping. Once it's installed.
 
 .. code-block::
@@ -31,7 +31,7 @@ greatly simplifies environment bootstrapping. Once it's installed.
 Documentation
 -------------
 
-`django-static-templates` documentation is generated using Sphinx_ with the readthedocs_ theme. Any
+`django-render-static` documentation is generated using Sphinx_ with the readthedocs_ theme. Any
 new feature PRs must provide updated documentation for the features added. To build the docs run:
 
 .. code-block::
@@ -43,16 +43,16 @@ new feature PRs must provide updated documentation for the features added. To bu
 Static Analysis
 ---------------
 
-`django-static-templates` uses mypy_ for static type analysis, and Pylint_ for python linting.
+`django-render-static` uses mypy_ for static type analysis, and Pylint_ for python linting.
 Header imports are also standardized using isort_. Before any PR is accepted the following must be
 run, and static analysis tools should not produce any errors or warnings. Disabling certain errors
 or warnings where justified is acceptable:
 
 .. code-block::
 
-    poetry run isort static_templates
-    poetry run mypy static_templates
-    poetry run pylint static_templates
+    poetry run isort render_static
+    poetry run mypy render_static
+    poetry run pylint render_static
     poetry run doc8 -q doc
     poetry check
     poetry run pip check
@@ -62,8 +62,8 @@ or warnings where justified is acceptable:
 Running Tests
 -------------
 
-`django-static-templates` is setup to use django-pytest_ to allow pytest_ to run Django unit tests.
-All the tests are housed in static_templates/tests/tests.py. Before a PR is accepted, all
+`django-render-static` is setup to use django-pytest_ to allow pytest_ to run Django unit tests.
+All the tests are housed in render_static/tests/tests.py. Before a PR is accepted, all
 tests must be passing and the code coverage must be at 100%.
 
 To run the full suite:
@@ -83,6 +83,6 @@ you would do:
 
 .. code-block::
 
-    poetry run pytest static_templates/tests/tests.py::DefinesToJavascriptTest
-    poetry run pytest static_templates/tests/tests.py::DefinesToJavascriptTest::test_classes_to_js
+    poetry run pytest render_static/tests/tests.py::DefinesToJavascriptTest
+    poetry run pytest render_static/tests/tests.py::DefinesToJavascriptTest::test_classes_to_js
 

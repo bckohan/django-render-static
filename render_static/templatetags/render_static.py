@@ -15,8 +15,8 @@ from django.urls.exceptions import NoReverseMatch
 from django.urls.resolvers import RegexPattern, RoutePattern
 from django.utils.module_loading import import_string
 from django.utils.safestring import SafeString
-from static_templates.exceptions import PlaceholderNotFound, URLGenerationFailed
-from static_templates.placeholders import (
+from render_static.exceptions import PlaceholderNotFound, URLGenerationFailed
+from render_static.placeholders import (
     resolve_placeholders,
     resolve_unnamed_placeholders,
 )

@@ -18,14 +18,11 @@ from django.template.utils import InvalidTemplateEngineError
 from django.test import TestCase, override_settings
 from django.urls import reverse
 from django.utils.module_loading import import_string
-from static_templates import placeholders
-from static_templates.backends import (
-    StaticDjangoTemplates,
-    StaticJinja2Templates,
-)
-from static_templates.engine import StaticTemplateEngine
-from static_templates.origin import AppOrigin, Origin
-from static_templates.tests import bad_pattern, defines
+from render_static import placeholders
+from render_static.backends import StaticDjangoTemplates, StaticJinja2Templates
+from render_static.engine import StaticTemplateEngine
+from render_static.origin import AppOrigin, Origin
+from render_static.tests import bad_pattern, defines
 
 APP1_STATIC_DIR = Path(__file__).parent / 'app1' / 'static'  # this dir does not exist and must be cleaned up
 APP2_STATIC_DIR = Path(__file__).parent / 'app2' / 'static'  # this dir exists and is checked in
@@ -37,7 +34,7 @@ EXPECTED_DIR = Path(__file__).parent / 'expected'
 USE_NODE_JS = True if shutil.which('node') else False
 
 def get_url_mod():
-    from static_templates.tests import urls
+    from render_static.tests import urls
     return urls
 
 
@@ -57,17 +54,15 @@ class TestGenerateStaticParserAccessor(TestCase):
 
     def test_get_parser(self):
         from django.core.management.base import CommandParser
-        from static_templates.management.commands.render_static import (
-            get_parser,
-        )
+        from render_static.management.commands.render_static import get_parser
         self.assertTrue(isinstance(get_parser(), CommandParser))
 
 
 class AppOriginTestCase(TestCase):
 
     def test_equality(self):
-        test_app1 = apps.get_app_config('static_templates_tests_app1')
-        test_app2 = apps.get_app_config('static_templates_tests_app2')
+        test_app1 = apps.get_app_config('render_static_tests_app1')
+        test_app2 = apps.get_app_config('render_static_tests_app2')
 
         origin1 = AppOrigin(name='/path/to/tmpl.html', template_name='to/tmpl.html', app=test_app1)
         origin2 = AppOrigin(name='/path/to/tmpl.html', template_name='to/tmpl.html', app=test_app1)
@@ -187,13 +182,13 @@ class DestOverrideTestCase(BaseTestCase):
 
 @override_settings(STATIC_TEMPLATES={
     'ENGINES': [{
-        'BACKEND': 'static_templates.backends.StaticDjangoTemplates',
+        'BACKEND': 'render_static.backends.StaticDjangoTemplates',
         'DIRS': [STATIC_TEMP_DIR],
         'OPTIONS': {
             'app_dir': 'custom_templates',
             'loaders': [
-                'static_templates.loaders.StaticFilesystemLoader',
-                'static_templates.loaders.StaticAppDirectoriesLoader'
+                'render_static.loaders.StaticFilesystemLoader',
+                'render_static.loaders.StaticAppDirectoriesLoader'
             ]
         },
     }],
@@ -232,7 +227,7 @@ class FSLoaderTestCase(BaseTestCase):
 
 @override_settings(STATIC_TEMPLATES={
     'ENGINES': [{
-        'BACKEND': 'static_templates.backends.StaticJinja2Templates',
+        'BACKEND': 'render_static.backends.StaticJinja2Templates',
         'DIRS': [STATIC_TEMP_DIR],
         'APP_DIRS': True
     }],
@@ -268,7 +263,7 @@ class Jinja2TestCase(BaseTestCase):
 
 @override_settings(STATIC_TEMPLATES={
     'ENGINES': [{
-        'BACKEND': 'static_templates.backends.StaticJinja2Templates',
+        'BACKEND': 'render_static.backends.StaticJinja2Templates',
         'DIRS': [STATIC_TEMP_DIR],
         'APP_DIRS': True,
         'OPTIONS': {
@@ -312,7 +307,7 @@ class ConfigTestCase(TestCase):
         """
         engine = StaticTemplateEngine({
             'ENGINES': [{
-                'BACKEND': 'static_templates.backends.StaticDjangoTemplates',
+                'BACKEND': 'render_static.backends.StaticDjangoTemplates',
                 'DIRS': [STATIC_TEMP_DIR],
                 'APP_DIRS': True,
                 'OPTIONS': {}
@@ -321,21 +316,21 @@ class ConfigTestCase(TestCase):
         self.assertEqual(
             engine['StaticDjangoTemplates'].engine.loaders,
             [
-                'static_templates.loaders.StaticFilesystemLoader',
-                'static_templates.loaders.StaticAppDirectoriesLoader'
+                'render_static.loaders.StaticFilesystemLoader',
+                'render_static.loaders.StaticAppDirectoriesLoader'
             ]
         )
 
         engine = StaticTemplateEngine({
             'ENGINES': [{
-                'BACKEND': 'static_templates.backends.StaticDjangoTemplates',
+                'BACKEND': 'render_static.backends.StaticDjangoTemplates',
                 'DIRS': [STATIC_TEMP_DIR],
                 'APP_DIRS': False,
                 'OPTIONS': {}
             }],
         })
         self.assertEqual(
-            engine['StaticDjangoTemplates'].engine.loaders, ['static_templates.loaders.StaticFilesystemLoader']
+            engine['StaticDjangoTemplates'].engine.loaders, ['render_static.loaders.StaticFilesystemLoader']
         )
 
     def test_app_dirs_error(self):
@@ -344,11 +339,11 @@ class ConfigTestCase(TestCase):
         """
         engine = StaticTemplateEngine({
             'ENGINES': [{
-                'BACKEND': 'static_templates.backends.StaticDjangoTemplates',
+                'BACKEND': 'render_static.backends.StaticDjangoTemplates',
                 'DIRS': [STATIC_TEMP_DIR],
                 'APP_DIRS': True,
                 'OPTIONS': {
-                    'loaders': ['static_templates.loaders.StaticFilesystemLoader']
+                    'loaders': ['render_static.loaders.StaticFilesystemLoader']
                 }
             }]
         })
@@ -435,12 +430,12 @@ class ConfigTestCase(TestCase):
         engine = StaticTemplateEngine({
             'ENGINES': [{
                 'NAME': 'IDENTICAL',
-                'BACKEND': 'static_templates.backends.StaticDjangoTemplates',
+                'BACKEND': 'render_static.backends.StaticDjangoTemplates',
                 'APP_DIRS': True
             },
             {
                 'NAME': 'IDENTICAL',
-                'BACKEND': 'static_templates.backends.StaticJinja2Templates',
+                'BACKEND': 'render_static.backends.StaticJinja2Templates',
                 'APP_DIRS': True
             }]
         })
@@ -449,12 +444,12 @@ class ConfigTestCase(TestCase):
         engine = StaticTemplateEngine({
             'ENGINES': [{
                 'NAME': 'IDENTICAL',
-                'BACKEND': 'static_templates.backends.StaticDjangoTemplates',
+                'BACKEND': 'render_static.backends.StaticDjangoTemplates',
                 'APP_DIRS': True
             },
             {
                 'NAME': 'DIFFERENT',
-                'BACKEND': 'static_templates.backends.StaticJinja2Templates',
+                'BACKEND': 'render_static.backends.StaticJinja2Templates',
                 'APP_DIRS': True
             }]
         })
@@ -476,7 +471,7 @@ class ConfigTestCase(TestCase):
     def test_allow_dot_modifiers(self):
         engine = StaticTemplateEngine({
             'ENGINES': [{
-                'BACKEND': 'static_templates.backends.StaticDjangoTemplates',
+                'BACKEND': 'render_static.backends.StaticDjangoTemplates',
                 'APP_DIRS': True,
             }],
             'templates': {
@@ -538,13 +533,13 @@ class DirectRenderTestCase(BaseTestCase):
 
 @override_settings(STATIC_TEMPLATES={
     'ENGINES': [{
-        'BACKEND': 'static_templates.backends.StaticDjangoTemplates',
+        'BACKEND': 'render_static.backends.StaticDjangoTemplates',
         'DIRS': [STATIC_TEMP_DIR],
         'OPTIONS': {
             'app_dir': 'custom_templates',
             'loaders': [
-                'static_templates.loaders.StaticFilesystemLoader',
-                'static_templates.loaders.StaticAppDirectoriesLoader'
+                'render_static.loaders.StaticFilesystemLoader',
+                'render_static.loaders.StaticAppDirectoriesLoader'
             ]
         },
     }],
@@ -599,30 +594,30 @@ class GenerateNothing(BaseTestCase):
 
 @override_settings(STATIC_TEMPLATES={
     'ENGINES': [{
-        'BACKEND': 'static_templates.backends.StaticDjangoTemplates',
+        'BACKEND': 'render_static.backends.StaticDjangoTemplates',
         'OPTIONS': {
             'app_dir': 'custom_templates',
             'loaders': [
-                ('static_templates.loaders.StaticLocMemLoader', {
+                ('render_static.loaders.StaticLocMemLoader', {
                     'defines1.js': 'var defines = {\n{{ classes|classes_to_js:"  " }}};',
                     'defines2.js': 'var defines = {\n{{ modules|modules_to_js }}};',
                     'defines_error.js': 'var defines = {\n{{ classes|classes_to_js }}};'
                 })
             ],
-            'builtins': ['static_templates.templatetags.static_templates']
+            'builtins': ['render_static.templatetags.render_static']
         },
     }],
     'templates': {
         'defines1.js': {
             'dest': GLOBAL_STATIC_DIR / 'defines1.js',
             'context': {
-                'classes': [defines.MoreDefines, 'static_templates.tests.defines.ExtendedDefines']
+                'classes': [defines.MoreDefines, 'render_static.tests.defines.ExtendedDefines']
             }
         },
         'defines2.js': {
             'dest': GLOBAL_STATIC_DIR / 'defines2.js',
             'context': {
-                'modules': [defines, 'static_templates.tests.defines2']
+                'modules': [defines, 'render_static.tests.defines2']
             }
         },
         'defines_error.js': {
@@ -705,28 +700,28 @@ class DefinesToJavascriptTest(BaseTestCase):
     def test_classes_to_js_error(self):
         self.assertRaises(CommandError, lambda: call_command('render_static', 'defines_error.js'))
 
-    [defines, 'static_templates.tests.defines2']
+    [defines, 'render_static.tests.defines2']
     @override_settings(STATIC_TEMPLATES={
         'ENGINES': [{
-            'BACKEND': 'static_templates.backends.StaticDjangoTemplates',
+            'BACKEND': 'render_static.backends.StaticDjangoTemplates',
             'OPTIONS': {
                 'loaders': [
-                    ('static_templates.loaders.StaticLocMemLoader', {
+                    ('render_static.loaders.StaticLocMemLoader', {
                         'defines1.js': ('var defines = '
                                         '{\n{{ '
-                                        '"static_templates.tests.defines.MoreDefines,'
-                                        'static_templates.tests.defines.ExtendedDefines"|split:","'
+                                        '"render_static.tests.defines.MoreDefines,'
+                                        'render_static.tests.defines.ExtendedDefines"|split:","'
                                         '|classes_to_js:"  " }}};'
                         ),
                         'defines2.js': ('var defines = '
                                         '{\n{{ '
-                                        '"static_templates.tests.defines '
-                                        'static_templates.tests.defines2"|split'
+                                        '"render_static.tests.defines '
+                                        'render_static.tests.defines2"|split'
                                         '|modules_to_js:"  " }}};'
                         )
                     })
                 ],
-                'builtins': ['static_templates.templatetags.static_templates']
+                'builtins': ['render_static.templatetags.render_static']
             },
         }],
         'templates': {
@@ -746,7 +741,7 @@ class DefinesToJavascriptTest(BaseTestCase):
         self.assertEqual(
             self.diff_modules(
                 js_file=GLOBAL_STATIC_DIR / 'defines2.js',
-                py_modules=['static_templates.tests.defines', 'static_templates.tests.defines2']
+                py_modules=['render_static.tests.defines', 'render_static.tests.defines2']
             ),
             {}
         )
@@ -869,14 +864,14 @@ class URLJavascriptMixin:
 
 @override_settings(STATIC_TEMPLATES={
     'ENGINES': [{
-        'BACKEND': 'static_templates.backends.StaticDjangoTemplates',
+        'BACKEND': 'render_static.backends.StaticDjangoTemplates',
         'OPTIONS': {
             'loaders': [
-                ('static_templates.loaders.StaticLocMemLoader', {
+                ('render_static.loaders.StaticLocMemLoader', {
                     'urls.js': 'var urls = {\n{% urls_to_js es5=True%}};'
                 })
             ],
-            'builtins': ['static_templates.templatetags.static_templates']
+            'builtins': ['render_static.templatetags.render_static']
         },
     }],
 })
@@ -910,14 +905,14 @@ class URLSToJavascriptTest(URLJavascriptMixin, BaseTestCase):
 
     @override_settings(STATIC_TEMPLATES={
         'ENGINES': [{
-            'BACKEND': 'static_templates.backends.StaticDjangoTemplates',
+            'BACKEND': 'render_static.backends.StaticDjangoTemplates',
             'OPTIONS': {
                 'loaders': [
-                    ('static_templates.loaders.StaticLocMemLoader', {
+                    ('render_static.loaders.StaticLocMemLoader', {
                         'urls.js': 'var urls = {\n{% urls_to_js %}};'
                     })
                 ],
-                'builtins': ['static_templates.templatetags.static_templates']
+                'builtins': ['render_static.templatetags.render_static']
             },
         }],
     })
@@ -1041,10 +1036,10 @@ class URLSToJavascriptTest(URLJavascriptMixin, BaseTestCase):
 
     @override_settings(STATIC_TEMPLATES={
         'ENGINES': [{
-            'BACKEND': 'static_templates.backends.StaticDjangoTemplates',
+            'BACKEND': 'render_static.backends.StaticDjangoTemplates',
             'OPTIONS': {
                 'loaders': [
-                    ('static_templates.loaders.StaticLocMemLoader', {
+                    ('render_static.loaders.StaticLocMemLoader', {
                         'urls.js': 'var urls = {\n'
                                    '{% urls_to_js '
                                         'es5=True '
@@ -1053,7 +1048,7 @@ class URLSToJavascriptTest(URLJavascriptMixin, BaseTestCase):
                                    '%}};'
                     })
                 ],
-                'builtins': ['static_templates.templatetags.static_templates']
+                'builtins': ['render_static.templatetags.render_static']
             },
         }],
         'templates': {
@@ -1135,10 +1130,10 @@ class URLSToJavascriptTest(URLJavascriptMixin, BaseTestCase):
 
     @override_settings(STATIC_TEMPLATES={
         'ENGINES': [{
-            'BACKEND': 'static_templates.backends.StaticDjangoTemplates',
+            'BACKEND': 'render_static.backends.StaticDjangoTemplates',
             'OPTIONS': {
                 'loaders': [
-                    ('static_templates.loaders.StaticLocMemLoader', {
+                    ('render_static.loaders.StaticLocMemLoader', {
                         'urls.js': 'var urls = {\n'
                                    '{% urls_to_js '
                                         'es5=True '
@@ -1147,7 +1142,7 @@ class URLSToJavascriptTest(URLJavascriptMixin, BaseTestCase):
                                    '%}};'
                     })
                 ],
-                'builtins': ['static_templates.templatetags.static_templates']
+                'builtins': ['render_static.templatetags.render_static']
             },
         }],
         'templates': {
@@ -1224,10 +1219,10 @@ class URLSToJavascriptTest(URLJavascriptMixin, BaseTestCase):
 
     @override_settings(STATIC_TEMPLATES={
         'ENGINES': [{
-            'BACKEND': 'static_templates.backends.StaticDjangoTemplates',
+            'BACKEND': 'render_static.backends.StaticDjangoTemplates',
             'OPTIONS': {
                 'loaders': [
-                    ('static_templates.loaders.StaticLocMemLoader', {
+                    ('render_static.loaders.StaticLocMemLoader', {
                         'urls.js': 'var urls = {\n'
                                    '{% urls_to_js '
                                         'url_conf=url_mod '
@@ -1236,7 +1231,7 @@ class URLSToJavascriptTest(URLJavascriptMixin, BaseTestCase):
                                    '%}};'
                     })
                 ],
-                'builtins': ['static_templates.templatetags.static_templates']
+                'builtins': ['render_static.templatetags.render_static']
             },
         }],
         'templates': {
@@ -1316,19 +1311,19 @@ class URLSToJavascriptTest(URLJavascriptMixin, BaseTestCase):
 
     @override_settings(STATIC_TEMPLATES={
         'ENGINES': [{
-            'BACKEND': 'static_templates.backends.StaticDjangoTemplates',
+            'BACKEND': 'render_static.backends.StaticDjangoTemplates',
             'OPTIONS': {
                 'loaders': [
-                    ('static_templates.loaders.StaticLocMemLoader', {
+                    ('render_static.loaders.StaticLocMemLoader', {
                         'urls.js': 'var urls = {\n'
                                    '{% urls_to_js '
-                                        'url_conf="static_templates.tests.urls" '
+                                        'url_conf="render_static.tests.urls" '
                                         'include=include '
                                         'exclude=exclude '
                                    '%}};'
                     })
                 ],
-                'builtins': ['static_templates.templatetags.static_templates']
+                'builtins': ['render_static.templatetags.render_static']
             },
         }],
         'templates': {
@@ -1410,14 +1405,14 @@ class URLSToJavascriptOffNominalTest(URLJavascriptMixin, BaseTestCase):
 
     @override_settings(STATIC_TEMPLATES={
         'ENGINES': [{
-            'BACKEND': 'static_templates.backends.StaticDjangoTemplates',
+            'BACKEND': 'render_static.backends.StaticDjangoTemplates',
             'OPTIONS': {
                 'loaders': [
-                    ('static_templates.loaders.StaticLocMemLoader', {
+                    ('render_static.loaders.StaticLocMemLoader', {
                         'urls.js': 'var urls = {\n{% urls_to_js include=include %}};'
                     })
                 ],
-                'builtins': ['static_templates.templatetags.static_templates']
+                'builtins': ['render_static.templatetags.render_static']
             },
         }],
         'templates': {
@@ -1443,14 +1438,14 @@ class URLSToJavascriptOffNominalTest(URLJavascriptMixin, BaseTestCase):
 
     @override_settings(STATIC_TEMPLATES={
         'ENGINES': [{
-            'BACKEND': 'static_templates.backends.StaticDjangoTemplates',
+            'BACKEND': 'render_static.backends.StaticDjangoTemplates',
             'OPTIONS': {
                 'loaders': [
-                    ('static_templates.loaders.StaticLocMemLoader', {
+                    ('render_static.loaders.StaticLocMemLoader', {
                         'urls.js': 'var urls = {\n{% urls_to_js include=include %}};'
                     })
                 ],
-                'builtins': ['static_templates.templatetags.static_templates']
+                'builtins': ['render_static.templatetags.render_static']
             },
         }],
         'templates': {
@@ -1475,14 +1470,14 @@ class URLSToJavascriptOffNominalTest(URLJavascriptMixin, BaseTestCase):
 
     @override_settings(STATIC_TEMPLATES={
         'ENGINES': [{
-            'BACKEND': 'static_templates.backends.StaticDjangoTemplates',
+            'BACKEND': 'render_static.backends.StaticDjangoTemplates',
             'OPTIONS': {
                 'loaders': [
-                    ('static_templates.loaders.StaticLocMemLoader', {
+                    ('render_static.loaders.StaticLocMemLoader', {
                         'urls.js': 'var urls = {\n{% urls_to_js include=include %}};'
                     })
                 ],
-                'builtins': ['static_templates.templatetags.static_templates']
+                'builtins': ['render_static.templatetags.render_static']
             },
         }],
         'templates': {
@@ -1500,14 +1495,14 @@ class URLSToJavascriptOffNominalTest(URLJavascriptMixin, BaseTestCase):
 
     @override_settings(STATIC_TEMPLATES={
         'ENGINES': [{
-            'BACKEND': 'static_templates.backends.StaticDjangoTemplates',
+            'BACKEND': 'render_static.backends.StaticDjangoTemplates',
             'OPTIONS': {
                 'loaders': [
-                    ('static_templates.loaders.StaticLocMemLoader', {
+                    ('render_static.loaders.StaticLocMemLoader', {
                         'urls.js': 'var urls = {\n{% urls_to_js url_conf=url_mod %}};'
                     })
                 ],
-                'builtins': ['static_templates.templatetags.static_templates']
+                'builtins': ['render_static.templatetags.render_static']
             },
         }],
         'templates': {
@@ -1523,14 +1518,14 @@ class URLSToJavascriptOffNominalTest(URLJavascriptMixin, BaseTestCase):
 
     @override_settings(STATIC_TEMPLATES={
         'ENGINES': [{
-            'BACKEND': 'static_templates.backends.StaticDjangoTemplates',
+            'BACKEND': 'render_static.backends.StaticDjangoTemplates',
             'OPTIONS': {
                 'loaders': [
-                    ('static_templates.loaders.StaticLocMemLoader', {
+                    ('render_static.loaders.StaticLocMemLoader', {
                         'urls.js': 'var urls = {\n{% urls_to_js url_conf=url_mod %}};'
                     })
                 ],
-                'builtins': ['static_templates.templatetags.static_templates']
+                'builtins': ['render_static.templatetags.render_static']
             },
         }],
         'templates': {
@@ -1545,7 +1540,7 @@ class URLSToJavascriptOffNominalTest(URLJavascriptMixin, BaseTestCase):
         self.assertRaises(CommandError, lambda: call_command('render_static', 'urls.js'))
 
     def test_register_bogus_converter(self):
-        from static_templates import placeholders as gen
+        from render_static import placeholders as gen
         self.assertRaises(
             ValueError,
             lambda: placeholders.register_converter_placeholder('Not a converter type!', 1234)

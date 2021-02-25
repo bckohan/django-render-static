@@ -1,6 +1,6 @@
 from django.apps import AppConfig
 from django.urls.converters import register_converter
-from static_templates.placeholders import register_converter_placeholder
+from render_static.placeholders import register_converter_placeholder
 
 
 class YearConverter:
@@ -34,5 +34,5 @@ register_converter_placeholder(YearConverter, 'deadbeef')
 
 
 class App1Config(AppConfig):
-    name = 'static_templates.tests.app1'
+    name = 'render_static.tests.app1'
     label = name.replace('.', '_')
