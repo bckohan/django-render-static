@@ -2,9 +2,9 @@
 Introduction
 ============
 
-`django-render-static` enables Django's dynamic templates to be used to generate static files.
-That is, files that are collected during the ``collectstatic`` routine and likely served above
-Django on the stack. Static templates should be rendered preceding any run of ``collectstatic``.
+Use Django's dynamic templates to render static files. That is, files that are collected
+during the ``collectstatic`` routine and likely served above Django on the stack. Static
+templates should be rendered preceding any run of ``collectstatic``.
 
 For example, a frequently occurring pattern that violates the DRY principle is the presence of
 defines, or enum like structures in server side Python code that are simply replicated in client
