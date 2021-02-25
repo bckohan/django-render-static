@@ -41,7 +41,7 @@ exclude = ["render_static/tests"]
 
 [tool.poetry.dependencies]
 python = "^3.6"
-Jinja2 = "^2.11.3"
+Jinja2 = "^2.9"
 Django = "^2.2||^3.0"
 
 [tool.poetry.dev-dependencies]
