@@ -47,6 +47,7 @@ jobs:
         poetry check
         poetry run pip check
         poetry run safety check --full-report
+        poetry run python -m readme_renderer ./README.rst -o /tmp/README.html
 
     - name: Upload coverage to Codecov
       uses: codecov/codecov-action@v1

@@ -57,6 +57,7 @@ or warnings where justified is acceptable:
     poetry check
     poetry run pip check
     poetry run safety check --full-report
+    poetry run python -m readme_renderer ./README.rst
 
 
 Running Tests

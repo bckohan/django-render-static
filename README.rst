@@ -46,7 +46,7 @@ encouraged! Especially additional template tags and filters!
 Installation
 ------------
 
-1. Clone django-render-static from GitHub_ or install a release off PyPI_ ::
+1. Clone django-render-static from GitHub_ or install a release off PyPI_ :
 
 .. code:: bash
 
