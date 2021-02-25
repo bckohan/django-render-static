@@ -1,31 +1,31 @@
-|Github all releases| |MIT license| |PyPI version fury.io| |PyPI pyversions| |PyPI status|
-|Documentation Status| |Code Cov| |Tests Status|
+|MIT license| |PyPI version fury.io| |PyPI pyversions| |PyPI status| |Documentation Status|
+|Code Cov| |Tests Status|
 
 .. |MIT license| image:: https://img.shields.io/badge/License-MIT-blue.svg
    :target: https://lbesson.mit-license.org/
 
-.. |PyPI version fury.io| image:: https://badge.fury.io/py/ansicolortags.svg
-   :target: https://pypi.python.org/pypi/django-static-templates/
+.. |PyPI version fury.io| image:: https://badge.fury.io/py/django-render-static.svg
+   :target: https://pypi.python.org/pypi/django-render-static/
 
-.. |PyPI pyversions| image:: https://img.shields.io/pypi/pyversions/ansicolortags.svg
-   :target: https://pypi.python.org/pypi/django-static-templates/
+.. |PyPI pyversions| image:: https://img.shields.io/pypi/pyversions/django-render-static.svg
+   :target: https://pypi.python.org/pypi/django-render-static/
 
-.. |PyPI status| image:: https://img.shields.io/pypi/status/ansicolortags.svg
-   :target: https://pypi.python.org/pypi/django-static-templates
+.. |PyPI status| image:: https://img.shields.io/pypi/status/django-render-static.svg
+   :target: https://pypi.python.org/pypi/django-render-static
 
-.. |Documentation Status| image:: https://readthedocs.org/projects/ansicolortags/badge/?version=latest
-   :target: http://django-static-templates.readthedocs.io/?badge=latest/
+.. |Documentation Status| image:: https://readthedocs.org/projects/django-render-static/badge/?version=latest
+   :target: http://django-render-static.readthedocs.io/?badge=latest/
 
-.. |Code Cov| image:: https://codecov.io/gh/bckohan/django-static-templates/branch/main/graph/badge.svg?token=0IZOKN2DYL
-   :target: https://codecov.io/gh/bckohan/django-static-templates
+.. |Code Cov| image:: https://codecov.io/gh/bckohan/django-render-static/branch/main/graph/badge.svg?token=0IZOKN2DYL
+   :target: https://codecov.io/gh/bckohan/django-render-static
 
-.. |Tests Status| image:: https://github.com/bckohan/django-static-templates/workflows/test/badge.svg?branch=master&event=push
-   :target: https://github.com/bckohan/django-static-templates/actions?query=workflow%3Atest
+.. |Tests Status| image:: https://github.com/bckohan/django-render-static/workflows/test/badge.svg?branch=master&event=push
+   :target: https://github.com/bckohan/django-render-static/actions?query=workflow%3Atest
 
-django-static-templates
+django-render-static
 #######################
 
-`django-static-templates` enables Django's dynamic templates to be used to generate static files.
+`django-render-static` enables Django's dynamic templates to be used to generate static files.
 That is, files that are collected during the ``collectstatic`` routine and likely served above
 Django on the stack. Static templates should be rendered preceding any run of ``collectstatic``.
 
@@ -35,22 +35,22 @@ side JavaScript. Single-sourcing these structures by generating client side code
 side code maintains DRYness.
 
 Have you ever wished you could replicate Django's `reverse` function in a JavaScript library for
-your site? Now you can with the `urls_to_js` template tag included with `django-static-templates`.
+your site? Now you can with the `urls_to_js` template tag included with `django-render-static`.
 
 You can report bugs and discuss features on the
-`issues page <https://github.com/bckohan/django-static-templates/issues>`_.
+`issues page <https://github.com/bckohan/django-render-static/issues>`_.
 
-`Contributions <https://github.com/bckohan/django-static-templates/blob/main/CONTRIBUTING.rst>`_ are
+`Contributions <https://github.com/bckohan/django-render-static/blob/main/CONTRIBUTING.rst>`_ are
 encouraged! Especially additional template tags and filters!
 
 Installation
 ------------
 
-1. Clone django-static-templates from GitHub_ or install a release off PyPI_ ::
+1. Clone django-render-static from GitHub_ or install a release off PyPI_ ::
 
 .. code:: bash
 
-       pip install django-static-templates
+       pip install django-render-static
 
 
 2. Add 'static_templates' to your ``INSTALLED_APPS`` :
@@ -82,8 +82,8 @@ Installation
         $> manage.py collectstatic
 
 
-.. _GitHub: http://github.com/bckohan/django-static-templates
-.. _PyPI: http://pypi.python.org/pypi/django-static-templates
+.. _GitHub: http://github.com/bckohan/django-render-static
+.. _PyPI: http://pypi.python.org/pypi/django-render-static
 
 
 Usage
