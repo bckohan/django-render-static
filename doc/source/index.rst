@@ -30,3 +30,4 @@ encouraged! Especially additional template tags and filters!
    templatetags
    commands
    reference
+   changelog

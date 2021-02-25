@@ -37,7 +37,7 @@ include = [
 packages = [
     { include = "render_static" }
 ]
-
+exclude = ["render_static/tests"]
 
 [tool.poetry.dependencies]
 python = "^3.6"

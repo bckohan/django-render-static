@@ -41,8 +41,8 @@ jobs:
         poetry run pytest
     - name: Run Static Analysis
       run: |
-        poetry run pylint static_templates
-        poetry run mypy static_templates
+        poetry run pylint render_static
+        poetry run mypy render_static
         poetry run doc8 -q doc
         poetry check
         poetry run pip check
