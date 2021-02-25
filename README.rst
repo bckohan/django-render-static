@@ -1,9 +1,26 @@
-|Github all releases| |MIT license|
+|Github all releases| |MIT license| |PyPI version fury.io| |PyPI pyversions| |PyPI status|
+|Documentation Status| |Code Cov| |Tests Status|
 
 .. |MIT license| image:: https://img.shields.io/badge/License-MIT-blue.svg
    :target: https://lbesson.mit-license.org/
-.. |Github all releases| image:: https://img.shields.io/github/downloads/Naereen/StrapDown.js/total.svg
-   :target: https://GitHub.com/Naereen/StrapDown.js/releases/)
+
+.. |PyPI version fury.io| image:: https://badge.fury.io/py/ansicolortags.svg
+   :target: https://pypi.python.org/pypi/django-static-templates/
+
+.. |PyPI pyversions| image:: https://img.shields.io/pypi/pyversions/ansicolortags.svg
+   :target: https://pypi.python.org/pypi/django-static-templates/
+
+.. |PyPI status| image:: https://img.shields.io/pypi/status/ansicolortags.svg
+   :target: https://pypi.python.org/pypi/django-static-templates
+
+.. |Documentation Status| image:: https://readthedocs.org/projects/ansicolortags/badge/?version=latest
+   :target: http://django-static-templates.readthedocs.io/?badge=latest/
+
+.. |Code Cov| image:: https://codecov.io/gh/bckohan/django-static-templates/branch/main/graph/badge.svg?token=0IZOKN2DYL
+   :target: https://codecov.io/gh/bckohan/django-static-templates
+
+.. |Tests Status| image:: https://github.com/bckohan/django-static-templates/workflows/test/badge.svg?branch=master&event=push
+   :target: https://github.com/bckohan/django-static-templates/actions?query=workflow%3Atest
 
 django-static-templates
 #######################
