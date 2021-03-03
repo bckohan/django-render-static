@@ -183,3 +183,15 @@ def resolve_unnamed_placeholders(
 
 register_variable_placeholder('app_label', 'site', app_name='admin')
 register_variable_placeholder('app_label', 'auth', app_name='admin')
+
+# Register some common placeholders
+register_variable_placeholder(var_name='key', placeholder='a')
+register_variable_placeholder(var_name='key', placeholder=0)
+
+# allauth
+register_variable_placeholder(var_name='uidb36', placeholder=0)
+
+# DRF
+register_variable_placeholder(var_name='format', placeholder='a')
+register_variable_placeholder(var_name='pk', placeholder=0)
+register_variable_placeholder(var_name='pk', placeholder='a')

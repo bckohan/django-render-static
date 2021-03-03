@@ -43,6 +43,8 @@ You can report bugs and discuss features on the
 `Contributions <https://github.com/bckohan/django-render-static/blob/main/CONTRIBUTING.rst>`_ are
 encouraged! Especially additional template tags and filters!
 
+`Full documentation at read the docs. <https://django-render-static.readthedocs.io/en/latest/>`_
+
 Installation
 ------------
 

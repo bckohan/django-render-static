@@ -8,7 +8,7 @@ r"""
 """
 
 __title__ = 'Django Render Static'
-__version__ = '0.1.0'
+__version__ = '0.1.1'
 __author__ = 'Brian Kohan'
 __license__ = 'MIT'
 __copyright__ = 'Copyright 2021 Brian Kohan'
