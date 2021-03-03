@@ -193,5 +193,6 @@ register_variable_placeholder(var_name='uidb36', placeholder=0)
 
 # DRF
 register_variable_placeholder(var_name='format', placeholder='a')
+
 register_variable_placeholder(var_name='pk', placeholder=0)
 register_variable_placeholder(var_name='pk', placeholder='a')
