@@ -970,6 +970,22 @@ class URLSToJavascriptTest(URLJavascriptMixin, BaseTestCase):
         #################################################################
 
         #################################################################
+        # app1 include with hierarchical variable - DJANGO doesnt support this!
+        # maybe it will someday - leave test here
+        # qname = 'sub2:app1_pth'
+        # self.compare(qname, {'root_var': 'root'})
+        # self.compare(qname, {'arg1': 143,'root_var': 'root'})  # emma
+        # self.compare(qname, {'arg1': 5678, 'arg2': 'xo', 'root_var': 'root'})
+        # self.compare(
+        #    'sub2:app1_detail',
+        #    {'id': uuid.uuid1(), 'root_var': 'root'},
+        #    object_hook=self.convert_to_id
+        # )
+        # self.compare('sub2:custom_tst', {'year': 1021, 'root_var': 'root'})
+        # self.compare('sub2:unreg_conv_tst', {'name': 'name2', 'root_var': 'root'})
+        #################################################################
+
+        #################################################################
         # app1 include through app2
         qname = 'app2:app1:app1_pth'
         self.compare(qname)

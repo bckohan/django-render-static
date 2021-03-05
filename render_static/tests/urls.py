@@ -11,6 +11,8 @@ urlpatterns = [
     path('sub1/', include('render_static.tests.app1.urls', namespace='sub1')),
     path('sub2/', include('render_static.tests.app1.urls', namespace='sub2')),
     path('sub3/', include('render_static.tests.app2.urls')),
+    # django doesnt support inclusions with additional arguments
+    #path('<str:root_var>/sub2/', include('render_static.tests.app1.urls', namespace='sub2')),
     path('', include('render_static.tests.app3.urls')),  # included into the default ns
     re_path(r'^re_path/[adfa]{2,3}$', TestView.as_view(), name='re_path_tst'),
     re_path(r'^re_path/(?P<strarg>\w+)/$', TestView.as_view(), name='re_path_tst'),
