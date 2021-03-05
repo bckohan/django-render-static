@@ -118,7 +118,7 @@ Your settings file might look like::
                  ],
                 'builtins': ['render_static.templatetags.render_static']
             },
-        },
+        }],
         'templates': {
             'urls.js': {
                 'dest': BASE_DIR / 'more_static' / 'urls.js',
@@ -126,7 +126,8 @@ Your settings file might look like::
                     'exclude': ['admin']
                 }
             }
-        }]
+        }
+    }
 
 Then call `render_static` before `collectstatic`::
 
