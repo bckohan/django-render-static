@@ -32,6 +32,8 @@ __all__ = [
     'resolve_unnamed_placeholders'
 ]
 
+ALWAYS_TRY_THESE = [0, 'a', 1, 'A']
+
 converter_placeholders: Dict[Type, List] = {
     converters.IntConverter: [0],
     converters.PathConverter: ['a'],
@@ -148,7 +150,7 @@ def resolve_placeholders(
             f'No placeholders are registered for any of the lookup parameters: {lookup}'
         )
 
-    return placeholders
+    return placeholders + [always for always in ALWAYS_TRY_THESE if always not in placeholders]
 
 
 def resolve_unnamed_placeholders(
@@ -178,21 +180,8 @@ def resolve_unnamed_placeholders(
             f'No unnamed placeholders are registered for any of the lookup parameters: {lookup}'
         )
 
-    return placeholders
+    return placeholders + [always for always in ALWAYS_TRY_THESE if always not in placeholders]
 
 
 register_variable_placeholder('app_label', 'site', app_name='admin')
 register_variable_placeholder('app_label', 'auth', app_name='admin')
-
-# Register some common placeholders
-register_variable_placeholder(var_name='key', placeholder='a')
-register_variable_placeholder(var_name='key', placeholder=0)
-
-# allauth
-register_variable_placeholder(var_name='uidb36', placeholder=0)
-
-# DRF
-register_variable_placeholder(var_name='format', placeholder='a')
-
-register_variable_placeholder(var_name='pk', placeholder=0)
-register_variable_placeholder(var_name='pk', placeholder='a')
