@@ -23,6 +23,7 @@ from render_static.backends import StaticDjangoTemplates, StaticJinja2Templates
 from render_static.engine import StaticTemplateEngine
 from render_static.origin import AppOrigin, Origin
 from render_static.tests import bad_pattern, defines
+from render_static.url_tree import ClassURLWriter
 
 APP1_STATIC_DIR = Path(__file__).parent / 'app1' / 'static'  # this dir does not exist and must be cleaned up
 APP2_STATIC_DIR = Path(__file__).parent / 'app2' / 'static'  # this dir exists and is checked in
@@ -755,6 +756,7 @@ class URLJavascriptMixin:
 
     url_js = None
     es5_mode = False
+    class_mode = None
 
     def clear_placeholder_registries(self):
         from importlib import reload
@@ -774,21 +776,40 @@ class URLJavascriptMixin:
             for comp in qname.split(':'):
                 accessor_str += f'["{comp}"]'
             with open(GLOBAL_STATIC_DIR / 'get_url.js', 'a+') as tmp_js:
-                if args:
-                    tmp_js.write(
-                        f'\ntry {{'
-                        f'\n  console.log(urls{accessor_str}'
-                        f'({json.dumps(kwargs, cls=BestEffortEncoder)},'
-                        f'{json.dumps(args, cls=BestEffortEncoder)}));\n'
-                        f'}} catch (error) {{}}\n'
-                    )
+                if self.class_mode:
+                    if args:
+                        tmp_js.write(
+                            f'\ntry {{'
+                            f'\n  const urls = new {self.class_mode}();'
+                            f'\n  console.log(urls.reverse("{qname}",'
+                            f'{json.dumps(kwargs, cls=BestEffortEncoder)},'
+                            f'{json.dumps(args, cls=BestEffortEncoder)}));\n'
+                            f'}} catch (error) {{}}\n'
+                        )
+                    else:
+                        tmp_js.write(
+                            f'\ntry {{'
+                            f'\n  const urls = new {self.class_mode}();'
+                            f'\n  console.log(urls.reverse("{qname}",'
+                            f'{json.dumps(kwargs, cls=BestEffortEncoder)}));\n'
+                            f'}} catch (error) {{}}\n'
+                        )
                 else:
-                    tmp_js.write(
-                        f'\ntry {{'
-                        f'\n  console.log(urls{accessor_str}'
-                        f'({json.dumps(kwargs, cls=BestEffortEncoder)}));\n'
-                        f'}} catch (error) {{}}\n'
-                    )
+                    if args:
+                        tmp_js.write(
+                            f'\ntry {{'
+                            f'\n  console.log(urls{accessor_str}'
+                            f'({json.dumps(kwargs, cls=BestEffortEncoder)},'
+                            f'{json.dumps(args, cls=BestEffortEncoder)}));\n'
+                            f'}} catch (error) {{}}\n'
+                        )
+                    else:
+                        tmp_js.write(
+                            f'\ntry {{'
+                            f'\n  console.log(urls{accessor_str}'
+                            f'({json.dumps(kwargs, cls=BestEffortEncoder)}));\n'
+                            f'}} catch (error) {{}}\n'
+                        )
 
             return subprocess.check_output([
                 'node',
@@ -833,7 +854,10 @@ class URLJavascriptMixin:
             kwargs = {}
         if args is None:
             args = []
-        resp = self.client.get(self.get_url_from_js(qname, kwargs, args))
+
+        tst_pth = self.get_url_from_js(qname, kwargs, args)
+        resp = self.client.get(tst_pth)
+
         resp = resp.json(object_hook=object_hook)
         resp['args'] = args_hook(resp['args'])
         self.assertEqual({
@@ -902,6 +926,28 @@ class URLSToJavascriptTest(URLJavascriptMixin, BaseTestCase):
             ['adf', 143],
             app_name='bogus_app'
         )
+
+    @override_settings(STATIC_TEMPLATES={
+        'ENGINES': [{
+            'BACKEND': 'render_static.backends.StaticDjangoTemplates',
+            'OPTIONS': {
+                'loaders': [
+                    ('render_static.loaders.StaticLocMemLoader', {
+                        'urls.js': '{% urls_to_js visitor="render_static.ClassURLWriter" %}'
+                    })
+                ],
+                'builtins': ['render_static.templatetags.render_static']
+            },
+        }],
+    })
+    def test_full_url_dump_class(self):
+        """
+        This ES6 test is horrendously slow when not using node for reasons mentioned by the Js2Py
+        warning
+        """
+        self.class_mode = ClassURLWriter.class_name_
+        self.test_full_url_dump(es5=False)
+        self.class_mode = None
 
     @override_settings(STATIC_TEMPLATES={
         'ENGINES': [{
@@ -1044,7 +1090,6 @@ class URLSToJavascriptTest(URLJavascriptMixin, BaseTestCase):
 
         #################################################################
         # app3 urls - these should be included into the null namespace
-        qname = 'app3_i'
         self.compare('app3_idx')
         self.compare('app3_arg', {'arg1': 1})
         self.compare('unreg_conv_tst', {'name': 'name1'})

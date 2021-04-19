@@ -452,6 +452,21 @@ class URLTreeVisitor(metaclass=ABCMeta):
         if line is not None:
             self.rendered_ += f'{self.indent_*self.level_}{line}{self.nl_}'
 
+    def sub_to_str(self, sub):
+        if isinstance(sub.arg, int):
+            return (
+                f'"+args[{sub.arg}].toString()+"' if self.es5_
+                else f'${{args[{sub.arg}]}}'
+            )
+        else:
+            return (
+                f'"+kwargs["{sub.arg}"].toString()+"' if self.es5_
+                else f'${{kwargs["{sub.arg}"]}}'
+            )
+
+    def path_join(self, path):
+        return ''.join([comp if isinstance(comp, str) else self.sub_to_str(comp) for comp in path])
+
 
 class SimpleURLWriter(URLTreeVisitor):
 
@@ -471,9 +486,10 @@ class SimpleURLWriter(URLTreeVisitor):
             yield 'args = args || [];'
         else:
             yield f'"{qname.split(":")[-1]}": function(kwargs={{}}, args=[]) {{'
+            self.indent()
 
     def exit_path_group(self, qname):
-        yield 'throw new TypeError("No reversal available for parameters at path: {qname}");'
+        yield f'throw new TypeError("No reversal available for parameters at path: {qname}");'
         self.outdent()
         yield '},'
 
@@ -485,20 +501,6 @@ class SimpleURLWriter(URLTreeVisitor):
         :param kwargs: The names of the named arguments, if any, for the path
         :return:
         """
-        def sub_to_str(sub):
-            if isinstance(sub.arg, int):
-                return (
-                    f'"+args[{sub.arg}].toString()+"' if self.es5_
-                    else f'${{args[{sub.arg}]}}'
-                )
-            else:
-                return (
-                    f'"+kwargs["{sub.arg}"].toString()+"' if self.es5_
-                    else f'${{kwargs["{sub.arg}"]}}'
-                )
-
-        def path_join(path):
-            return ''.join([comp if isinstance(comp, str) else sub_to_str(comp) for comp in path])
 
         if len(path) == 1:
             yield f'if (Object.keys(kwargs).length === 0 && args.length === 0)'
@@ -510,7 +512,7 @@ class SimpleURLWriter(URLTreeVisitor):
             quote = '"' if self.es5_ else '`'
             yield f'if (args.length === {nargs})'
             self.indent()
-            yield f'return {quote}/{path_join(path).lstrip("/")}{quote};'
+            yield f'return {quote}/{self.path_join(path).lstrip("/")}{quote};'
             self.outdent()
         else:
             opts_str = ",".join([f"'{param}'" for param in kwargs])
@@ -521,23 +523,27 @@ class SimpleURLWriter(URLTreeVisitor):
                     'function(value) { return kwargs.hasOwnProperty(value);}))'
                 )
                 self.indent()
-                yield f'return "/{path_join(path).lstrip("/")}";'
+                yield f'return "/{self.path_join(path).lstrip("/")}";'
                 self.outdent()
             else:
                 yield (
                     f'if (Object.keys(kwargs).length === {len(kwargs)} && '
                     f'[{opts_str}].every(value => kwargs.hasOwnProperty(value)))'
                 )
-                yield f'return `/{path_join(path).lstrip("/")}`;'
+                self.indent()
+                yield f'return `/{self.path_join(path).lstrip("/")}`;'
+                self.outdent()
 
 
 class ClassURLWriter(URLTreeVisitor):
 
     class_name_ = 'URLResolver'
+    do_raise_ = True
 
     def __init__(self, **kwargs):
         super().__init__(**kwargs)
         self.class_name_ = kwargs.pop('class_name', self.class_name_)
+        self.do_raise_ = kwargs.pop('do_raise', self.do_raise_)
 
         if self.es5_:
             raise NotImplementedError(f'{self.__class__.__name__} does not support es5 javascript.')
@@ -545,9 +551,76 @@ class ClassURLWriter(URLTreeVisitor):
     def start_visitation(self):
         yield f'class {self.class_name_} {{'
         self.indent()
-        yield 'constructor() {}'
         yield ''
+        yield 'match(kwargs, args, expected) {'
+        self.indent()
+        yield 'if (Array.isArray(expected))'
+        self.indent()
+        yield (
+            'return Object.keys(kwargs).length === expected.length && '
+            'expected.every(value => kwargs.hasOwnProperty(value));'
+        )
+        self.outdent()
+        yield 'else if (expected)'
+        self.indent()
+        yield 'return args.length === expected;'
+        self.outdent()
+        yield 'else'
+        self.indent()
+        yield 'return Object.keys(kwargs).length === 0 && args.length === 0;'
+        self.outdent(2)
+        yield '}'
+        yield ''
+        yield 'reverse(qname, kwargs={}, args=[]) {'
+        self.indent()
+        yield 'let url = this.urls;'
+        yield "for (const ns of qname.split(':')) {"
+        self.indent()
+        yield 'if (!ns) continue;'
+        yield 'if (url) url = url.hasOwnProperty(ns) ? url[ns] : null;'
+        self.outdent()
+        yield '}'
+        yield 'if (url) return url(kwargs, args);'
+        if self.do_raise_:
+            yield 'throw new TypeError(`No reversal available for parameters at path: ${qname}`);'
+        self.outdent()
+        yield '}'
+        yield ''
+        yield 'urls = {'
 
     def end_visitation(self):
+        yield '}'
+        self.outdent()
         yield '};'
 
+    def enter_namespace(self, namespace):
+        yield f'"{namespace}": {{'
+        self.indent()
+
+    def exit_namespace(self, namespace):
+        self.outdent()
+        yield '},'
+
+    def enter_path_group(self, qname):
+        yield f'"{qname.split(":")[-1]}": (kwargs={{}}, args=[]) => {{'
+        self.indent()
+
+    def exit_path_group(self, qname):
+        self.outdent()
+        yield '},'
+
+    def visit_path(self, path, kwargs):
+        if len(path) == 1:
+            yield f'if (this.match(kwargs, args)) return "/{path[0].lstrip("/")}";'
+        elif len(kwargs) == 0:
+            nargs = len([comp for comp in path if isinstance(comp, _Substitute)])
+            yield (
+                f'if (this.match(kwargs, args, {nargs}))'
+                f' return `/{self.path_join(path).lstrip("/")}`;'
+            )
+        else:
+            opts_str = ",".join([f"'{param}'" for param in kwargs])
+            yield (
+                f'if (this.match(kwargs, args, [{opts_str}]))'
+                f' return `/{self.path_join(path).lstrip("/")}`;'
+            )
