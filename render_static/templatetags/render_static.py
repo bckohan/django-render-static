@@ -254,7 +254,7 @@ def urls_to_js(  # pylint: disable=R0913,R0915
     if isinstance(visitor, str):
         visitor = import_string(visitor)
 
-    if not isinstance(visitor, URLTreeVisitor):
+    if not issubclass(visitor, URLTreeVisitor):
         raise ValueError(f'{visitor.__class__.__name__} must be of type `URLTreeVisitor`!')
 
     visitor = visitor(**kwargs)

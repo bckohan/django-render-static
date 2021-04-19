@@ -33,6 +33,7 @@ EXPECTED_DIR = Path(__file__).parent / 'expected'
 
 USE_NODE_JS = True if shutil.which('node') else False
 
+
 def get_url_mod():
     from render_static.tests import urls
     return urls
@@ -833,7 +834,6 @@ class URLJavascriptMixin:
         if args is None:
             args = []
         resp = self.client.get(self.get_url_from_js(qname, kwargs, args))
-
         resp = resp.json(object_hook=object_hook)
         resp['args'] = args_hook(resp['args'])
         self.assertEqual({

@@ -352,6 +352,7 @@ class URLTreeVisitor(metaclass=ABCMeta):
                             path.append(placeholder_url[url_idx:])
 
                         yield from self.visit_path(path, list(kwargs.keys()))
+                        return None
 
                     except NoReverseMatch:
                         continue
@@ -363,6 +364,7 @@ class URLTreeVisitor(metaclass=ABCMeta):
         else:
             # this is a simple url with no params
             yield from self.visit_path([reverse(qname)], [])
+            return None
 
         raise URLGenerationFailed(
             f'Unable to generate url for {qname} with kwargs: '
@@ -429,9 +431,6 @@ class URLTreeVisitor(metaclass=ABCMeta):
 
         if branch[0]:
             for nmsp, branch in branch[0].items():
-                self.indent(
-                    (parent_qname + f':{nmsp}' if parent_qname else '').count(':') + 1
-                )
                 yield from self.enter_namespace(nmsp)
                 yield from self.visit_branch(branch, nmsp, parent_qname)
                 yield from self.exit_namespace(nmsp)
@@ -458,25 +457,25 @@ class SimpleURLWriter(URLTreeVisitor):
 
     def enter_namespace(self, namespace):
         yield f'"{namespace}": {{'
+        self.indent()
 
     def exit_namespace(self, namespace):
-        yield f'}},'
+        self.outdent()
+        yield '},'
 
     def enter_path_group(self, qname):
-        self.indent(qname.count(':') + 1)
         if self.es5_:
             yield f'"{qname.split(":")[-1]}": function(kwargs, args) {{'
+            self.indent()
             yield 'kwargs = kwargs || {};'
             yield 'args = args || [];'
         else:
             yield f'"{qname.split(":")[-1]}": function(kwargs={{}}, args=[]) {{'
 
     def exit_path_group(self, qname):
-        yield 'throw new TypeError('
-        yield f'"No reversal available for parameters at path: {qname}");'
-        self.outdent(qname.count(':'))
-        yield f'}},'
+        yield 'throw new TypeError("No reversal available for parameters at path: {qname}");'
         self.outdent()
+        yield '},'
 
     def visit_path(self, path, kwargs):
         """
@@ -489,8 +488,8 @@ class SimpleURLWriter(URLTreeVisitor):
         def sub_to_str(sub):
             if isinstance(sub.arg, int):
                 return (
-                    f'"+args[{sub.arg - 1}].toString()+"' if self.es5_
-                    else f'${{args[{sub.arg - 1}]}}'
+                    f'"+args[{sub.arg}].toString()+"' if self.es5_
+                    else f'${{args[{sub.arg}]}}'
                 )
             else:
                 return (
@@ -514,7 +513,7 @@ class SimpleURLWriter(URLTreeVisitor):
             yield f'return {quote}/{path_join(path).lstrip("/")}{quote};'
             self.outdent()
         else:
-            opts_str = ",".join([f"'{param}'" for param in kwargs.keys()])
+            opts_str = ",".join([f"'{param}'" for param in kwargs])
             if self.es5_:
                 yield (
                     f'if (Object.keys(kwargs).length '
