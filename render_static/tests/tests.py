@@ -940,13 +940,35 @@ class URLSToJavascriptTest(URLJavascriptMixin, BaseTestCase):
             },
         }],
     })
-    def test_full_url_dump_class(self):
+    def test_full_url_dump_class_es6(self):
         """
         This ES6 test is horrendously slow when not using node for reasons mentioned by the Js2Py
         warning
         """
         self.class_mode = ClassURLWriter.class_name_
         self.test_full_url_dump(es5=False)
+        self.class_mode = None
+
+    @override_settings(STATIC_TEMPLATES={
+        'ENGINES': [{
+            'BACKEND': 'render_static.backends.StaticDjangoTemplates',
+            'OPTIONS': {
+                'loaders': [
+                    ('render_static.loaders.StaticLocMemLoader', {
+                        'urls.js': '{% urls_to_js visitor="render_static.ClassURLWriter" es5=True%}'
+                    })
+                ],
+                'builtins': ['render_static.templatetags.render_static']
+            },
+        }],
+    })
+    def test_full_url_dump_class(self):
+        """
+        This ES6 test is horrendously slow when not using node for reasons mentioned by the Js2Py
+        warning
+        """
+        self.class_mode = ClassURLWriter.class_name_
+        self.test_full_url_dump(es5=True)
         self.class_mode = None
 
     @override_settings(STATIC_TEMPLATES={
