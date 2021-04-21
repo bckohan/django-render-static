@@ -4,7 +4,7 @@ import inspect
 import json
 from importlib import import_module
 from types import ModuleType
-from typing import Any, Dict, Iterable, Optional, Type, Union
+from typing import Iterable, Optional, Type, Union
 
 from django import template
 from django.utils.module_loading import import_string

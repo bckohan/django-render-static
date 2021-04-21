@@ -16,4 +16,3 @@ __copyright__ = 'Copyright 2021 Brian Kohan'
 
 
 default_app_config = 'render_static.apps.RenderStaticConfig'  # pylint: disable=C0103
-

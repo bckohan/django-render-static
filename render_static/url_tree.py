@@ -1,3 +1,7 @@
+"""
+Utilities, functions and classes for generating JavaScript from Django's url configuration files.
+"""
+
 import itertools
 import re
 from abc import abstractmethod
@@ -20,6 +24,11 @@ __all__ = ['build_tree', 'URLTreeVisitor', 'SimpleURLWriter', 'ClassURLWriter']
 
 
 def normalize_ns(namespaces: str) -> str:
+    """
+    Normalizes url names by collapsing multiple `:` characters.
+    :param namespaces: The namespace string to normalize
+    :return: The normalized version of the url path name
+    """
     return ':'.join([nmsp for nmsp in namespaces.split(':') if nmsp])
 
 
@@ -73,8 +82,8 @@ def build_tree(
     if exclude:
         excludes = [normalize_ns(excl) for excl in exclude]
 
-    return __prune_tree__(
-        __build_branch__(
+    return _prune_tree(
+        _build_branch(
             patterns,
             not includes or '' in includes,
             ({}, {}, getattr(url_conf, 'app_name', None)),
@@ -84,7 +93,7 @@ def build_tree(
     )
 
 
-def __build_branch__(
+def _build_branch(  # pylint: disable=R0913
         nodes: Iterable[URLPattern],
         included: bool,
         branch: Tuple[Dict, Dict, Optional[str]],
@@ -139,7 +148,7 @@ def __build_branch__(
             if excludes and ns_qname in excludes:
                 continue
 
-            __build_branch__(
+            _build_branch(
                 pattern.url_patterns,
                 included or (not includes or ns_qname in includes),
                 branch,
@@ -153,7 +162,7 @@ def __build_branch__(
     return branch
 
 
-def __prune_tree__(
+def _prune_tree(
         tree: Tuple[Dict, Dict, Optional[str]]
 ) -> Tuple[Tuple[Dict, Dict, Optional[str]], int]:
     """
@@ -161,7 +170,6 @@ def __prune_tree__(
     :param tree: branch to prune
     :return: A 2-tuple containing (the pruned branch, number of urls below)
     """
-
     num_urls = 0
     for named_nodes in tree[1]:
         num_urls += len(named_nodes[1])
@@ -169,7 +177,7 @@ def __prune_tree__(
     if tree[0]:
         to_delete = []
         for nmsp, branch in tree[0].items():
-            branch, branch_urls = __prune_tree__(branch)
+            branch, branch_urls = _prune_tree(branch)
             if branch_urls == 0:
                 to_delete.append(nmsp)
             num_urls += branch_urls
@@ -180,21 +188,64 @@ def __prune_tree__(
 
 
 class _Substitute:
+    """
+    A placeholder representing a substitution, either by a positional argument or a named argument
+    in a url path string.
+
+    :param arg_or_kwarg: Either an integer index corresponding to the argument to substitute for
+        this placeholder or the string name of the argument to substitute at this placeholder.
+    """
 
     arg_: Optional[Union[str, int]] = None
 
     @property
     def arg(self) -> Optional[Union[str, int]]:
+        """
+        :return: Either the position of the positional argument to substitute in, or the name of the
+            named parameter
+        """
         return self.arg_
 
     def __init__(self, arg_or_kwarg: Union[str, int]) -> None:
         self.arg_ = arg_or_kwarg
 
+    def to_str(self, es5: bool = False) -> str:
+        """
+        Converts a _Substitution object placeholder into JavaScript code that substitutes the
+        positional or named arguments in the string.
+]
+        :param es5: If true, generate ES5 compliant code
+        :return: The JavaScript as a string
+        """
+        if isinstance(self.arg, int):
+            return (
+                f'"+args[{self.arg}].toString()+"' if es5
+                else f'${{args[{self.arg}]}}'
+            )
+        return (
+            f'"+kwargs["{self.arg}"].toString()+"' if es5
+            else f'${{kwargs["{self.arg}"]}}'
+        )
+
 
 class URLTreeVisitor(JavaScriptGenerator):
+    """
+    An abstract base class for JavaScript generators of url reversal code. This class defines a
+    a visitation design pattern that deriving classes may extend.
 
-    def __init__(self, **kwargs: str) -> None:
-        super().__init__(**kwargs)
+    Most of the difficult work of walking the URL tree is handled by this base class. Deriving
+    classes are free to focus on generating Javascript, but may override the tree walking and
+    url reversal logic if they so desire.
+
+    To use this class derive from it and implement its abstract visitation methods. Visitor methods
+    should `yield` lines of JavaScript code and set the indentation levels by calling indent() and
+    outdent(). Each yielded line is written by the base class using the configured
+    ndentation/newline options. When None is yielded or returned, nothing will be written. To write
+    a newline and nothing else, simply yield or return an empty string.
+
+    :param kwargs: A set of configuration parameters for the generator - see base and deriving
+        classes for set of available parameters
+    """
 
     @staticmethod
     def reversible(endpoint: URLPattern) -> bool:
@@ -212,35 +263,67 @@ class URLTreeVisitor(JavaScriptGenerator):
 
     @abstractmethod
     def start_visitation(self) -> Generator[str, None, None]:
+        """
+        The first visitation call. Deriving visitors must implement.
+
+        :yield: JavaScript, if any, that should be placed at at the very start
+        """
         ...  # pragma: no cover - abstract
 
     @abstractmethod
     def end_visitation(self) -> Generator[str, None, None]:
+        """
+        The last visitation call - visitation will cease after returning. Deriving visitors must
+        implement.
+
+        :yield: JavaScript, if any, that should be placed at the very end
+        """
         ...  # pragma: no cover - abstract
 
     @abstractmethod
     def enter_namespace(self, namespace) -> Generator[str, None, None]:
+        """
+        Walking down the url tree, the visitor has entered the given namespace. Deriving visitors
+        must implement.
+
+        :param namespace: namespace string
+        :yield: JavaScript, if any, that should be placed at namespace visitation start
+        """
         ...  # pragma: no cover - abstract
 
     @abstractmethod
     def exit_namespace(self, namespace) -> Generator[str, None, None]:
+        """
+        Walking down the url tree, the visitor has exited the given namespace. Deriving visitors
+        must implement.
+        :param namespace: namespace string
+        :yield: JavaScript, if any, that should be placed at namespace visitation exit
+        """
         ...  # pragma: no cover - abstract
 
-    def visit_pattern(
+    def visit_pattern(  # pylint: disable=R0914, R0912
             self,
             endpoint: URLPattern,
             qname: str,
             app_name: Optional[str]
-    ) -> Generator[str, None, Optional[str]]:  # pylint: disable=R0914,R0912
+    ) -> Generator[str, None, Optional[str]]:
         """
-        Generate code for a URLPattern to be added to the javascript reverse function that
-        corresponds to its qualified name.
+        Visit a pattern. Translates the pattern into a path component string which may contain
+        substitution objects. This function will call visit_path once the path components have been
+        constructed.
+
+        The JavaScript url reversal code guarantees that it will always return the same paths as
+        Django's reversal calls. It does this by using those same calls to create the path
+        components. The registered placeholders for the url pattern name are used for path reversal.
+        This technique forms the bedrock of the reliability of the JavaScript url reversals. Do not
+        change it lightly!
 
         :param endpoint: The URLPattern to add
         :param qname: The fully qualified name of the URL
         :param app_name: The app_name the URLs belong to, if any
-        :return: Javascript code that returns the URL with any arguments substituted if the
-            arguments correspond to the URLPattern
+        :yield: JavaScript LoC that reverse the pattern
+        :return: JavaScript comment if non-reversible
+        :except URLGenerationFailed: When no successful placeholders are found for the given pattern
         """
         if not self.reversible(endpoint):
             return '/* this path is not reversible */'
@@ -357,18 +440,43 @@ class URLTreeVisitor(JavaScriptGenerator):
 
     @abstractmethod
     def enter_path_group(self, qname: str) -> Generator[str, None, None]:
+        """
+        Visit one or more path(s) all referred to by the same fully qualified name. Deriving classes
+        must implement.
+
+        :param qname: The fully qualified name of the path group
+        :yield: JavaScript that should placed at the start of each path group.
+        """
         ...  # pragma: no cover - abstract
 
     @abstractmethod
     def exit_path_group(self, qname: str) -> Generator[str, None, None]:
+        """
+        End visitation to one or more path(s) all referred to by the same fully qualified name.
+        Deriving classes must implement.
+
+        :param qname: The fully qualified name of the path group
+        :yield: JavaScript that should placed at the end of each path group.
+        """
         ...  # pragma: no cover - abstract
 
     @abstractmethod
     def visit_path(
             self,
-            path: Iterable[Union[str, _Substitute]],
-            kwargs: Iterable[str]
+            path: List[Union[_Substitute, str]],
+            kwargs: List[str]
     ) -> Generator[str, None, None]:
+        """
+        Visit a singular realization of a path into components. This is called by visit_pattern and
+        deriving classes must implement.
+
+        :param path: The path components making up the URL. An iterable containing strings and
+            placeholder substitution objects. The _Substitution objects represent the locations
+            where either positional or named arguments should be swapped into the path. Strings and
+            substitutions will always alternate.
+        :param kwargs: The list of named arguments present in the path, if any
+        :yield: JavaScript that should handle the realized path.
+        """
         ...  # pragma: no cover - abstract
 
     def visit_path_group(
@@ -418,62 +526,128 @@ class URLTreeVisitor(JavaScriptGenerator):
             )
 
         if branch[0]:
-            for nmsp, branch in branch[0].items():
+            for nmsp, brch in branch[0].items():
                 yield from self.enter_namespace(nmsp)
-                yield from self.visit_branch(branch, nmsp, parent_qname)
+                yield from self.visit_branch(brch, nmsp, parent_qname)
                 yield from self.exit_namespace(nmsp)
 
     def generate(self, *args, **kwargs) -> str:
+        """
+        Implements JavaScriptGenerator::generate. Calls the visitation entry point and writes all
+        the yielded JavaScript lines to a member string which is returned.
+
+        :param args: The URL tree to visit/generate code for - first positional
+        :param kwargs: Optionally give tree as named parameter 'tree'
+        :return: The rendered JavaScript URL reversal code.
+        """
         for line in self.visit(args[0] if args else kwargs.pop('tree')):
             self.write_line(line)
         return self.rendered_
 
     def visit(self, tree) -> Generator[str, None, None]:
+        """
+        Visit the nodes of the URL tree, yielding JavaScript where needed.
+
+        :param tree: The URL tree, in the format returned by build_tree().
+        :yield: JavaScript lines
+        """
         yield from self.start_visitation()
         self.indent()
         yield from self.visit_branch(tree)
         self.outdent()
         yield from self.end_visitation()
 
-    def sub_to_str(self, sub: _Substitute) -> str:
-        if isinstance(sub.arg, int):
-            return (
-                f'"+args[{sub.arg}].toString()+"' if self.es5_
-                else f'${{args[{sub.arg}]}}'
-            )
-        else:
-            return (
-                f'"+kwargs["{sub.arg}"].toString()+"' if self.es5_
-                else f'${{kwargs["{sub.arg}"]}}'
-            )
-
     def path_join(self, path: List[Union[_Substitute, str]]) -> str:
-        return ''.join([comp if isinstance(comp, str) else self.sub_to_str(comp) for comp in path])
+        """
+        Combine a list of path components into a singular JavaScript substitution string.
+
+        :param path: The path components to collapse
+        :return: The JavaScript substitution code that will realize a path with its arguments
+        """
+        return ''.join([
+            comp if isinstance(comp, str) else comp.to_str(es5=self.es5_) for comp in path
+        ])
 
 
 class SimpleURLWriter(URLTreeVisitor):
+    """
+    A URLTreeVisitor that produces a JavaScript object where the keys are the path namespaces and
+    names and the values are functions that accept positional and named arguments and return paths.
+
+    This is the default visitor for the `url_to_js` tag, but its probably not the one you want.
+    It accepts several additional parameters on top of the base parameters. To use this visitor you
+    may call it like so:
+
+    ..code-block::
+
+        var urls = {
+            {% urls_to_js raise_on_not_found=False %}'
+        };
+
+    This will produce JavaScript you may invoke like so:
+
+    ..code-block::
+
+        urls.namespace.path_name({'arg1': 1, 'arg2': 'a'});
+
+    The classes generated by this visitor, both ES5 and ES6 minimize significantly worse than the
+    ClassURLWriter.
+
+    :param kwargs: Set of configuration parameters, see also base class params
+        - raise_on_not_found: Raise a TypeError if no reversal for a url pattern is found,
+            default: True
+    """
 
     raise_on_not_found_ = True
 
-    def __init__(self, **kwargs):
+    def __init__(self, **kwargs) -> None:
         super().__init__(**kwargs)
         self.raise_on_not_found_ = kwargs.pop('raise_on_not_found', self.raise_on_not_found_)
 
-    def start_visitation(self):
-        yield None
+    def start_visitation(self) -> Generator[str, None, None]:
+        """
+        Begin visitation of the tree - noop
 
-    def end_visitation(self):
-        yield None
+        :yield: writes nothing
+        """
+        yield None  # type: ignore
 
-    def enter_namespace(self, namespace):
+    def end_visitation(self) -> Generator[str, None, None]:
+        """
+        End visitation of the tree - noop
+
+        :yield: writes nothing
+        """
+        yield None  # type: ignore
+
+    def enter_namespace(self, namespace: str) -> Generator[str, None, None]:
+        """
+        Start the namespace object.
+
+        :param namespace: The name of the current part of the namespace we're visiting.
+        :yield: JavaScript starting the namespace object structure.
+        """
         yield f'"{namespace}": {{'
         self.indent()
 
-    def exit_namespace(self, namespace):
+    def exit_namespace(self, namespace: str) -> Generator[str, None, None]:
+        """
+        End the namespace object.
+
+        :param namespace: The name of the current part of the namespace we're visiting.
+        :yield: JavaScript ending the namespace object structure.
+        """
         self.outdent()
         yield '},'
 
-    def enter_path_group(self, qname):
+    def enter_path_group(self, qname: str) -> Generator[str, None, None]:
+        """
+        Start of the reversal function for a collection of paths of the given qname. If in ES5 mode,
+        sets default args.
+
+        :param qname: The fully qualified path name being reversed
+        :yield: LoC for the start out of the JavaScript reversal function
+        """
         if self.es5_:
             yield f'"{qname.split(":")[-1]}": function(kwargs, args) {{'
             self.indent()
@@ -483,25 +657,39 @@ class SimpleURLWriter(URLTreeVisitor):
             yield f'"{qname.split(":")[-1]}": function(kwargs={{}}, args=[]) {{'
             self.indent()
 
-    def exit_path_group(self, qname):
+    def exit_path_group(self, qname: str) -> Generator[str, None, None]:
+        """
+        Close out the function for the given qname. If we're configured to throw an exception if no
+        path reversal was found, we do that here because all options have already been exhausted.
+
+        :param qname: The fully qualified path name being reversed
+        :yield: LoC for the close out of the JavaScript reversal function
+        """
         if self.raise_on_not_found_:
             yield f'throw new TypeError("No reversal available for parameters at path: {qname}");'
         self.outdent()
         yield '},'
 
-    def visit_path(self, path, kwargs):
+    def visit_path(
+            self,
+            path: List[Union[_Substitute, str]],
+            kwargs: List[str]
+    ) -> Generator[str, None, None]:
         """
+        Convert a list of path components into JavaScript reverse function. The JS must determine
+        if the passed named or positional arguments match this particular pattern and if so return
+        the path with those arguments substituted.
 
         :param path: An iterable of the path components, alternating strings and _Substitute
             placeholders for argument substitution
         :param kwargs: The names of the named arguments, if any, for the path
-        :return:
+        :yield: The JavaScript lines of code
         """
 
         if len(path) == 1:
-            yield f'if (Object.keys(kwargs).length === 0 && args.length === 0)'
+            yield 'if (Object.keys(kwargs).length === 0 && args.length === 0)'
             self.indent()
-            yield f'return "/{path[0].lstrip("/")}";'
+            yield f'return "/{path[0].lstrip("/")}";'  # type: ignore
             self.outdent()
         elif len(kwargs) == 0:
             nargs = len([comp for comp in path if isinstance(comp, _Substitute)])
@@ -532,16 +720,48 @@ class SimpleURLWriter(URLTreeVisitor):
 
 
 class ClassURLWriter(URLTreeVisitor):
+    """
+    A URLTreeVisitor that produces a JavaScript class with a reverse() function directly analogous
+    to Django's url reverse function.
+
+    This is not the default visitor for the `url_to_js` tag, but its probably the one you want.
+    It accepts several additional parameters on top of the base parameters. To use this visitor you
+    may call it like so:
+
+    ..code-block::
+
+        {% urls_to_js visitor="render_static.ClassURLWriter" class_name='URLResolver' indent=' ' %}'
+
+    This will produce JavaScript you may invoke like so:
+
+    ..code-block::
+
+        const urls = new URLResolver();
+        urls.reverse('namespace:path_name', {'arg1': 1, 'arg2': 'a'});
+
+    The classes generated by this visitor, both ES5 and ES6 minimize significantly better than the
+    default SimpleURLWriter.
+
+    :param kwargs: Set of configuration parameters, see also base class params
+        - class_name: The name of the JavaScript class to use: default: URLResolver
+        - raise_on_not_found: Raise a TypeError if no reversal for a url pattern is found,
+            default: True
+    """
 
     class_name_ = 'URLResolver'
     raise_on_not_found_ = True
 
-    def __init__(self, **kwargs):
+    def __init__(self, **kwargs) -> None:
         super().__init__(**kwargs)
         self.class_name_ = kwargs.pop('class_name', self.class_name_)
         self.raise_on_not_found_ = kwargs.pop('raise_on_not_found', self.raise_on_not_found_)
 
-    def start_visitation(self):
+    def start_visitation(self) -> Generator[str, None, None]:  # pylint: disable=R0915
+        """
+        Start the tree visitation - this is where we write out all the common class code.
+
+        :yield: JavaScript LoC for the reversal class
+        """
         if self.es5_:
             yield f'{self.class_name_} = function() {{}};'
             yield ''
@@ -635,20 +855,44 @@ class ClassURLWriter(URLTreeVisitor):
             yield ''
             yield 'urls = {'
 
-    def end_visitation(self):
+    def end_visitation(self) -> Generator[str, None, None]:
+        """
+        Finish tree visitation/close out the class code.
+
+        :yield: Trailing JavaScript LoC
+        """
         yield '}'
         self.outdent()
         yield '};'
 
-    def enter_namespace(self, namespace):
+    def enter_namespace(self, namespace: str) -> Generator[str, None, None]:
+        """
+        Start the namespace object.
+
+        :param namespace: The name of the current part of the namespace we're visiting.
+        :yield: JavaScript starting the namespace object structure.
+        """
         yield f'"{namespace}": {{'
         self.indent()
 
-    def exit_namespace(self, namespace):
+    def exit_namespace(self, namespace: str) -> Generator[str, None, None]:
+        """
+        End the namespace object.
+
+        :param namespace: The name of the current part of the namespace we're visiting.
+        :yield: JavaScript ending the namespace object structure.
+        """
         self.outdent()
         yield '},'
 
-    def enter_path_group(self, qname):
+    def enter_path_group(self, qname: str) -> Generator[str, None, None]:
+        """
+        Start of the reversal function for a collection of paths of the given qname. If in ES5 mode,
+        sets default args.
+
+        :param qname: The fully qualified path name being reversed
+        :yield: LoC for the start out of the JavaScript reversal function
+        """
         if self.es5_:
             yield f'"{qname.split(":")[-1]}": function(kwargs, args) {{'
             self.indent()
@@ -658,14 +902,37 @@ class ClassURLWriter(URLTreeVisitor):
             yield f'"{qname.split(":")[-1]}": (kwargs={{}}, args=[]) => {{'
             self.indent()
 
-    def exit_path_group(self, qname):
+    def exit_path_group(self, qname: str) -> Generator[str, None, None]:
+        """
+        Close out the function for the given qname.
+
+        :param qname: The fully qualified path name being reversed
+        :yield: LoC for the close out of the JavaScript reversal function
+        """
         self.outdent()
         yield '},'
 
-    def visit_path(self, path, kwargs):
+    def visit_path(
+            self,
+            path: List[Union[_Substitute, str]],
+            kwargs: List[str]
+    ) -> Generator[str, None, None]:
+        """
+        Convert a list of path components into JavaScript reverse function. The JS must determine
+        if the passed named or positional arguments match this particular pattern and if so return
+        the path with those arguments substituted.
+
+        :param path: An iterable of the path components, alternating strings and _Substitute
+            placeholders for argument substitution
+        :param kwargs: The names of the named arguments, if any, for the path
+        :yield: The JavaScript lines of code
+        """
         quote = '"' if self.es5_ else '`'
         if len(path) == 1:
-            yield f'if (this.match(kwargs, args)) {{ return "/{path[0].lstrip("/")}"; }}'
+            yield (
+                f'if (this.match(kwargs, args)) {{ '  # type: ignore
+                f'return "/{path[0].lstrip("/")}"; }}'
+            )
         elif len(kwargs) == 0:
             nargs = len([comp for comp in path if isinstance(comp, _Substitute)])
             yield (
