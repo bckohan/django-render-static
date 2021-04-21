@@ -113,19 +113,35 @@ Tags
 ``urls_to_js``
 ~~~~~~~~~~~~~~
 
-This tag spits out a JavaScript object that can be used in the same manner as Django's URL
-`reverse <https://docs.djangoproject.com/en/3.1/ref/urlresolvers/#reverse>`_ function.
+Often client side JavaScript needs to fetch site URLs asynchronously. These instances either
+necessitate using dynamic templating to reverse the url via the `url` tag or to hardcode the path
+into the JavaScript thereby violating the DRY principle. Frequently the need to generate these paths
+are the only thing driving the need to generate the JavaScript dynamically. But these paths might
+change only at deployment, not runtime, so the better approach is to generate JavaScript at
+deployment time and serve it statically. This tag makes that process even easier by automatically
+translating the site's url configuration into a JavaScript utility that can be used in the same
+manner as Django's URL `reverse <https://docs.djangoproject.com/en/3.1/ref/urlresolvers/#reverse>`_
+function.
 
 It accepts a number of different parameters:
 
+    - **visitor** A string import path or a class that implements `URLTreeVisitor`. The visitor
+      walks the URL tree and generates the JavaScript, users may customize the JavaScript generated
+      by implementing their own visitor class. Two visitors are included. The default,
+      `SimpleURLWriter`, spits out an object structure that indexes paths by their namespaces. The
+      `ClassURLWriter`, spits out ES5 or 6 classes that provide a `reverse` function directly
+      analogous to Django's reverse function.
     - **url_conf** The root url module to dump urls from. Can be an import string or an actual
       module type. default: settings.ROOT_URLCONF
-    - **indent** String to use for indentation in javascript, default: '\\t'
+    - **indent** String to use for indentation in javascript, default: '\\t', If None or the empty
+      string is specified, the generated code will not contain newlines.
     - **depth** The starting indentation depth, default: 0
     - **include** A list of path names to include, namespaces without path names will be treated as
       every path under the namespace. Default: include everything
     - **exclude** A list of path names to exclude, namespaces without path names will be treated as
       every path under the namespace. Excludes override includes. Default: exclude nothing
+    - **raise_on_not_found** If True (default), the generated JavaScript will raise a TypeError if
+      asked to reverse an unrecognized URL name or set of arguments.
     - **es5** If True, dump es5 valid JavaScript, if False JavaScript will be es6, default: False
 
 Includes and excludes are hierarchical strings that contain the fully qualified name of a namespace
@@ -135,6 +151,12 @@ would include all paths in any namespace(s) at or under `namespace1:namespace2` 
 not include paths directly under `namespace1`. Excludes always override includes. By default every
 path is included and no paths are excluded. If any includes are provided, then only those includes
 are included (everything else is by default excluded).
+
+.. note::
+
+    When implementing custom URL visitors, any additional named arguments passed to the `urls_to_js`
+    tag will be passed as kwargs to the URL visitor when this tag instantiates it. These parameters
+    are meant to provide configuration toggles for the generated JavaScript.
 
 .. warning::
 
@@ -240,3 +262,60 @@ Paths with unnamed arguments are also supported, but be kind to yourself and don
 Any number of placeholders may be registered against any number of variable/app_name combinations.
 When `urls_to_js` is run it won't give up until its tried all placeholders that might potentially
 match the path.
+
+`ClassURLWriter`
+****************
+
+A visitor class that produces ES5/6 JavaScript class is now included. This class is not used by
+default, but should be the preferred visitor for larger, more complex URL trees - mostly because
+it minifies better than the default `SimpleURLWriter`. To use the class writer::
+
+    {% urls_to_js visitor='render_static.ClassURLWriter' class_name='URLReverser' %}
+
+This will generate an ES6 class by default::
+
+    class URLReverser {
+
+        match(kwargs, args, expected) {
+            if (Array.isArray(expected)) {
+                return Object.keys(kwargs).length === expected.length &&
+                    expected.every(value => kwargs.hasOwnProperty(value));
+            } else if (expected) {
+                return args.length === expected;
+            } else {
+                return Object.keys(kwargs).length === 0 && args.length === 0;
+            }
+        }
+
+        reverse(qname, kwargs={}, args=[]) {
+            let url = this.urls;
+            for (const ns of qname.split(':')) {
+                if (ns && url) { url = url.hasOwnProperty(ns) ? url[ns] : null; }
+            }
+            if (url) {
+                let pth = url(kwargs, args);
+                if (typeof pth === "string") { return pth; }
+            }
+            throw new TypeError(`No reversal available for parameters at path: ${qname}`);
+        }
+
+        urls = {
+            "simple": (kwargs={}, args=[]) => {
+                if (this.match(kwargs, args)) { return "/simple/"; }
+                if (this.match(kwargs, args, ['arg1'])) { return `/simple/${kwargs["arg1"]}`; }
+            },
+            "different": (kwargs={}, args=[]) => {
+                if (this.match(kwargs, args, ['arg1','arg2'])) {
+                    return `/different/${kwargs["arg1"]}/${kwargs["arg2"]}`;
+                }
+            },
+        }
+    };
+
+Which can be used as::
+
+    // /different/143/emma
+    const urls = new URLReverser();
+    urls.reverse('different', {'arg1': 143, 'arg2': 'emma'});
+
+The default `class_name` is URLResolver. Reverse should behave exactly as Django's `reverse`.

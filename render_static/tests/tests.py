@@ -21,8 +21,10 @@ from django.utils.module_loading import import_string
 from render_static import placeholders
 from render_static.backends import StaticDjangoTemplates, StaticJinja2Templates
 from render_static.engine import StaticTemplateEngine
+from render_static.javascript import JavaScriptGenerator
 from render_static.origin import AppOrigin, Origin
 from render_static.tests import bad_pattern, defines
+from render_static.url_tree import ClassURLWriter
 
 APP1_STATIC_DIR = Path(__file__).parent / 'app1' / 'static'  # this dir does not exist and must be cleaned up
 APP2_STATIC_DIR = Path(__file__).parent / 'app2' / 'static'  # this dir exists and is checked in
@@ -32,6 +34,11 @@ EXPECTED_DIR = Path(__file__).parent / 'expected'
 
 
 USE_NODE_JS = True if shutil.which('node') else False
+
+
+class BadVisitor:
+    pass
+
 
 def get_url_mod():
     from render_static.tests import urls
@@ -754,6 +761,7 @@ class URLJavascriptMixin:
 
     url_js = None
     es5_mode = False
+    class_mode = None
 
     def clear_placeholder_registries(self):
         from importlib import reload
@@ -762,40 +770,84 @@ class URLJavascriptMixin:
     def exists(self, *args, **kwargs):
         return len(self.get_url_from_js(*args, **kwargs)) > 0
 
-    def get_url_from_js(self, qname, kwargs=None, args=None):  # pragma: no cover
+    class TestJSGenerator(JavaScriptGenerator):
+
+        class_mode = None
+        catch = True
+
+        def __init__(self, class_mode=None, catch=True, **kwargs):
+            self.class_mode = class_mode
+            self.catch = catch
+            super().__init__(**kwargs)
+
+        def generate(self, qname, kwargs=None, args=None):
+            def do_gen():
+                yield 'try {' if self.catch else ''
+                self.indent()
+                if self.class_mode:
+                    yield f'const urls = new {self.class_mode}();'
+                    yield 'console.log('
+                    self.indent()
+                    yield f'urls.reverse('
+                    self.indent()
+                    yield f'"{qname}",'
+                else:
+                    accessor_str = ''.join([f'["{comp}"]' for comp in qname.split(':')])
+                    yield 'console.log('
+                    self.indent()
+                    yield f'urls{accessor_str}('
+                    self.indent()
+                yield f'{json.dumps(kwargs, cls=BestEffortEncoder)}{"," if args else ""}'
+                if args:
+                    yield f'{json.dumps(args, cls=BestEffortEncoder)}'
+                self.outdent(2);
+                yield "));"
+                if self.catch:
+                    self.outdent()
+                    yield '} catch (error) {}'
+
+            for line in do_gen():
+                self.write_line(line)
+
+            return self.rendered_
+
+    def get_url_from_js(
+            self,
+            qname,
+            kwargs=None,
+            args=None,
+            js_generator=None,
+            url_path=GLOBAL_STATIC_DIR / 'urls.js'
+    ):  # pragma: no cover
         if kwargs is None:
             kwargs = {}
         if args is None:
             args = []
-        if USE_NODE_JS:
-            shutil.copyfile(GLOBAL_STATIC_DIR/'urls.js', GLOBAL_STATIC_DIR / 'get_url.js')
-            accessor_str = ''
-            for comp in qname.split(':'):
-                accessor_str += f'["{comp}"]'
-            with open(GLOBAL_STATIC_DIR / 'get_url.js', 'a+') as tmp_js:
-                if args:
-                    tmp_js.write(
-                        f'\ntry {{'
-                        f'\n  console.log(urls{accessor_str}'
-                        f'({json.dumps(kwargs, cls=BestEffortEncoder)},'
-                        f'{json.dumps(args, cls=BestEffortEncoder)}));\n'
-                        f'}} catch (error) {{}}\n'
-                    )
-                else:
-                    tmp_js.write(
-                        f'\ntry {{'
-                        f'\n  console.log(urls{accessor_str}'
-                        f'({json.dumps(kwargs, cls=BestEffortEncoder)}));\n'
-                        f'}} catch (error) {{}}\n'
-                    )
+        if js_generator is None:
+            js_generator = URLJavascriptMixin.TestJSGenerator(self.class_mode)
+        tmp_file_pth = GLOBAL_STATIC_DIR / f'get_{url_path.stem}.js'
 
-            return subprocess.check_output([
-                'node',
-                GLOBAL_STATIC_DIR / 'get_url.js'
-            ]).decode('UTF-8').strip()
+        if USE_NODE_JS:
+            shutil.copyfile(url_path, tmp_file_pth)
+            with open(tmp_file_pth, 'a+') as tmp_js:
+                for line in js_generator.generate(qname, kwargs, args):
+                    tmp_js.write(f'{line}')
+            try:
+                return subprocess.check_output([
+                    'node',
+                    tmp_file_pth
+                ], stderr=subprocess.STDOUT).decode('UTF-8').strip()
+            except subprocess.CalledProcessError as cp_err:
+                if cp_err.stderr:
+                    return cp_err.stderr.decode('UTF-8').strip()
+                elif cp_err.output:
+                    return cp_err.output.decode('UTF-8').strip()
+                elif cp_err.stdout:
+                    return cp_err.stdout.decode('UTF-8').strip()
+                return ''
 
         if self.url_js is None:
-            with open(GLOBAL_STATIC_DIR / 'urls.js', 'r') as jf:
+            with open(url_path, 'r') as jf:
                 if self.es5_mode:
                     url_js = js2py.eval_js(jf.read())
                 else:
@@ -826,13 +878,16 @@ class URLJavascriptMixin:
             kwargs=None,
             args=None,
             object_hook=lambda dct: dct,
-            args_hook=lambda args: args
+            args_hook=lambda args: args,
+            url_path=GLOBAL_STATIC_DIR / 'urls.js'
     ):
         if kwargs is None:
             kwargs = {}
         if args is None:
             args = []
-        resp = self.client.get(self.get_url_from_js(qname, kwargs, args))
+
+        tst_pth = self.get_url_from_js(qname, kwargs, args, url_path=url_path)
+        resp = self.client.get(tst_pth)
 
         resp = resp.json(object_hook=object_hook)
         resp['args'] = args_hook(resp['args'])
@@ -873,7 +928,7 @@ class URLJavascriptMixin:
             ],
             'builtins': ['render_static.templatetags.render_static']
         },
-    }],
+    }]
 })
 class URLSToJavascriptTest(URLJavascriptMixin, BaseTestCase):
 
@@ -902,6 +957,50 @@ class URLSToJavascriptTest(URLJavascriptMixin, BaseTestCase):
             ['adf', 143],
             app_name='bogus_app'
         )
+
+    @override_settings(STATIC_TEMPLATES={
+        'ENGINES': [{
+            'BACKEND': 'render_static.backends.StaticDjangoTemplates',
+            'OPTIONS': {
+                'loaders': [
+                    ('render_static.loaders.StaticLocMemLoader', {
+                        'urls.js': '{% urls_to_js visitor="render_static.ClassURLWriter" %}'
+                    })
+                ],
+                'builtins': ['render_static.templatetags.render_static']
+            },
+        }],
+    })
+    def test_full_url_dump_class_es6(self):
+        """
+        This ES6 test is horrendously slow when not using node for reasons mentioned by the Js2Py
+        warning
+        """
+        self.class_mode = ClassURLWriter.class_name_
+        self.test_full_url_dump(es5=False)
+        self.class_mode = None
+
+    @override_settings(STATIC_TEMPLATES={
+        'ENGINES': [{
+            'BACKEND': 'render_static.backends.StaticDjangoTemplates',
+            'OPTIONS': {
+                'loaders': [
+                    ('render_static.loaders.StaticLocMemLoader', {
+                        'urls.js': '{% urls_to_js visitor="render_static.ClassURLWriter" es5=True%}'
+                    })
+                ],
+                'builtins': ['render_static.templatetags.render_static']
+            },
+        }],
+    })
+    def test_full_url_dump_class(self):
+        """
+        This ES6 test is horrendously slow when not using node for reasons mentioned by the Js2Py
+        warning
+        """
+        self.class_mode = ClassURLWriter.class_name_
+        self.test_full_url_dump(es5=True)
+        self.class_mode = None
 
     @override_settings(STATIC_TEMPLATES={
         'ENGINES': [{
@@ -1044,7 +1143,6 @@ class URLSToJavascriptTest(URLJavascriptMixin, BaseTestCase):
 
         #################################################################
         # app3 urls - these should be included into the null namespace
-        qname = 'app3_i'
         self.compare('app3_idx')
         self.compare('app3_arg', {'arg1': 1})
         self.compare('unreg_conv_tst', {'name': 'name1'})
@@ -1410,8 +1508,8 @@ class URLSToJavascriptTest(URLJavascriptMixin, BaseTestCase):
         self.assertFalse(self.exists('re_path_unnamed_solo', args=['daf', 7120]))
 
     # uncomment to not delete generated js
-    #def tearDown(self):
-    #    pass
+    def tearDown(self):
+        pass
 
 
 class URLSToJavascriptOffNominalTest(URLJavascriptMixin, BaseTestCase):
@@ -1446,6 +1544,8 @@ class URLSToJavascriptOffNominalTest(URLJavascriptMixin, BaseTestCase):
 
         # this works even though its registered against a different app
         # all placeholders that match at least one criteria are tried
+        self.assertRaises(CommandError, lambda: call_command('render_static', 'urls.js'))
+        placeholders.register_variable_placeholder('name', 'does_not_match', app_name='app1')
         self.assertRaises(CommandError, lambda: call_command('render_static', 'urls.js'))
         placeholders.register_variable_placeholder('name', 'name1', app_name='app1')
         placeholders.register_variable_placeholder('name', 'name1', app_name='app1')
@@ -1515,6 +1615,23 @@ class URLSToJavascriptOffNominalTest(URLJavascriptMixin, BaseTestCase):
             'OPTIONS': {
                 'loaders': [
                     ('render_static.loaders.StaticLocMemLoader', {
+                        'urls.js':
+                            '{% urls_to_js visitor="render_static.tests.tests.BadVisitor" %};'
+                    })
+                ],
+                'builtins': ['render_static.templatetags.render_static']
+            },
+        }]
+    })
+    def test_bad_visitor_type(self):
+        self.assertRaises(CommandError, lambda: call_command('render_static', 'urls.js'))
+
+    @override_settings(STATIC_TEMPLATES={
+        'ENGINES': [{
+            'BACKEND': 'render_static.backends.StaticDjangoTemplates',
+            'OPTIONS': {
+                'loaders': [
+                    ('render_static.loaders.StaticLocMemLoader', {
                         'urls.js': 'var urls = {\n{% urls_to_js url_conf=url_mod %}};'
                     })
                 ],
@@ -1565,3 +1682,234 @@ class URLSToJavascriptOffNominalTest(URLJavascriptMixin, BaseTestCase):
     # uncomment to not delete generated js
     #def tearDown(self):
     #    pass
+
+
+class URLSToJavascriptParametersTest(URLJavascriptMixin, BaseTestCase):
+
+    def setUp(self):
+        self.clear_placeholder_registries()
+        placeholders.register_unnamed_placeholders('re_path_unnamed', ['adf', 143])
+
+    @override_settings(STATIC_TEMPLATES={
+        'ENGINES': [{
+            'BACKEND': 'render_static.backends.StaticDjangoTemplates',
+            'OPTIONS': {
+                'loaders': [
+                    ('render_static.loaders.StaticLocMemLoader', {
+                        'urls.js': '{% urls_to_js '
+                                   'visitor="render_static.ClassURLWriter" '
+                                   'es5=True '
+                                   'raise_on_not_found=False '
+                                   'indent=None '
+                                   'include=include '
+                                   '%}',
+                        'urls2.js': '{% urls_to_js '
+                                   'visitor="render_static.ClassURLWriter" '
+                                   'es5=True '
+                                   'raise_on_not_found=True '
+                                   'indent="" '
+                                   'include=include '
+                                   '%}',
+                        'urls3.js': 'var urls = {\n{% urls_to_js '
+                                   'es5=True '
+                                   'raise_on_not_found=False '
+                                   'indent=None '
+                                   'include=include '
+                                   '%}}\n',
+                        'urls4.js': 'var urls = {\n{% urls_to_js '
+                                    'es5=True '
+                                    'raise_on_not_found=True '
+                                    'indent="" '
+                                    'include=include '
+                                    '%}};\n',
+                    })
+                ],
+                'builtins': ['render_static.templatetags.render_static']
+            },
+        }],
+        'templates': {
+            'urls.js': {'context': {'include': ['path_tst', 're_path_unnamed']}},
+            'urls2.js': {'context': {'include': ['path_tst', 're_path_unnamed']}},
+            'urls3.js': {'context': {'include': ['path_tst', 're_path_unnamed']}},
+            'urls4.js': {'context': {'include': ['path_tst', 're_path_unnamed']}}
+        }
+    })
+    def test_class_parameters_es5(self):
+
+        self.es6_mode = False
+        self.class_mode = ClassURLWriter.class_name_
+        call_command('render_static')
+        js_ret = self.get_url_from_js(
+            'doest_not_exist',
+            js_generator=URLJavascriptMixin.TestJSGenerator(
+                class_mode=self.class_mode,
+                catch=False
+            )
+        )
+        self.assertFalse('TypeError' in js_ret)
+        self.compare('path_tst')
+        self.compare('path_tst', {'arg1': 1})
+        self.compare('path_tst', {'arg1': 12, 'arg2': 'xo'})
+
+        up2 = GLOBAL_STATIC_DIR/'urls2.js'
+        js_ret2 = self.get_url_from_js(
+            'doest_not_exist',
+            url_path=up2,
+            js_generator=URLJavascriptMixin.TestJSGenerator(
+                class_mode=self.class_mode,
+                catch=False
+            )
+        )
+        self.assertTrue('TypeError' in js_ret2)
+
+        js_ret2_1 = self.get_url_from_js(
+            'path_tst',
+            kwargs={'arg1': 12, 'arg2': 'xo', 'invalid': 0},
+            url_path=up2,
+            js_generator=URLJavascriptMixin.TestJSGenerator(
+                class_mode=self.class_mode,
+                catch=False
+            )
+        )
+        self.assertTrue('TypeError' in js_ret2_1)
+        self.compare('path_tst', url_path=up2)
+        self.compare('path_tst', {'arg1': 1}, url_path=up2)
+        self.compare('path_tst', {'arg1': 12, 'arg2': 'xo'}, url_path=up2)
+
+        self.class_mode = None
+
+        up3 = GLOBAL_STATIC_DIR/'urls3.js'
+        js_ret3 = self.get_url_from_js(
+            'path_tst',
+            kwargs={'arg1': 12, 'arg2': 'xo', 'invalid': 0},
+            url_path=up3,
+            js_generator=URLJavascriptMixin.TestJSGenerator(catch=False)
+        )
+        self.assertFalse('TypeError' in js_ret3)
+        self.compare('path_tst', url_path=up3)
+        self.compare('path_tst', {'arg1': 1}, url_path=up3)
+        self.compare('path_tst', {'arg1': 12, 'arg2': 'xo'}, url_path=up3)
+
+        up4 = GLOBAL_STATIC_DIR/'urls4.js'
+        js_ret4 = self.get_url_from_js(
+            'path_tst',
+            kwargs={'arg1': 12, 'arg2': 'xo', 'invalid': 0},
+            url_path=up4,
+            js_generator=URLJavascriptMixin.TestJSGenerator(catch=False)
+        )
+        self.assertTrue('TypeError' in js_ret4)
+        self.compare('path_tst', url_path=up4)
+        self.compare('path_tst', {'arg1': 1}, url_path=up4)
+        self.compare('path_tst', {'arg1': 12, 'arg2': 'xo'}, url_path=up4)
+
+    @override_settings(STATIC_TEMPLATES={
+        'ENGINES': [{
+            'BACKEND': 'render_static.backends.StaticDjangoTemplates',
+            'OPTIONS': {
+                'loaders': [
+                    ('render_static.loaders.StaticLocMemLoader', {
+                        'urls.js': '{% urls_to_js '
+                                   'visitor="render_static.ClassURLWriter" '
+                                   'raise_on_not_found=False '
+                                   'indent=None '
+                                   'include=include '
+                                   '%}',
+                        'urls2.js': '{% urls_to_js '
+                                   'visitor="render_static.ClassURLWriter" '
+                                   'raise_on_not_found=True '
+                                   'indent="" '
+                                   'include=include '
+                                   '%}',
+                        'urls3.js': 'var urls = {\n{% urls_to_js '
+                                   'raise_on_not_found=False '
+                                   'indent=None '
+                                   'include=include '
+                                   '%}}\n',
+                        'urls4.js': 'var urls = {\n{% urls_to_js '
+                                    'raise_on_not_found=True '
+                                    'indent="" '
+                                    'include=include '
+                                    '%}};\n',
+                    })
+                ],
+                'builtins': ['render_static.templatetags.render_static']
+            },
+        }],
+        'templates': {
+            'urls.js': {'context': {'include': ['path_tst', 're_path_unnamed']}},
+            'urls2.js': {'context': {'include': ['path_tst', 're_path_unnamed']}},
+            'urls3.js': {'context': {'include': ['path_tst', 're_path_unnamed']}},
+            'urls4.js': {'context': {'include': ['path_tst', 're_path_unnamed']}}
+        }
+    })
+    def test_class_parameters_es6(self):
+
+        self.es6_mode = True
+        self.class_mode = ClassURLWriter.class_name_
+        call_command('render_static')
+        js_ret = self.get_url_from_js(
+            'doest_not_exist',
+            js_generator=URLJavascriptMixin.TestJSGenerator(
+                class_mode=self.class_mode,
+                catch=False
+            )
+        )
+        self.assertFalse('TypeError' in js_ret)
+        self.compare('path_tst')
+        self.compare('path_tst', {'arg1': 1})
+        self.compare('path_tst', {'arg1': 12, 'arg2': 'xo'})
+
+        up2 = GLOBAL_STATIC_DIR/'urls2.js'
+        js_ret2 = self.get_url_from_js(
+            'doest_not_exist',
+            url_path=up2,
+            js_generator=URLJavascriptMixin.TestJSGenerator(
+                class_mode=self.class_mode,
+                catch=False
+            )
+        )
+        self.assertTrue('TypeError' in js_ret2)
+
+        js_ret2_1 = self.get_url_from_js(
+            'path_tst',
+            kwargs={'arg1': 12, 'arg2': 'xo', 'invalid': 0},
+            url_path=up2,
+            js_generator=URLJavascriptMixin.TestJSGenerator(
+                class_mode=self.class_mode,
+                catch=False
+            )
+        )
+        self.assertTrue('TypeError' in js_ret2_1)
+        self.compare('path_tst', url_path=up2)
+        self.compare('path_tst', {'arg1': 1}, url_path=up2)
+        self.compare('path_tst', {'arg1': 12, 'arg2': 'xo'}, url_path=up2)
+
+        self.class_mode = None
+
+        up3 = GLOBAL_STATIC_DIR/'urls3.js'
+        js_ret3 = self.get_url_from_js(
+            'path_tst',
+            kwargs={'arg1': 12, 'arg2': 'xo', 'invalid': 0},
+            url_path=up3,
+            js_generator=URLJavascriptMixin.TestJSGenerator(catch=False)
+        )
+        self.assertFalse('TypeError' in js_ret3)
+        self.compare('path_tst', url_path=up3)
+        self.compare('path_tst', {'arg1': 1}, url_path=up3)
+        self.compare('path_tst', {'arg1': 12, 'arg2': 'xo'}, url_path=up3)
+
+        up4 = GLOBAL_STATIC_DIR/'urls4.js'
+        js_ret4 = self.get_url_from_js(
+            'path_tst',
+            kwargs={'arg1': 12, 'arg2': 'xo', 'invalid': 0},
+            url_path=up4,
+            js_generator=URLJavascriptMixin.TestJSGenerator(catch=False)
+        )
+        self.assertTrue('TypeError' in js_ret4)
+        self.compare('path_tst', url_path=up4)
+        self.compare('path_tst', {'arg1': 1}, url_path=up4)
+        self.compare('path_tst', {'arg1': 12, 'arg2': 'xo'}, url_path=up4)
+
+    # uncomment to not delete generated js
+    # def tearDown(self):
+    #     pass
