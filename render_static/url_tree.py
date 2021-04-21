@@ -18,6 +18,7 @@ from render_static.placeholders import (
     resolve_placeholders,
     resolve_unnamed_placeholders,
 )
+from render_static.javascript import JavaScriptGenerator
 
 
 __all__ = ['build_tree', 'URLTreeVisitor', 'SimpleURLWriter', 'ClassURLWriter']
@@ -195,19 +196,10 @@ class _Substitute:
         self.arg_ = arg_or_kwarg
 
 
-class URLTreeVisitor(metaclass=ABCMeta):
-
-    rendered_ = ''
-    level_ = 0
-    indent_ = '\t'
-    es5_ = False
-    nl_ = '\n'
+class URLTreeVisitor(JavaScriptGenerator):
 
     def __init__(self, **kwargs):
-        self.level_ = kwargs.pop('depth', self.level_)
-        self.indent_ = kwargs.pop('indent', self.indent_)
-        self.es5_ = kwargs.pop('es5', self.es5_)
-        self.nl_ = self.nl_ if self.indent_ else ''  # pylint: disable=C0103
+        super().__init__(**kwargs)
 
     def indent(self, incr=1):
         self.level_ += incr
@@ -230,17 +222,21 @@ class URLTreeVisitor(metaclass=ABCMeta):
             return False
         return True
 
+    @abstractmethod
     def start_visitation(self):
-        yield None
+        ...  # pragma: no cover - abstract
 
+    @abstractmethod
     def end_visitation(self):
-        yield None
+        ...  # pragma: no cover - abstract
 
+    @abstractmethod
     def enter_namespace(self, namespace):
-        yield None
+        ...  # pragma: no cover - abstract
 
+    @abstractmethod
     def exit_namespace(self, namespace):
-        yield None
+        ...  # pragma: no cover - abstract
 
     def visit_pattern(
             self,
@@ -373,15 +369,15 @@ class URLTreeVisitor(metaclass=ABCMeta):
 
     @abstractmethod
     def enter_path_group(self, qname):
-        ...
+        ...  # pragma: no cover - abstract
 
     @abstractmethod
     def exit_path_group(self, qname):
-        ...
+        ...  # pragma: no cover - abstract
 
     @abstractmethod
     def visit_path(self, path, kwargs):
-        ...
+        ...  # pragma: no cover - abstract
 
     def visit_path_group(
         self,
@@ -435,22 +431,18 @@ class URLTreeVisitor(metaclass=ABCMeta):
                 yield from self.visit_branch(branch, nmsp, parent_qname)
                 yield from self.exit_namespace(nmsp)
 
-    def visit(self, tree):
-        for line in self.start_visitation():
-            self.write_line(line)
-
-        self.indent()
-        for line in self.visit_branch(tree):
-            self.write_line(line)
-        self.outdent()
-
-        for line in self.end_visitation():
+    def generate(self, *args, **kwargs):
+        for line in self.visit(args[0] if args else kwargs.pop('tree')):
             self.write_line(line)
         return self.rendered_
 
-    def write_line(self, line):
-        if line is not None:
-            self.rendered_ += f'{self.indent_*self.level_}{line}{self.nl_}'
+    def visit(self, tree):
+        yield from self.start_visitation()
+        self.indent()
+        yield from self.visit_branch(tree)
+        self.outdent()
+        yield from self.end_visitation()
+
 
     def sub_to_str(self, sub):
         if isinstance(sub.arg, int):
@@ -469,6 +461,18 @@ class URLTreeVisitor(metaclass=ABCMeta):
 
 
 class SimpleURLWriter(URLTreeVisitor):
+
+    raise_on_not_found_ = True
+
+    def __init__(self, **kwargs):
+        super().__init__(**kwargs)
+        self.raise_on_not_found_ = kwargs.pop('raise_on_not_found', self.raise_on_not_found_)
+
+    def start_visitation(self):
+        yield None
+
+    def end_visitation(self):
+        yield None
 
     def enter_namespace(self, namespace):
         yield f'"{namespace}": {{'
@@ -489,7 +493,8 @@ class SimpleURLWriter(URLTreeVisitor):
             self.indent()
 
     def exit_path_group(self, qname):
-        yield f'throw new TypeError("No reversal available for parameters at path: {qname}");'
+        if self.raise_on_not_found_:
+            yield f'throw new TypeError("No reversal available for parameters at path: {qname}");'
         self.outdent()
         yield '},'
 
@@ -553,20 +558,22 @@ class ClassURLWriter(URLTreeVisitor):
             self.indent()
             yield 'match: function(kwargs, args, expected) {'
             self.indent()
-            yield 'if (Array.isArray(expected))'
+            yield 'if (Array.isArray(expected)) {'
             self.indent()
             yield ('return (Object.keys(kwargs).length === expected.length && '
                    'expected.every(function(value) { return kwargs.hasOwnProperty(value); }))'
             )
             self.outdent()
-            yield 'else if (expected)'
+            yield '} else if (expected) {'
             self.indent()
             yield 'return args.length === expected;'
             self.outdent()
-            yield 'else'
+            yield '} else {'
             self.indent()
             yield 'return Object.keys(kwargs).length === 0 && args.length === 0;'
-            self.outdent(2)
+            self.outdent()
+            yield '}'
+            self.outdent()
             yield '},'
             yield 'reverse: function(qname, kwargs, args) {'
             self.indent()
@@ -575,10 +582,15 @@ class ClassURLWriter(URLTreeVisitor):
             yield 'let url = this.urls;'
             yield "qname.split(':').forEach(function(ns) {"
             self.indent()
-            yield 'if (ns && url) url = url.hasOwnProperty(ns) ? url[ns] : null;'
+            yield 'if (ns && url) { url = url.hasOwnProperty(ns) ? url[ns] : null; }'
             self.outdent()
             yield '});'
-            yield 'if (url) return url.call(this, kwargs, args);'
+            yield 'if (url) {'
+            self.indent()
+            yield 'let pth = url.call(this, kwargs, args);'
+            yield 'if (typeof pth === "string") { return pth; }'
+            self.outdent()
+            yield '}'
             if self.raise_on_not_found_:
                 yield 'throw new TypeError("No reversal available for parameters at path: "+qname);'
             self.outdent()
@@ -590,21 +602,23 @@ class ClassURLWriter(URLTreeVisitor):
             yield ''
             yield 'match(kwargs, args, expected) {'
             self.indent()
-            yield 'if (Array.isArray(expected))'
+            yield 'if (Array.isArray(expected)) {'
             self.indent()
             yield (
                 'return Object.keys(kwargs).length === expected.length && '
                 'expected.every(value => kwargs.hasOwnProperty(value));'
             )
             self.outdent()
-            yield 'else if (expected)'
+            yield '} else if (expected) {'
             self.indent()
             yield 'return args.length === expected;'
             self.outdent()
-            yield 'else'
+            yield '} else {'
             self.indent()
             yield 'return Object.keys(kwargs).length === 0 && args.length === 0;'
-            self.outdent(2)
+            self.outdent()
+            yield '}'
+            self.outdent()
             yield '}'
             yield ''
             yield 'reverse(qname, kwargs={}, args=[]) {'
@@ -612,10 +626,15 @@ class ClassURLWriter(URLTreeVisitor):
             yield 'let url = this.urls;'
             yield "for (const ns of qname.split(':')) {"
             self.indent()
-            yield 'if (ns && url) url = url.hasOwnProperty(ns) ? url[ns] : null;'
+            yield 'if (ns && url) { url = url.hasOwnProperty(ns) ? url[ns] : null; }'
             self.outdent()
             yield '}'
-            yield 'if (url) return url(kwargs, args);'
+            yield 'if (url) {'
+            self.indent()
+            yield 'let pth = url(kwargs, args);'
+            yield 'if (typeof pth === "string") { return pth; }'
+            self.outdent()
+            yield '}'
             if self.raise_on_not_found_:
                 yield ('throw new TypeError('
                        '`No reversal available for parameters at path: ${qname}`);'
@@ -655,16 +674,16 @@ class ClassURLWriter(URLTreeVisitor):
     def visit_path(self, path, kwargs):
         quote = '"' if self.es5_ else '`'
         if len(path) == 1:
-            yield f'if (this.match(kwargs, args)) return "/{path[0].lstrip("/")}";'
+            yield f'if (this.match(kwargs, args)) {{ return "/{path[0].lstrip("/")}"; }}'
         elif len(kwargs) == 0:
             nargs = len([comp for comp in path if isinstance(comp, _Substitute)])
             yield (
-                f'if (this.match(kwargs, args, {nargs}))'
-                f' return {quote}/{self.path_join(path).lstrip("/")}{quote};'
+                f'if (this.match(kwargs, args, {nargs})) {{'
+                f' return {quote}/{self.path_join(path).lstrip("/")}{quote}; }}'
             )
         else:
             opts_str = ",".join([f"'{param}'" for param in kwargs])
             yield (
-                f'if (this.match(kwargs, args, [{opts_str}]))'
-                f' return {quote}/{self.path_join(path).lstrip("/")}{quote};'
+                f'if (this.match(kwargs, args, [{opts_str}])) {{'
+                f' return {quote}/{self.path_join(path).lstrip("/")}{quote}; }}'
             )

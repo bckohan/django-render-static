@@ -257,14 +257,4 @@ def urls_to_js(  # pylint: disable=R0913,R0915
     if not issubclass(visitor, URLTreeVisitor):
         raise ValueError(f'{visitor.__class__.__name__} must be of type `URLTreeVisitor`!')
 
-    visitor = visitor(**kwargs)
-
-    return SafeString(
-        visitor.visit(
-            build_tree(
-                url_conf,
-                include,
-                exclude
-            )[0]
-        )
-    )
+    return SafeString(visitor(**kwargs).generate(build_tree(url_conf, include, exclude)[0]))
