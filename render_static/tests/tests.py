@@ -1508,8 +1508,8 @@ class URLSToJavascriptTest(URLJavascriptMixin, BaseTestCase):
         self.assertFalse(self.exists('re_path_unnamed_solo', args=['daf', 7120]))
 
     # uncomment to not delete generated js
-    # def tearDown(self):
-    #     pass
+    def tearDown(self):
+        pass
 
 
 class URLSToJavascriptOffNominalTest(URLJavascriptMixin, BaseTestCase):

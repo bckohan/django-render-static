@@ -209,9 +209,8 @@ Your settings file might look like:
                 'loaders': [
                     ('render_static.loaders.StaticLocMemLoader', {
                         'urls.js': (
-                            'var urls = {\n
-                                {% urls_to_js exclude=exclude %}
-                            \n};'
+                            '{% urls_to_js visitor="render_static.ClassURLWriter" '
+                            'exclude=exclude %}'
                         )
                     })
                  ],
@@ -255,26 +254,43 @@ Then urls.js will look like this:
 
 .. code:: javascript
 
-    var urls = {
-        "simple": function(kwargs={}, args=[]) {
-            if (Object.keys(kwargs).length === 0 && args.length === 0)
-                return "/simple";
-            if (
-                Object.keys(kwargs).length === 1 &&
-                ['arg1'].every(value => kwargs.hasOwnProperty(value))
-            )
-                return `/simple/${kwargs["arg1"]}`;
-            throw new TypeError("No reversal available for parameters at path: simple");
-        },
-        "different": function(kwargs={}, args=[]) {
-            if (
-                Object.keys(kwargs).length === 2 &&
-                ['arg1','arg2'].every(value => kwargs.hasOwnProperty(value))
-            )
-                return `/different/${kwargs["arg1"]}/${kwargs["arg2"]}`;
-            throw new TypeError("No reversal available for parameters at path: different");
+    class URLResolver {
+
+        match(kwargs, args, expected) {
+            if (Array.isArray(expected)) {
+                return Object.keys(kwargs).length === expected.length &&
+                    expected.every(value => kwargs.hasOwnProperty(value));
+            } else if (expected) {
+                return args.length === expected;
+            } else {
+                return Object.keys(kwargs).length === 0 && args.length === 0;
+            }
         }
-    }
+
+        reverse(qname, kwargs={}, args=[]) {
+            let url = this.urls;
+            for (const ns of qname.split(':')) {
+                if (ns && url) { url = url.hasOwnProperty(ns) ? url[ns] : null; }
+            }
+            if (url) {
+                let pth = url(kwargs, args);
+                if (typeof pth === "string") { return pth; }
+            }
+            throw new TypeError(`No reversal available for parameters at path: ${qname}`);
+        }
+
+        urls = {
+            "simple": (kwargs={}, args=[]) => {
+                if (this.match(kwargs, args)) { return "/simple/"; }
+                if (this.match(kwargs, args, ['arg1'])) { return `/simple/${kwargs["arg1"]}`; }
+            },
+            "different": (kwargs={}, args=[]) => {
+                if (this.match(kwargs, args, ['arg1','arg2'])) {
+                    return `/different/${kwargs["arg1"]}/${kwargs["arg2"]}`;
+                }
+            },
+        }
+    };
 
 
 So you can now fetch paths like this:
@@ -282,4 +298,5 @@ So you can now fetch paths like this:
 .. code:: javascript
 
     // /different/143/emma
-    urls.different({'arg1': 143, 'arg2': 'emma'});
+    const urls = new URLResolver();
+    urls.reverse('different', {'arg1': 143, 'arg2': 'emma'});

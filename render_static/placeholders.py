@@ -32,7 +32,7 @@ __all__ = [
     'resolve_unnamed_placeholders'
 ]
 
-ALWAYS_TRY_THESE = [0, 'a', 1, 'A']
+ALWAYS_TRY_THESE = [0, 'a', 1, 'A', 'aaaaaaaa-aaaa-aaaa-aaaa-aaaaaaaaaaaa']
 
 converter_placeholders: Dict[Type, List] = {
     converters.IntConverter: [0],

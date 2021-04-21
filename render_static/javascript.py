@@ -11,11 +11,17 @@ class JavaScriptGenerator(metaclass=ABCMeta):
 
     To use this class derive from it and implement generate().
 
-    :param kwargs: A set of configuration parameters for the generator, including:
-        - depth: the integer starting indentation level, default: 0
-        - indent: the string to use as the indentation string. May be None or empty string for
-            no indent which will also cause no newlines to be inserted, default: \t
-        - es5: If true, generated JavaScript will be valid es5.
+    The configuration parameters that control the JavaScript output include:
+
+        * *depth*
+            the integer starting indentation level, default: 0
+        * *indent*
+            the string to use as the indentation string. May be None or empty string for no indent
+            which will also cause no newlines to be inserted, default: \t
+        * *es5*
+            If true, generated JavaScript will be valid es5.
+
+    :param kwargs: A set of configuration parameters for the generator, see above.
     """
 
     rendered_ = ''

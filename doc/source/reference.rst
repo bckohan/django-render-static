@@ -80,3 +80,28 @@ placeholders
    .. autofunction:: register_unnamed_placeholders
    .. autofunction:: resolve_placeholders
    .. autofunction:: resolve_unnamed_placeholders
+
+
+.. _javascript:
+
+javascript
+----------------------------------------------------------------
+
+.. automodule:: render_static.javascript
+
+   .. autoclass:: JavaScriptGenerator
+
+
+.. _url_tree:
+
+url_tree
+----------------------------------------------------------------
+
+.. automodule:: render_static.url_tree
+
+   .. autoclass:: URLTreeVisitor
+   .. autoclass:: SimpleURLWriter
+   .. autoclass:: ClassURLWriter
+   .. autoclass:: Substitute
+   .. autofunction:: normalize_ns
+   .. autofunction:: build_tree
