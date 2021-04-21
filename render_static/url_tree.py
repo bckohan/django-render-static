@@ -943,10 +943,7 @@ class ClassURLWriter(URLTreeVisitor):
         """
         quote = '"' if self.es5_ else '`'
         if len(path) == 1:
-            yield (
-                f'if (this.match(kwargs, args)) {{ '  # type: ignore
-                f'return "/{path[0].lstrip("/")}"; }}'
-            )
+            yield f'if (this.match(kwargs, args)) {{ return "/{str(path[0]).lstrip("/")}"; }}'
         elif len(kwargs) == 0:
             nargs = len([comp for comp in path if isinstance(comp, Substitute)])
             yield (
