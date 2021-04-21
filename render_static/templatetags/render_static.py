@@ -4,7 +4,7 @@ import inspect
 import json
 from importlib import import_module
 from types import ModuleType
-from typing import Iterable, Optional, Type, Union
+from typing import Any, Dict, Iterable, Optional, Type, Union
 
 from django import template
 from django.utils.module_loading import import_string
@@ -116,7 +116,7 @@ def modules_to_js(modules: Iterable[Union[ModuleType, str]], indent: str = '\t')
 
 @register.simple_tag
 def urls_to_js(  # pylint: disable=R0913,R0915
-        visitor: Optional[Union[Type, str]] = SimpleURLWriter,
+        visitor: Union[Type, str] = SimpleURLWriter,
         url_conf: Optional[Union[ModuleType, str]] = None,
         indent: str = '\t',
         depth: int = 0,
@@ -248,9 +248,18 @@ def urls_to_js(  # pylint: disable=R0913,R0915
     kwargs['es5'] = es5
 
     if isinstance(visitor, str):
+        # mypy doesnt pick up this switch from str to class, import_string probably untyped
         visitor = import_string(visitor)
 
-    if not issubclass(visitor, URLTreeVisitor):
+    if not issubclass(visitor, URLTreeVisitor):  # type: ignore
         raise ValueError(f'{visitor.__class__.__name__} must be of type `URLTreeVisitor`!')
 
-    return SafeString(visitor(**kwargs).generate(build_tree(url_conf, include, exclude)[0]))
+    return SafeString(
+        visitor(**kwargs).generate(  # type: ignore
+            build_tree(
+                url_conf,
+                include,
+                exclude
+            )[0]
+        )
+    )

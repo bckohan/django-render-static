@@ -1,9 +1,9 @@
 import itertools
 import re
-from abc import ABCMeta, abstractmethod
+from abc import abstractmethod
 from importlib import import_module
 from types import ModuleType
-from typing import Dict, Iterable, Optional, Tuple, Type, Union
+from typing import Dict, Generator, Iterable, List, Optional, Tuple, Union
 
 from django.conf import settings
 from django.urls import URLPattern, URLResolver, reverse
@@ -19,7 +19,7 @@ from render_static.placeholders import (
 __all__ = ['build_tree', 'URLTreeVisitor', 'SimpleURLWriter', 'ClassURLWriter']
 
 
-def normalize_ns(namespaces: str) -> Iterable[str]:
+def normalize_ns(namespaces: str) -> str:
     return ':'.join([nmsp for nmsp in namespaces.split(':') if nmsp])
 
 
@@ -88,8 +88,8 @@ def __build_branch__(
         nodes: Iterable[URLPattern],
         included: bool,
         branch: Tuple[Dict, Dict, Optional[str]],
-        includes: Optional[Iterable[str]],
-        excludes: Optional[Iterable[str]],
+        includes: Iterable[str],
+        excludes: Iterable[str],
         namespace: Optional[str] = None,
         qname: str = '',
         app_name: Optional[str] = None
@@ -181,27 +181,20 @@ def __prune_tree__(
 
 class _Substitute:
 
-    arg_ = None
+    arg_: Optional[Union[str, int]] = None
 
     @property
-    def arg(self):
+    def arg(self) -> Optional[Union[str, int]]:
         return self.arg_
 
-    def __init__(self, arg_or_kwarg):
+    def __init__(self, arg_or_kwarg: Union[str, int]) -> None:
         self.arg_ = arg_or_kwarg
 
 
 class URLTreeVisitor(JavaScriptGenerator):
 
-    def __init__(self, **kwargs):
+    def __init__(self, **kwargs: str) -> None:
         super().__init__(**kwargs)
-
-    def indent(self, incr=1):
-        self.level_ += incr
-
-    def outdent(self, decr=1):
-        self.level_ -= decr
-        self.level_ = max(0, self.level_)
 
     @staticmethod
     def reversible(endpoint: URLPattern) -> bool:
@@ -218,19 +211,19 @@ class URLTreeVisitor(JavaScriptGenerator):
         return True
 
     @abstractmethod
-    def start_visitation(self):
+    def start_visitation(self) -> Generator[str, None, None]:
         ...  # pragma: no cover - abstract
 
     @abstractmethod
-    def end_visitation(self):
+    def end_visitation(self) -> Generator[str, None, None]:
         ...  # pragma: no cover - abstract
 
     @abstractmethod
-    def enter_namespace(self, namespace):
+    def enter_namespace(self, namespace) -> Generator[str, None, None]:
         ...  # pragma: no cover - abstract
 
     @abstractmethod
-    def exit_namespace(self, namespace):
+    def exit_namespace(self, namespace) -> Generator[str, None, None]:
         ...  # pragma: no cover - abstract
 
     def visit_pattern(
@@ -238,7 +231,7 @@ class URLTreeVisitor(JavaScriptGenerator):
             endpoint: URLPattern,
             qname: str,
             app_name: Optional[str]
-    ) -> str:  # pylint: disable=R0914,R0912
+    ) -> Generator[str, None, Optional[str]]:  # pylint: disable=R0914,R0912
         """
         Generate code for a URLPattern to be added to the javascript reverse function that
         corresponds to its qualified name.
@@ -363,15 +356,19 @@ class URLTreeVisitor(JavaScriptGenerator):
         )
 
     @abstractmethod
-    def enter_path_group(self, qname):
+    def enter_path_group(self, qname: str) -> Generator[str, None, None]:
         ...  # pragma: no cover - abstract
 
     @abstractmethod
-    def exit_path_group(self, qname):
+    def exit_path_group(self, qname: str) -> Generator[str, None, None]:
         ...  # pragma: no cover - abstract
 
     @abstractmethod
-    def visit_path(self, path, kwargs):
+    def visit_path(
+            self,
+            path: Iterable[Union[str, _Substitute]],
+            kwargs: Iterable[str]
+    ) -> Generator[str, None, None]:
         ...  # pragma: no cover - abstract
 
     def visit_path_group(
@@ -379,7 +376,7 @@ class URLTreeVisitor(JavaScriptGenerator):
         nodes: Iterable[URLPattern],
         qname: str,
         app_name: Optional[str] = None
-    ) -> str:
+    ) -> Generator[str, None, None]:
         """
         Convert a list of URLPatterns all corresponding to the same qualified name to javascript.
 
@@ -398,7 +395,7 @@ class URLTreeVisitor(JavaScriptGenerator):
         branch: Tuple[Dict, Dict, Optional[str]],
         namespace: Optional[str] = None,
         parent_qname: str = ''
-    ):
+    ) -> Generator[str, None, None]:
         """
         Walk the tree, writing javascript for URLs indexed by their nested namespaces.
 
@@ -426,20 +423,19 @@ class URLTreeVisitor(JavaScriptGenerator):
                 yield from self.visit_branch(branch, nmsp, parent_qname)
                 yield from self.exit_namespace(nmsp)
 
-    def generate(self, *args, **kwargs):
+    def generate(self, *args, **kwargs) -> str:
         for line in self.visit(args[0] if args else kwargs.pop('tree')):
             self.write_line(line)
         return self.rendered_
 
-    def visit(self, tree):
+    def visit(self, tree) -> Generator[str, None, None]:
         yield from self.start_visitation()
         self.indent()
         yield from self.visit_branch(tree)
         self.outdent()
         yield from self.end_visitation()
 
-
-    def sub_to_str(self, sub):
+    def sub_to_str(self, sub: _Substitute) -> str:
         if isinstance(sub.arg, int):
             return (
                 f'"+args[{sub.arg}].toString()+"' if self.es5_
@@ -451,7 +447,7 @@ class URLTreeVisitor(JavaScriptGenerator):
                 else f'${{kwargs["{sub.arg}"]}}'
             )
 
-    def path_join(self, path):
+    def path_join(self, path: List[Union[_Substitute, str]]) -> str:
         return ''.join([comp if isinstance(comp, str) else self.sub_to_str(comp) for comp in path])
 
 
