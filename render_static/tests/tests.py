@@ -21,10 +21,10 @@ from django.utils.module_loading import import_string
 from render_static import placeholders
 from render_static.backends import StaticDjangoTemplates, StaticJinja2Templates
 from render_static.engine import StaticTemplateEngine
+from render_static.javascript import JavaScriptGenerator
 from render_static.origin import AppOrigin, Origin
 from render_static.tests import bad_pattern, defines
 from render_static.url_tree import ClassURLWriter
-from render_static.javascript import JavaScriptGenerator
 
 APP1_STATIC_DIR = Path(__file__).parent / 'app1' / 'static'  # this dir does not exist and must be cleaned up
 APP2_STATIC_DIR = Path(__file__).parent / 'app2' / 'static'  # this dir exists and is checked in

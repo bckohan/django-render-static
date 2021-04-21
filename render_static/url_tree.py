@@ -1,25 +1,20 @@
-from django.urls import URLPattern, URLResolver
-from abc import (
-    ABCMeta,
-    abstractmethod
-)
-from django.conf import settings
-
 import itertools
 import re
+from abc import ABCMeta, abstractmethod
 from importlib import import_module
 from types import ModuleType
 from typing import Dict, Iterable, Optional, Tuple, Type, Union
-from django.urls import URLPattern, reverse
+
+from django.conf import settings
+from django.urls import URLPattern, URLResolver, reverse
 from django.urls.exceptions import NoReverseMatch
 from django.urls.resolvers import RegexPattern, RoutePattern
 from render_static.exceptions import PlaceholderNotFound, URLGenerationFailed
+from render_static.javascript import JavaScriptGenerator
 from render_static.placeholders import (
     resolve_placeholders,
     resolve_unnamed_placeholders,
 )
-from render_static.javascript import JavaScriptGenerator
-
 
 __all__ = ['build_tree', 'URLTreeVisitor', 'SimpleURLWriter', 'ClassURLWriter']
 

@@ -6,11 +6,7 @@ r"""
 /_/ |_|\___/_/ /_/\__,_/\___/_/      /____/\__/\__,_/\__/_/\___/
 
 """
-from .url_tree import (
-    URLTreeVisitor,
-    SimpleURLWriter,
-    ClassURLWriter
-)
+from .url_tree import ClassURLWriter, SimpleURLWriter, URLTreeVisitor
 
 __title__ = 'Django Render Static'
 __version__ = '1.0.0'

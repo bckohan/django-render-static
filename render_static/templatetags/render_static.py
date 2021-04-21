@@ -9,11 +9,7 @@ from typing import Iterable, Optional, Type, Union
 from django import template
 from django.utils.module_loading import import_string
 from django.utils.safestring import SafeString
-from render_static.url_tree import (
-    build_tree,
-    URLTreeVisitor,
-    SimpleURLWriter
-)
+from render_static.url_tree import SimpleURLWriter, URLTreeVisitor, build_tree
 
 register = template.Library()
 
