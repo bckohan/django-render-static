@@ -33,10 +33,10 @@ django-render-static are immediately available to participate in the normal stat
 For example, a frequently occurring pattern that violates the DRY principle is the presence of
 defines, or enum like structures in server side Python code that are simply replicated in client
 side JavaScript. Single-sourcing these structures by generating client side code from the server
-side code maintains DRYness.
+side code keeps the stack bone DRY.
 
-Have you ever wished you could replicate Django's `reverse` function in a JavaScript library for
-your site? Now you can with the `urls_to_js` template tag included with `django-render-static`.
+Have you ever wished you could replicate Django's ``reverse`` function in a JavaScript library for
+your site? Now you can with the ``urls_to_js`` template tag included with `django-render-static`.
 
 You can report bugs and discuss features on the
 `issues page <https://github.com/bckohan/django-render-static/issues>`_.
@@ -301,3 +301,47 @@ So you can now fetch paths like this:
     // /different/143/emma
     const urls = new URLResolver();
     urls.reverse('different', {'arg1': 143, 'arg2': 'emma'});
+    
+    
+URLGenerationFailed Exceptions & Placeholders
+---------------------------------------------
+
+If you encounter a ``URLGenerationFailed`` exception, resulting from a ``PlaceholderNotFound`` exception, not to worry. You simply need to register a placeholder for the argument in question. A placeholder is just a string or object that can be coerced to a string that matches the regular expression for the argument:
+
+.. code:: python
+   
+   from render_static.placeholders import register_variable_placeholder
+
+   app_name = 'year_app'
+   urlpatterns = [
+       re_path(r'^fetch/(?P<year>\d{4})/$', YearView.as_view(), name='fetch_year')
+   ]
+
+   register_variable_placeholder('year', 2000, app_name=app_name)
+
+django-render-static avoids overly complex string parsing logic by reversing the urls and using the resultant regular expression match objects to determine where argument substitutions are made. This keeps the code simple, reliable and avoids deep dependencies on Django's url configuration code. Placeholders are the price paid for that reliability. Common default placeholders are attempted after all registered placeholders fail, and all of Django's native path converters are supported. This should allow most urls to work out of the box. 
+
+Users are **strongly** encouraged to use path instead of re_path and register their own custom converters when needed. Placeholders can be directly registered on the converter (and are then conveniently available to users of your app!):
+
+.. code:: python
+
+   from django.urls.converters import register_converter
+
+   class YearConverter:
+       regex = '[0-9]{4}'
+       placeholder = 2000  # this attribute is used by `url_to_js` to reverse paths
+
+       def to_python(self, value):
+           return int(value)
+
+       def to_url(self, value):
+           return str(value)
+
+
+   register_converter(YearConverter, 'year')
+
+   urlpatterns = [
+       path('fetch/<year:year>', YearView.as_view(), name='fetch_year')
+   ]
+
+
