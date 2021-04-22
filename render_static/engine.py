@@ -3,7 +3,7 @@
 import os
 from collections import Counter
 from pathlib import Path
-from typing import Dict, List, Optional, Union
+from typing import Dict, List, Optional, Union, Callable
 
 from django.conf import settings
 from django.core.exceptions import ImproperlyConfigured
@@ -14,6 +14,41 @@ from django.utils.functional import cached_property
 from django.utils.module_loading import import_string
 
 __all__ = ['StaticTemplateEngine']
+
+
+def _resolve_context(
+        context: Optional[Union[Dict, Callable, str]],
+        template: Optional[str] = None
+) -> Dict:
+    """
+    Resolve a context configuration parameter into a context dictionary. If the context is a string
+    it is treated as an importable string pointing to a callable, if it is a callable it is called
+    and if it is a dictionary it is simply returned. Any failure to resolve a dictionary from the
+    configuration.
+
+    :param context: Either an importable string pointing to a callable, a callable instance or a
+        dictionary
+    :return: dictionary holding the context
+    :raises ImproperlyConfigured: if there is a failure to produce a dictionary context
+    """
+    if context:
+        if isinstance(context, str):
+            try:
+                context = import_string(context)
+            except Exception as imp_err:
+                raise ImproperlyConfigured(
+                    f'STATIC_TEMPLATES: Unable to import context generator: {context}'
+                ) from imp_err
+        if callable(context):
+            context = context()
+        if not isinstance(context, dict):
+            raise ImproperlyConfigured(
+                f"STATIC_TEMPLATES 'context' configuration directive"
+                f"{' for ' + template if template else '' } must be a dictionary or a "
+                f"callable that returns a dictionary!"
+            )
+        return context
+    return {}
 
 
 class StaticTemplateEngine:
@@ -86,8 +121,9 @@ class StaticTemplateEngine:
         :param dest: The absolute destination directory where the template will be written. May be
             None which indicates the template will be written to its owning app's static directory
             if it was loaded with an app directory loader
-        :param context: A specific dictionary context to use for this template. This may override
-            global context parameters
+        :param context: A specific dictionary context to use for this template, may also be an
+            import string to a callable or a callable that generates a dictionary. This may override
+            global context parameters.
         :raises ImproperlyConfigured: If there are any unexpected or misconfigured parameters
         """
 
@@ -98,7 +134,7 @@ class StaticTemplateEngine:
                 self,
                 name: str,
                 dest: Optional[Union[Path, str]] = None,
-                context: Optional[Dict] = None
+                context: Optional[Union[Dict, Callable, str]] = None
         ) -> None:
             self.name = name
 
@@ -113,14 +149,8 @@ class StaticTemplateEngine:
                     raise ImproperlyConfigured(
                         f'In STATIC_TEMPLATES, template {name} dest must be absolute!'
                     )
-
-            if context is not None:
-                if not isinstance(context, dict):
-                    raise ImproperlyConfigured(
-                        f"Template {name} 'context' parameter in STATIC_TEMPLATES must be a "
-                        f"dictionary, not {type(context)}"
-                    )
-
+            context = _resolve_context(context, template=name)
+            if context:
                 self.context_ = context
 
         @property
@@ -180,14 +210,9 @@ class StaticTemplateEngine:
         :return: A dictionary containing the global template context
         :raises ImproperlyConfigured: If the template context is specified and is not a dictionary.
         """
-        global_ctx = self.config.get('context', {})
-        if not isinstance(global_ctx, dict):
-            raise ImproperlyConfigured(
-                "STATIC_TEMPLATES 'context' configuration directive must be a dictionary!"
-            )
         return {
             'settings': settings,
-            **global_ctx
+            **_resolve_context(self.config.get('context', {}))
         }
 
     @cached_property

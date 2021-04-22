@@ -138,6 +138,67 @@ class NominalTestCase(BaseTestCase):
         ))
 
 
+def generate_context1():
+    return {
+        'to': 'world',
+        'punc': '!'
+    }
+
+
+def generate_context2():
+    return {
+        'greeting': 'Hello',
+        'to': 'World'
+    }
+
+
+def invalid_context_return():
+    return ['garbage']
+
+
+@override_settings(STATIC_TEMPLATES={
+    'context': 'tests.generate_context1',
+    'templates': {
+        'app1/html/hello.html': {
+            'context': generate_context2,
+        }
+    }
+})
+class CallableContextTestCase(BaseTestCase):
+    """
+    Tests that show callable contexts work as expected.
+    """
+    def test_nominal_generate(self):
+        call_command('render_static')
+        self.assertTrue(filecmp.cmp(
+            APP1_STATIC_DIR / 'app1' / 'html' / 'hello.html',
+            EXPECTED_DIR / 'ctx_override.html',
+            shallow=False
+        ))
+
+    @override_settings(STATIC_TEMPLATES={
+        'templates': {
+            'app1/html/hello.html': {
+                'context': 'does.not.exist'
+            }
+        }
+    })
+    def test_off_nominal_tmpl(self):
+        self.assertRaises(ImproperlyConfigured, lambda: call_command('render_static'))
+        
+    @override_settings(STATIC_TEMPLATES={
+        'context': invalid_context_return,
+        'templates': {
+            'app1/html/hello.html': {}
+        }
+    })
+    def test_off_nominal_global(self):
+        self.assertRaises(CommandError, lambda: call_command('render_static'))
+
+    # def tearDown(self):
+    #     pass
+
+
 @override_settings(STATIC_TEMPLATES={
     'context': {
         'to': 'world',
@@ -154,7 +215,8 @@ class NominalTestCase(BaseTestCase):
 })
 class ContextOverrideTestCase(BaseTestCase):
     """
-    Tests that per template contexts override global contexts and that the global context is also used.
+    Tests that per template contexts override global contexts and that the global context is also
+    used.
     """
     def test_generate(self):
         call_command('render_static')
@@ -179,7 +241,8 @@ class ContextOverrideTestCase(BaseTestCase):
 })
 class DestOverrideTestCase(BaseTestCase):
     """
-    Tests that destination can be overridden for app directory loaded templates and that dest can be a string path
+    Tests that destination can be overridden for app directory loaded templates and that dest can be
+    a string path
     """
     def test_generate(self):
         call_command('render_static')
@@ -340,7 +403,8 @@ class ConfigTestCase(TestCase):
             }],
         })
         self.assertEqual(
-            engine['StaticDjangoTemplates'].engine.loaders, ['render_static.loaders.StaticFilesystemLoader']
+            engine['StaticDjangoTemplates'].engine.loaders,
+            ['render_static.loaders.StaticFilesystemLoader']
         )
 
     def test_app_dirs_error(self):
@@ -386,7 +450,7 @@ class ConfigTestCase(TestCase):
         Context must be a dictionary.
         """
         engine = StaticTemplateEngine({
-            'context': []
+            'context': [0]
         })
         self.assertRaises(ImproperlyConfigured, lambda: engine.context)
 
@@ -394,7 +458,7 @@ class ConfigTestCase(TestCase):
             'templates': {
                 'nominal_fs.html': {
                     'dest': GLOBAL_STATIC_DIR / 'nominal_fs.html',
-                    'context': []
+                    'context': [0]
                 }
             }
         })
@@ -756,8 +820,8 @@ class DefinesToJavascriptTest(BaseTestCase):
             {}
         )
 
-    def tearDown(self):
-        pass
+    # def tearDown(self):
+    #     pass
 
 
 class URLJavascriptMixin:
@@ -862,9 +926,9 @@ class URLJavascriptMixin:
 
                             Importing babel.py for the first time - this can take some time. 
                             Please note that currently Javascript 6 in Js2Py is unstable and slow. 
-                            Use only for tiny scripts! Importing babel.py for the first time - this can 
-                            take some time. Please note that currently Javascript 6 in Js2Py is unstable
-                            and slow. Use only for tiny scripts!'
+                            Use only for tiny scripts! Importing babel.py for the first time - this
+                            can take some time. Please note that currently Javascript 6 in Js2Py is
+                            unstable and slow. Use only for tiny scripts!'
                         """
                         url_js = js2py.eval_js6(jf.read())
         func = url_js
@@ -1536,8 +1600,8 @@ class URLSToJavascriptTest(URLJavascriptMixin, BaseTestCase):
         self.assertFalse(self.exists('re_path_unnamed_solo', args=['daf', 7120]))
 
     # uncomment to not delete generated js
-    def tearDown(self):
-        pass
+    # def tearDown(self):
+    #    pass
 
 
 @override_settings(ROOT_URLCONF='render_static.tests.urls2')

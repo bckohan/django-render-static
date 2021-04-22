@@ -126,6 +126,25 @@ there is no request object to build context off of. Dynamic templates are also o
 contextual data built from the database but static templates are only rendered at deployment time,
 so stuffing dynamic database information in static template contexts is not advisable.
 
+Context configuration parameters may also contain a callable or an import string to a callable that
+generates a dictionary context. This can be used to generate context parameters that require the
+full Django stack to be initialized. For example:
+
+.. code-block:: python
+
+      STATIC_TEMPLATES = {
+        'context': 'module.callable'
+      }
+
+Where module.py might contain:
+
+.. code-block:: python
+
+    def callable():
+        return {
+            # ... build context dict
+        }
+
 ``templates``
 -------------
 
@@ -150,7 +169,8 @@ parameter must contain the full path where the template will be rendered includi
 ~~~~~~~~~~~
 
 Provide additional parameters for each template in the ``context`` dictionary. Any context variables
-specified here that clash with global context variables will override them.
+specified here that clash with global context variables will override them. As with the global
+context parameter, may also be a callable that generates a dictionary.
 
 
 ``RENDER_STATIC_REVERSAL_LIMIT``
