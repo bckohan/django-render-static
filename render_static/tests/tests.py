@@ -986,6 +986,31 @@ class URLSToJavascriptTest(URLJavascriptMixin, BaseTestCase):
             'OPTIONS': {
                 'loaders': [
                     ('render_static.loaders.StaticLocMemLoader', {
+                        'urls.js': 'var urls = {\n'
+                                   '{% urls_to_js include=include %}'
+                                   '\n};'
+                    })
+                ],
+                'builtins': ['render_static.templatetags.render_static']
+            },
+        }],
+        'context': {
+            'include': ['admin']
+        }
+    })
+    def test_admin_urls(self):
+        """
+        Admin urls should work out-of-box - just check that it doesnt raise
+        """
+        call_command('render_static', 'urls.js')
+        self.assertTrue(True)
+
+    @override_settings(STATIC_TEMPLATES={
+        'ENGINES': [{
+            'BACKEND': 'render_static.backends.StaticDjangoTemplates',
+            'OPTIONS': {
+                'loaders': [
+                    ('render_static.loaders.StaticLocMemLoader', {
                         'urls.js': '{% urls_to_js visitor="render_static.ClassURLWriter" es5=True%}'
                     })
                 ],
@@ -1506,6 +1531,162 @@ class URLSToJavascriptTest(URLJavascriptMixin, BaseTestCase):
         self.assertFalse(self.exists('re_path_tst', {'strarg': 'is', 'intarg': 1337}))
         self.assertFalse(self.exists('re_path_unnamed', args=['af', 5678]))
         self.assertFalse(self.exists('re_path_unnamed_solo', args=['daf', 7120]))
+
+    # uncomment to not delete generated js
+    def tearDown(self):
+        pass
+
+
+@override_settings(ROOT_URLCONF='render_static.tests.urls2')
+class UnregisteredURLTest(URLJavascriptMixin, BaseTestCase):
+
+    def setUp(self):
+        self.clear_placeholder_registries()
+
+    @override_settings(STATIC_TEMPLATES={
+        'ENGINES': [{
+            'BACKEND': 'render_static.backends.StaticDjangoTemplates',
+            'OPTIONS': {
+                'loaders': [
+                    ('render_static.loaders.StaticLocMemLoader', {
+                        'urls.js': ('{% urls_to_js '
+                                    'visitor="render_static.ClassURLWriter" '
+                                    'include=include '
+                                    '%}')
+                    })
+                ],
+                'builtins': ['render_static.templatetags.render_static']
+            },
+        }],
+        'templates': {'urls.js': {'context': {'include': ['default']}}}
+    })
+    def test_no_default_registered(self):
+        """
+        Tests: https://github.com/bckohan/django-render-static/issues/8
+        :return:
+        """
+        self.es6_mode = True
+        self.url_js = None
+        self.class_mode = ClassURLWriter.class_name_
+
+        call_command('render_static', 'urls.js')
+        self.compare('default', kwargs={'def': 'named'})
+        self.compare('default', args=['unnamed'])
+
+    @override_settings(STATIC_TEMPLATES={
+        'context': {'include': ['default']},
+        'ENGINES': [{
+            'BACKEND': 'render_static.backends.StaticDjangoTemplates',
+            'OPTIONS': {
+                'loaders': [
+                    ('render_static.loaders.StaticLocMemLoader', {
+                        'urls.js': ('{% urls_to_js '
+                                    'visitor="render_static.ClassURLWriter" '
+                                    'include=include '
+                                    '%}')
+                    })
+                ],
+                'builtins': ['render_static.templatetags.render_static']
+            },
+        }],
+        'templates': {'urls.js': {'context': {'include': ['special']}}}
+    })
+    def test_named_unnamed_conflation1(self):
+        """
+        https://github.com/bckohan/django-render-static/issues/9
+        """
+        self.es6_mode = True
+        self.url_js = None
+        self.class_mode = ClassURLWriter.class_name_
+
+        print(reverse('special', kwargs={'choice': 'first'}))
+        print(reverse('special', args=['first']))
+
+        self.assertRaises(CommandError, lambda: call_command('render_static', 'urls.js'))
+
+        placeholders.register_variable_placeholder('choice', 'first')
+        self.assertRaises(CommandError, lambda: call_command('render_static', 'urls.js'))
+        placeholders.register_unnamed_placeholders('special', ['first'])
+
+        call_command('render_static', 'urls.js')
+        self.compare('special', {'choice': 'first'})
+        self.compare('special', ['first'])
+
+
+    @override_settings(
+        ROOT_URLCONF='render_static.tests.urls2',
+        STATIC_TEMPLATES={
+            'context': {'include': ['default']},
+            'ENGINES': [{
+                'BACKEND': 'render_static.backends.StaticDjangoTemplates',
+                'OPTIONS': {
+                    'loaders': [
+                        ('render_static.loaders.StaticLocMemLoader', {
+                            'urls.js': ('{% urls_to_js '
+                                        'visitor="render_static.ClassURLWriter" '
+                                        'include=include '
+                                        '%}')
+                        })
+                    ],
+                    'builtins': ['render_static.templatetags.render_static']
+                },
+            }],
+            'templates': {'urls.js': {'context': {'include': ['special']}}}
+        }
+    )
+    def test_named_unnamed_conflation2(self):
+        """
+        https://github.com/bckohan/django-render-static/issues/9
+        """
+        self.es6_mode = True
+        self.url_js = None
+        self.class_mode = ClassURLWriter.class_name_
+
+        print(reverse('special', kwargs={'choice': 'first'}))
+        print(reverse('special', args=['first']))
+
+        self.assertRaises(CommandError, lambda: call_command('render_static', 'urls.js'))
+
+        placeholders.register_variable_placeholder('choice', 'first')
+        self.assertRaises(CommandError, lambda: call_command('render_static', 'urls.js'))
+        placeholders.register_unnamed_placeholders('special', ['first'])
+
+        call_command('render_static', 'urls.js')
+        self.compare('special', {'choice': 'first'})
+        self.compare('special', ['first'])
+
+
+    """
+    @override_settings(STATIC_TEMPLATES={
+        'context': {'include': ['default']},
+        'ENGINES': [{
+            'BACKEND': 'render_static.backends.StaticDjangoTemplates',
+            'OPTIONS': {
+                'loaders': [
+                    ('render_static.loaders.StaticLocMemLoader', {
+                        'urls.js': ('{% urls_to_js '
+                                    'visitor="render_static.ClassURLWriter" '
+                                    'include=include '
+                                    '%}')
+                    })
+                ],
+                'builtins': ['render_static.templatetags.render_static']
+            },
+        }],
+        'templates': {'urls.js': {'context': {'include': ['special']}}}
+    })
+    def test_complexity_boundary(self):
+        https://github.com/bckohan/django-render-static/issues/10
+        For URLs with lots of unregistered arguments, the reversal attempts may produce an explosion
+        of complexity. If there are
+        :return:
+        self.es6_mode = True
+        self.url_js = None
+
+        self.assertRaises(CommandError, call_command('render_static', 'urls.js'))
+
+        self.compare('default')
+    """
 
     # uncomment to not delete generated js
     def tearDown(self):

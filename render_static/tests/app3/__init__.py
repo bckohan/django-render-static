@@ -1,1 +1,1 @@
-default_app_config = 'render_static.tests.app1.apps.App1Config'
+default_app_config = 'render_static.tests.app3.apps.App3Config'

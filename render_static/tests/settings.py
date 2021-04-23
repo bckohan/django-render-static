@@ -44,6 +44,7 @@ MIDDLEWARE = (
 INSTALLED_APPS = (
     'render_static.tests.app1',
     'render_static.tests.app2',
+    'render_static.tests.app3',
     'render_static',
     'django.contrib.auth',
     'django.contrib.contenttypes',

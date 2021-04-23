@@ -22,7 +22,6 @@ an explicit registration.
 from typing import Any, Dict, Iterable, List, Optional, Type
 
 from django.urls import converters
-from render_static.exceptions import PlaceholderNotFound
 
 __all__ = [
     'register_converter_placeholder',
@@ -32,6 +31,10 @@ __all__ = [
     'resolve_unnamed_placeholders'
 ]
 
+# DO NOT EXPAND THIS LIST LIGHTLY - for URLs with large numbers of arguments, say 5 where all these
+# defaults are tried that would be an O(n^5) operation, where n is the number of defaults.
+# URLs with large numbers of arguments should be rare - but there is a complexity check that will
+# throw an exception when a maximum number of tries is reached
 ALWAYS_TRY_THESE = [0, 'a', 1, 'A', 'aaaaaaaa-aaaa-aaaa-aaaa-aaaaaaaaaaaa']
 
 converter_placeholders: Dict[Type, List] = {
@@ -139,17 +142,6 @@ def resolve_placeholders(
     if app_name:
         placeholders.extend(app_variable_placeholders.get(app_name, {}).get(var_name, []))
     placeholders.extend(variable_placeholders.get(var_name, []))
-
-    if not placeholders:
-        lookup = {
-            'parameter': var_name,
-            'converter': str(converter),
-            'app_name': app_name
-        }
-        raise PlaceholderNotFound(
-            f'No placeholders are registered for any of the lookup parameters: {lookup}'
-        )
-
     return placeholders + [always for always in ALWAYS_TRY_THESE if always not in placeholders]
 
 
@@ -170,16 +162,6 @@ def resolve_unnamed_placeholders(
     if app_name:
         placeholders.extend(app_unnamed_placeholders.get(app_name, {}).get(url_name, []))
     placeholders.extend(unnamed_placeholders.get(url_name, []))
-
-    if not placeholders:
-        lookup = {
-            'url_name': url_name,
-            'app_name': app_name
-        }
-        raise PlaceholderNotFound(
-            f'No unnamed placeholders are registered for any of the lookup parameters: {lookup}'
-        )
-
     return placeholders + [always for always in ALWAYS_TRY_THESE if always not in placeholders]
 
 

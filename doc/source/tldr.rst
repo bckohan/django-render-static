@@ -196,8 +196,9 @@ So you can now fetch paths like this::
 
 .. warning::
 
-    If you get an exception when you run render_static that originated from a PlaceholderNotFound
-    exception, you need to register some :ref:`placeholders` before calling :ref:`urls_to_js`.
+    If you get an exception when you run render_static that originated from a URLGenerationFailed
+    exception, you mostly likely need to register some :ref:`placeholders` before calling
+    :ref:`urls_to_js`.
 
 .. note::
     The JavaScript URL resolution is guaranteed to produce the same paths as Django's reversal

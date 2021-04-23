@@ -64,7 +64,6 @@ exceptions
 
 .. automodule:: render_static.exceptions
 
-   .. autoclass:: PlaceholderNotFound
    .. autoclass:: URLGenerationFailed
 
 

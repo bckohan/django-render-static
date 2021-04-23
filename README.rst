@@ -306,7 +306,7 @@ So you can now fetch paths like this:
 URLGenerationFailed Exceptions & Placeholders
 ---------------------------------------------
 
-If you encounter a ``URLGenerationFailed`` exception, resulting from a ``PlaceholderNotFound`` exception, not to worry. You simply need to register a placeholder for the argument in question. A placeholder is just a string or object that can be coerced to a string that matches the regular expression for the argument:
+If you encounter a ``URLGenerationFailed`` exception, not to worry. You most likely need to register a placeholder for the argument in question. A placeholder is just a string or object that can be coerced to a string that matches the regular expression for the argument:
 
 .. code:: python
    

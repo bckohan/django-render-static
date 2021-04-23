@@ -13,7 +13,7 @@ from django.conf import settings
 from django.urls import URLPattern, URLResolver, reverse
 from django.urls.exceptions import NoReverseMatch
 from django.urls.resolvers import RegexPattern, RoutePattern
-from render_static.exceptions import PlaceholderNotFound, URLGenerationFailed
+from render_static.exceptions import URLGenerationFailed
 from render_static.javascript import JavaScriptGenerator
 from render_static.placeholders import (
     resolve_placeholders,
@@ -89,7 +89,7 @@ def build_tree(
     if exclude:
         excludes = [normalize_ns(excl) for excl in exclude]
 
-    return _prune_tree(
+    pt = _prune_tree(
         _build_branch(
             patterns,
             not includes or '' in includes,
@@ -98,6 +98,9 @@ def build_tree(
             excludes
         )
     )
+    from pprint import pprint
+    pprint(pt)
+    return pt
 
 
 def _build_branch(  # pylint: disable=R0913
@@ -357,83 +360,77 @@ class URLTreeVisitor(JavaScriptGenerator):
 
         # if we have parameters, resolve the placeholders for them
         if params or unnamed:  # pylint: disable=R1702
-            try:
-                if unnamed:
-                    resolved_placeholders = resolve_unnamed_placeholders(
-                        url_name=endpoint.name,
-                        app_name=app_name
-                    )
-                else:
-                    resolved_placeholders = itertools.product(*[
-                        resolve_placeholders(
-                            param,
-                            **lookup
-                        ) for param, lookup in params.items()
-                    ])
+            if unnamed:
+                resolved_placeholders = resolve_unnamed_placeholders(
+                    url_name=endpoint.name,
+                    app_name=app_name
+                )
+            else:
+                resolved_placeholders = itertools.product(*[
+                    resolve_placeholders(
+                        param,
+                        **lookup
+                    ) for param, lookup in params.items()
+                ])
 
-                # attempt to reverse the pattern with our list of potential placeholders
-                for placeholders in resolved_placeholders:
-                    kwargs = {
-                        param: placeholders[idx] for idx, param in enumerate(params.keys())
+            # attempt to reverse the pattern with our list of potential placeholders
+            for placeholders in resolved_placeholders:
+                kwargs = {
+                    param: placeholders[idx] for idx, param in enumerate(params.keys())
+                }
+                try:
+                    if unnamed:
+                        placeholder_url = reverse(qname, args=placeholders)
+                    else:
+                        placeholder_url = reverse(qname, kwargs=kwargs)
+                    # it must match! The URLPattern tree complicates things by often times
+                    # having ^ present at the start of each regex snippet - no way around
+                    # removing it because we're matching against full url strings
+                    mtch = endpoint.pattern.regex.search(placeholder_url.lstrip('/'))
+                    if not mtch:
+                        mtch = re.search(
+                            endpoint.pattern.regex.pattern.lstrip('^'),
+                            placeholder_url.lstrip('/')
+                        )
+
+                    if not mtch:
+                        continue  # pragma: no cover - hopefully impossible to get here!
+
+                    # there might be group matches that aren't part of our kwargs, we go
+                    # through this extra work to make sure we aren't subbing spans that
+                    # aren't kwargs
+                    grp_mp = {
+                        idx: var for var, idx in
+                        endpoint.pattern.regex.groupindex.items()
                     }
-                    try:
+                    replacements = []
+
+                    for idx, value in enumerate(  # pylint: disable=W0612
+                            mtch.groups(),
+                            start=1
+                    ):
                         if unnamed:
-                            placeholder_url = reverse(qname, args=placeholders)
+                            replacements.append((mtch.span(idx), Substitute(idx-1)))
                         else:
-                            placeholder_url = reverse(qname, kwargs=kwargs)
-                        # it must match! The URLPattern tree complicates things by often times
-                        # having ^ present at the start of each regex snippet - no way around
-                        # removing it because we're matching against full url strings
-                        mtch = endpoint.pattern.regex.search(placeholder_url.lstrip('/'))
-                        if not mtch:
-                            mtch = re.search(
-                                endpoint.pattern.regex.pattern.lstrip('^'),
-                                placeholder_url.lstrip('/')
-                            )
+                            assert(idx in grp_mp and grp_mp[idx] in kwargs)
+                            replacements.append((mtch.span(idx), Substitute(grp_mp[idx])))
 
-                        if not mtch:
-                            continue  # pragma: no cover - hopefully impossible to get here!
+                    url_idx = 0
+                    path = []
+                    for rpl in replacements:
+                        while url_idx <= rpl[0][0]:
+                            path.append(placeholder_url[url_idx])
+                            url_idx += 1
+                        path.append(rpl[1])
+                        url_idx += (rpl[0][1] - rpl[0][0])
+                    if url_idx < len(placeholder_url):
+                        path.append(placeholder_url[url_idx:])
 
-                        # there might be group matches that aren't part of our kwargs, we go
-                        # through this extra work to make sure we aren't subbing spans that
-                        # aren't kwargs
-                        grp_mp = {
-                            idx: var for var, idx in
-                            endpoint.pattern.regex.groupindex.items()
-                        }
-                        replacements = []
+                    yield from self.visit_path(path, list(kwargs.keys()))
+                    return None
 
-                        for idx, value in enumerate(  # pylint: disable=W0612
-                                mtch.groups(),
-                                start=1
-                        ):
-                            if unnamed:
-                                replacements.append((mtch.span(idx), Substitute(idx-1)))
-                            else:
-                                assert(idx in grp_mp and grp_mp[idx] in kwargs)
-                                replacements.append((mtch.span(idx), Substitute(grp_mp[idx])))
-
-                        url_idx = 0
-                        path = []
-                        for rpl in replacements:
-                            while url_idx <= rpl[0][0]:
-                                path.append(placeholder_url[url_idx])
-                                url_idx += 1
-                            path.append(rpl[1])
-                            url_idx += (rpl[0][1] - rpl[0][0])
-                        if url_idx < len(placeholder_url):
-                            path.append(placeholder_url[url_idx:])
-
-                        yield from self.visit_path(path, list(kwargs.keys()))
-                        return None
-
-                    except NoReverseMatch:
-                        continue
-            except PlaceholderNotFound as pnf:
-                raise URLGenerationFailed(
-                    f'Unable to generate url for {qname} using pattern {endpoint} '
-                    f'because: {pnf}'
-                ) from pnf
+                except NoReverseMatch:
+                    continue
         else:
             # this is a simple url with no params
             yield from self.visit_path([reverse(qname)], [])
@@ -441,7 +438,8 @@ class URLTreeVisitor(JavaScriptGenerator):
 
         raise URLGenerationFailed(
             f'Unable to generate url for {qname} with kwargs: '
-            f'{params.keys()} using pattern {endpoint}!'
+            f'{params.keys()} using pattern {endpoint}! You may need to register placeholders for '
+            f'this url\'s arguments'
         )
 
     @abstractmethod
