@@ -4,8 +4,10 @@ import json
 import os
 import shutil
 import subprocess
+import traceback
 import uuid
 from pathlib import Path
+from time import perf_counter
 
 import js2py
 from deepdiff import DeepDiff
@@ -17,6 +19,7 @@ from django.template.exceptions import TemplateDoesNotExist
 from django.template.utils import InvalidTemplateEngineError
 from django.test import TestCase, override_settings
 from django.urls import reverse
+from django.urls.exceptions import NoReverseMatch
 from django.utils.module_loading import import_string
 from render_static import placeholders
 from render_static.backends import StaticDjangoTemplates, StaticJinja2Templates
@@ -1538,7 +1541,7 @@ class URLSToJavascriptTest(URLJavascriptMixin, BaseTestCase):
 
 
 @override_settings(ROOT_URLCONF='render_static.tests.urls2')
-class UnregisteredURLTest(URLJavascriptMixin, BaseTestCase):
+class CornerCaseTest(URLJavascriptMixin, BaseTestCase):
 
     def setUp(self):
         self.clear_placeholder_registries()
@@ -1574,7 +1577,38 @@ class UnregisteredURLTest(URLJavascriptMixin, BaseTestCase):
         self.compare('default', args=['unnamed'])
 
     @override_settings(STATIC_TEMPLATES={
-        'context': {'include': ['default']},
+        'ENGINES': [{
+            'BACKEND': 'render_static.backends.StaticDjangoTemplates',
+            'OPTIONS': {
+                'loaders': [
+                    ('render_static.loaders.StaticLocMemLoader', {
+                        'urls.js': ('{% urls_to_js '
+                                    'visitor="render_static.ClassURLWriter" '
+                                    'include=include '
+                                    '%}')
+                    })
+                ],
+                'builtins': ['render_static.templatetags.render_static']
+            },
+        }],
+        'templates': {'urls.js': {'context': {'include': ['no_capture']}}}
+    })
+    def test_non_capturing_unnamed(self):
+        """
+        Tests that unnamed arguments can still work when the users also include non-capturing groups
+        for whatever reason. Hard to imagine an actual use case for these - but reverse still seems
+        to work, so javascript reverse should too
+        :return:
+        """
+        self.es6_mode = True
+        self.url_js = None
+        self.class_mode = ClassURLWriter.class_name_
+
+        placeholders.register_unnamed_placeholders('no_capture', ['0000'])
+        call_command('render_static', 'urls.js')
+        self.compare('no_capture', args=['5555'])
+
+    @override_settings(STATIC_TEMPLATES={
         'ENGINES': [{
             'BACKEND': 'render_static.backends.StaticDjangoTemplates',
             'OPTIONS': {
@@ -1599,22 +1633,20 @@ class UnregisteredURLTest(URLJavascriptMixin, BaseTestCase):
         self.url_js = None
         self.class_mode = ClassURLWriter.class_name_
 
-        print(reverse('special', kwargs={'choice': 'first'}))
-        print(reverse('special', args=['first']))
-
         self.assertRaises(CommandError, lambda: call_command('render_static', 'urls.js'))
 
         placeholders.register_variable_placeholder('choice', 'first')
+        placeholders.register_variable_placeholder('choice1', 'second')
         self.assertRaises(CommandError, lambda: call_command('render_static', 'urls.js'))
-        placeholders.register_unnamed_placeholders('special', ['first'])
+        placeholders.register_unnamed_placeholders('special', ['third'])
 
         call_command('render_static', 'urls.js')
-        self.compare('special', {'choice': 'first'})
-        self.compare('special', ['first'])
-
+        self.compare('special', {'choice': 'second'})
+        self.compare('special', {'choice': 'second', 'choice1': 'first'})
+        self.compare('special', args=['third'])
 
     @override_settings(
-        ROOT_URLCONF='render_static.tests.urls2',
+        ROOT_URLCONF='render_static.tests.urls3',
         STATIC_TEMPLATES={
             'context': {'include': ['default']},
             'ENGINES': [{
@@ -1642,23 +1674,130 @@ class UnregisteredURLTest(URLJavascriptMixin, BaseTestCase):
         self.url_js = None
         self.class_mode = ClassURLWriter.class_name_
 
-        print(reverse('special', kwargs={'choice': 'first'}))
-        print(reverse('special', args=['first']))
-
         self.assertRaises(CommandError, lambda: call_command('render_static', 'urls.js'))
 
         placeholders.register_variable_placeholder('choice', 'first')
+        placeholders.register_variable_placeholder('choice1', 'second')
         self.assertRaises(CommandError, lambda: call_command('render_static', 'urls.js'))
-        placeholders.register_unnamed_placeholders('special', ['first'])
+        placeholders.register_unnamed_placeholders('special', ['third'])
 
         call_command('render_static', 'urls.js')
-        self.compare('special', {'choice': 'first'})
-        self.compare('special', ['first'])
+        self.compare('special', {'choice': 'second'})
+        self.compare('special', {'choice': 'second', 'choice1': 'first'})
+        self.compare('special', args=['third'])
 
+    @override_settings(
+        ROOT_URLCONF='render_static.tests.urls4',
+        STATIC_TEMPLATES={
+            'context': {'include': ['default']},
+            'ENGINES': [{
+                'BACKEND': 'render_static.backends.StaticDjangoTemplates',
+                'OPTIONS': {
+                    'loaders': [
+                        ('render_static.loaders.StaticLocMemLoader', {
+                            'urls.js': '{% urls_to_js visitor="render_static.ClassURLWriter" %}'
+                        })
+                    ],
+                    'builtins': ['render_static.templatetags.render_static']
+                },
+            }]
+        }
+    )
+    def test_named_unnamed_conflation3(self):
+        """
+        This tests surfaces what appears to be a Django bug in reverse(). urls_to_js should not
+        fail in this circumstance, but should leave a comment breadcrumb in the generated JS that
+        indicates why no reversal was produced - alternatively if bug is fixed it should also pass
 
-    """
+        https://github.com/bckohan/django-render-static/issues/9
+        """
+        self.es6_mode = True
+        self.url_js = None
+        self.class_mode = ClassURLWriter.class_name_
+
+        placeholders.register_variable_placeholder('choice', 'first')
+        placeholders.register_unnamed_placeholders('special', ['first'])
+        call_command('render_static', 'urls.js')
+
+        with open(GLOBAL_STATIC_DIR / 'urls.js', 'r') as urls:
+            if 'reverse matched unexpected pattern' not in urls.read():
+                self.compare('special', kwargs={'choice': 'first'})  # pragma: no cover
+                self.compare('special', args=['first'])  # pragma: no cover
+
+        self.assertTrue(True)
+
+    @override_settings(
+        STATIC_TEMPLATES={
+            'context': {'include': ['bad_mix']},
+            'ENGINES': [{
+                'BACKEND': 'render_static.backends.StaticDjangoTemplates',
+                'OPTIONS': {
+                    'loaders': [
+                        ('render_static.loaders.StaticLocMemLoader', {
+                            'urls.js': '{% urls_to_js '
+                                       'visitor="render_static.ClassURLWriter" '
+                                       'include=include %}'
+                        })
+                    ],
+                    'builtins': ['render_static.templatetags.render_static']
+                },
+            }]
+        }
+    )
+    def test_named_unnamed_bad_mix(self):
+        """
+        Mix of named and unnamed arguments should not be reversible!
+        """
+        self.es6_mode = True
+        self.url_js = None
+        self.class_mode = ClassURLWriter.class_name_
+
+        placeholders.register_variable_placeholder('named', '1111')
+        placeholders.register_unnamed_placeholders('bad_mix', ['unnamed'])
+        call_command('render_static', 'urls.js')
+
+        with open(GLOBAL_STATIC_DIR / 'urls.js', 'r') as urls:
+            self.assertTrue('this path may not be reversible' in urls.read())
+
+        self.assertRaises(
+            ValueError,
+            lambda: reverse(
+                'bad_mix',
+                kwargs={'named': '1111'}, args=['unnamed'])
+        )
+        self.assertRaises(NoReverseMatch, lambda: reverse('bad_mix', kwargs={'named': '1111'}))
+
+    @override_settings(
+        STATIC_TEMPLATES={
+            'context': {'include': ['bad_mix2']},
+            'ENGINES': [{
+                'BACKEND': 'render_static.backends.StaticDjangoTemplates',
+                'OPTIONS': {
+                    'loaders': [
+                        ('render_static.loaders.StaticLocMemLoader', {
+                            'urls.js': '{% urls_to_js '
+                                       'visitor="render_static.ClassURLWriter" '
+                                       'include=include %}'
+                        })
+                    ],
+                    'builtins': ['render_static.templatetags.render_static']
+                },
+            }]
+        }
+    )
+    def test_named_unnamed_bad_mix2(self):
+        """
+        Mix of named and unnamed arguments should not be reversible!
+        """
+        self.es6_mode = True
+        self.url_js = None
+        self.class_mode = ClassURLWriter.class_name_
+
+        placeholders.register_variable_placeholder('named', '1111')
+        placeholders.register_unnamed_placeholders('bad_mix2', ['unnamed'])
+        self.assertRaises(CommandError, lambda: call_command('render_static', 'urls.js'))
+
     @override_settings(STATIC_TEMPLATES={
-        'context': {'include': ['default']},
         'ENGINES': [{
             'BACKEND': 'render_static.backends.StaticDjangoTemplates',
             'OPTIONS': {
@@ -1673,20 +1812,58 @@ class UnregisteredURLTest(URLJavascriptMixin, BaseTestCase):
                 'builtins': ['render_static.templatetags.render_static']
             },
         }],
-        'templates': {'urls.js': {'context': {'include': ['special']}}}
+        'templates': {'urls.js': {'context': {'include': ['complex']}}}
     })
     def test_complexity_boundary(self):
+        """
         https://github.com/bckohan/django-render-static/issues/10
+
         For URLs with lots of unregistered arguments, the reversal attempts may produce an explosion
-        of complexity. If there are
+        of complexity. Check that the failsafe is working.
         :return:
+        """
         self.es6_mode = True
+        self.class_mode = ClassURLWriter.class_name_
         self.url_js = None
 
-        self.assertRaises(CommandError, call_command('render_static', 'urls.js'))
+        t1 = perf_counter()
+        tb_str = ''
+        try:
+            call_command('render_static', 'urls.js')
+        except Exception as complexity_error:
+            tb_str = traceback.format_exc()
+            t2 = perf_counter()
 
-        self.compare('default')
-    """
+        self.assertTrue('ReversalLimitHit' in tb_str)
+
+        # very generous reversal timing threshold of 20 seconds - anecdotally the default limit of
+        # 2**15 should be hit in about 3 seconds.
+        self.assertTrue(t2-t1 < 20)
+
+        placeholders.register_variable_placeholder('one', '666')
+        placeholders.register_variable_placeholder('two', '666')
+        placeholders.register_variable_placeholder('three', '666')
+        placeholders.register_variable_placeholder('four', '666')
+        placeholders.register_variable_placeholder('five', '666')
+        placeholders.register_variable_placeholder('six', '666')
+        placeholders.register_variable_placeholder('seven', '666')
+        placeholders.register_variable_placeholder('eight', '666')
+
+        call_command('render_static', 'urls.js')
+
+        self.compare(
+            'complex',
+            {
+                'one': 666,
+                'two': 666,
+                'three': 666,
+                'four': 666,
+                'five': 666,
+                'six': 666,
+                'seven': 666,
+                'eight': 666,
+            }
+        )
 
     # uncomment to not delete generated js
     def tearDown(self):
@@ -1854,7 +2031,6 @@ class URLSToJavascriptOffNominalTest(URLJavascriptMixin, BaseTestCase):
         self.assertRaises(CommandError, lambda: call_command('render_static', 'urls.js'))
 
     def test_register_bogus_converter(self):
-        from render_static import placeholders as gen
         self.assertRaises(
             ValueError,
             lambda: placeholders.register_converter_placeholder('Not a converter type!', 1234)

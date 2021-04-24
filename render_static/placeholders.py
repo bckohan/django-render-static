@@ -101,7 +101,7 @@ def register_unnamed_placeholders(
 ) -> None:
     """
     Register a list of placeholders for a url_name and optionally an app_name that takes unnamed
-    arguments.
+    arguments. The list indices should correspond to the argument order as passed to reverse.
 
     :param url_name: The name of the url path to register the placeholders for
     :param placeholders: The list of placeholders to use
@@ -147,22 +147,35 @@ def resolve_placeholders(
 
 def resolve_unnamed_placeholders(
         url_name: str,
-        app_name: Optional[str] = None
+        nargs: int,
+        app_name: Optional[str] = None,
 ) -> Iterable:
     """
     Resolve placeholders to use for a url with unnamed parameters based on the url name and
     optionally the app_name.
 
     :param url_name: The name of the URL to search for
+    :param nargs: The number of arguments for this url
     :param app_name: The optional app_name to search for
-    :return: A list of lists of placeholders to try
+    :return: A list of lists of placeholders to try, where the outer list is indexed by argument
+        index
     """
 
-    placeholders = []
+    placeholders: List[List[object]] = [[] for arg in range(0, nargs)]
+
+    def add_candidates(candidates: List[List[object]]) -> None:
+        for candidate in candidates:
+            if len(candidate) == nargs:
+                for idx, arg in enumerate(candidate):
+                    placeholders[idx].append(arg)
     if app_name:
-        placeholders.extend(app_unnamed_placeholders.get(app_name, {}).get(url_name, []))
-    placeholders.extend(unnamed_placeholders.get(url_name, []))
-    return placeholders + [always for always in ALWAYS_TRY_THESE if always not in placeholders]
+        add_candidates(app_unnamed_placeholders.get(app_name, {}).get(url_name, []))
+    add_candidates(unnamed_placeholders.get(url_name, []))
+
+    for arg in placeholders:
+        arg.extend([always for always in ALWAYS_TRY_THESE if always not in arg])
+
+    return placeholders
 
 
 register_variable_placeholder('app_label', 'site', app_name='admin')

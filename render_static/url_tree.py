@@ -13,7 +13,7 @@ from django.conf import settings
 from django.urls import URLPattern, URLResolver, reverse
 from django.urls.exceptions import NoReverseMatch
 from django.urls.resolvers import RegexPattern, RoutePattern
-from render_static.exceptions import URLGenerationFailed
+from render_static.exceptions import ReversalLimitHit, URLGenerationFailed
 from render_static.javascript import JavaScriptGenerator
 from render_static.placeholders import (
     resolve_placeholders,
@@ -89,7 +89,7 @@ def build_tree(
     if exclude:
         excludes = [normalize_ns(excl) for excl in exclude]
 
-    pt = _prune_tree(
+    return _prune_tree(
         _build_branch(
             patterns,
             not includes or '' in includes,
@@ -98,9 +98,6 @@ def build_tree(
             excludes
         )
     )
-    from pprint import pprint
-    pprint(pt)
-    return pt
 
 
 def _build_branch(  # pylint: disable=R0913
@@ -256,20 +253,6 @@ class URLTreeVisitor(JavaScriptGenerator):
     :param kwargs: Set of configuration parameters, see `JavaScriptGenerator` params
     """
 
-    @staticmethod
-    def reversible(endpoint: URLPattern) -> bool:
-        """
-        Not every valid Django URL is reversible, For instance Django doesnt allow mixing
-        unnamed and named parameters when reversing a url
-
-        :param endpoint: The URLPattern to test for reversibility
-        :return: True if reversible, false otherwise
-        """
-        num_named = len(endpoint.pattern.regex.groupindex)
-        if num_named and num_named != endpoint.pattern.regex.groups:
-            return False
-        return True
-
     @abstractmethod
     def start_visitation(self) -> Generator[str, None, None]:
         """
@@ -310,12 +293,12 @@ class URLTreeVisitor(JavaScriptGenerator):
         """
         ...  # pragma: no cover - abstract
 
-    def visit_pattern(  # pylint: disable=R0914, R0912
+    def visit_pattern(  # pylint: disable=R0914, R0915, R0912
             self,
             endpoint: URLPattern,
             qname: str,
             app_name: Optional[str]
-    ) -> Generator[str, None, Optional[str]]:
+    ) -> Generator[str, None, None]:
         """
         Visit a pattern. Translates the pattern into a path component string which may contain
         substitution objects. This function will call visit_path once the path components have been
@@ -334,9 +317,6 @@ class URLTreeVisitor(JavaScriptGenerator):
         :return: JavaScript comment if non-reversible
         :except URLGenerationFailed: When no successful placeholders are found for the given pattern
         """
-        if not self.reversible(endpoint):
-            return '/* this path is not reversible */'
-
         # first, pull out any named or unnamed parameters that comprise this pattern
         if isinstance(endpoint.pattern, RoutePattern):
             params = {
@@ -352,19 +332,35 @@ class URLTreeVisitor(JavaScriptGenerator):
                 } for var in endpoint.pattern.regex.groupindex.keys()
             }
         else:
-            raise URLGenerationFailed(
-                f'Unrecognized pattern type: {type(endpoint.pattern)}')
+            raise URLGenerationFailed(f'Unrecognized pattern type: {type(endpoint.pattern)}')
 
         # does this url have unnamed or named params?
-        unnamed = endpoint.pattern.regex.groups > 0 and not params
+        unnamed = False
+        if not params and endpoint.pattern.regex.groups > 0:
+            unnamed = endpoint.pattern.regex.groups
 
         # if we have parameters, resolve the placeholders for them
         if params or unnamed:  # pylint: disable=R1702
             if unnamed:
-                resolved_placeholders = resolve_unnamed_placeholders(
-                    url_name=endpoint.name,
-                    app_name=app_name
+                resolved_placeholders = itertools.product(
+                    *resolve_unnamed_placeholders(
+                        url_name=endpoint.name,
+                        nargs=unnamed,
+                        app_name=app_name
+                    ),
                 )
+                non_capturing = str(endpoint.pattern.regex).count('(?:')
+                if non_capturing > 0:
+                    # handle the corner case where there might be some non-capturing groups
+                    # driving up the number of expected args
+                    resolved_placeholders = itertools.chain(
+                        resolved_placeholders,
+                        *resolve_unnamed_placeholders(
+                            url_name=endpoint.name,
+                            nargs=unnamed-non_capturing,
+                            app_name=app_name
+                        )
+                    )
             else:
                 resolved_placeholders = itertools.product(*[
                     resolve_placeholders(
@@ -374,7 +370,22 @@ class URLTreeVisitor(JavaScriptGenerator):
                 ])
 
             # attempt to reverse the pattern with our list of potential placeholders
+            tries = 0
+            limit = getattr(settings, 'RENDER_STATIC_REVERSAL_LIMIT', 2**15)
             for placeholders in resolved_placeholders:
+                # The downside of the guess and check mechanism is that its an O(n^p) operation
+                # where n is the number of candidate placeholders and p is the number of url
+                # arguments - we put an explicit bound on the complexity of this loop here that
+                # errors out and indicates to the user they should register more specific
+                # placeholders. Placeholders are tried in order of specificity so having specific
+                # placeholders registered will ensure a quick and successful exit of this process
+                if tries > limit:
+                    raise ReversalLimitHit(
+                        f'The maximum number of reversal attempts ({limit}) has been hit '
+                        f'attempting to reverse pattern {endpoint}. Please register more specific '
+                        f'placeholders.'
+                    )
+                tries += 1
                 kwargs = {
                     param: placeholders[idx] for idx, param in enumerate(params.keys())
                 }
@@ -394,7 +405,15 @@ class URLTreeVisitor(JavaScriptGenerator):
                         )
 
                     if not mtch:
-                        continue  # pragma: no cover - hopefully impossible to get here!
+                        # seems to be a bug in django where reverse cannot distinguish between
+                        # patterns where the only difference is between the use of kwargs and args
+                        # we leave a comment breadcrumb in this event so as not to fail the larger
+                        # URL reversal but to leave an indication as to what is wrong with the URLs
+                        yield (
+                            '/* Django reverse matched unexpected pattern for '
+                            f'args={unnamed} */' if unnamed else f'kwargs={params} */'
+                        )  # pragma: no cover
+                        return  # pragma: no cover
 
                     # there might be group matches that aren't part of our kwargs, we go
                     # through this extra work to make sure we aren't subbing spans that
@@ -412,8 +431,9 @@ class URLTreeVisitor(JavaScriptGenerator):
                         if unnamed:
                             replacements.append((mtch.span(idx), Substitute(idx-1)))
                         else:
-                            assert(idx in grp_mp and grp_mp[idx] in kwargs)
-                            replacements.append((mtch.span(idx), Substitute(grp_mp[idx])))
+                            # if the regex has non-capturing groups we need to filter those out
+                            if idx in grp_mp:
+                                replacements.append((mtch.span(idx), Substitute(grp_mp[idx])))
 
                     url_idx = 0
                     path = []
@@ -427,18 +447,28 @@ class URLTreeVisitor(JavaScriptGenerator):
                         path.append(placeholder_url[url_idx:])
 
                     yield from self.visit_path(path, list(kwargs.keys()))
-                    return None
+                    return
 
                 except NoReverseMatch:
                     continue
         else:
             # this is a simple url with no params
             yield from self.visit_path([reverse(qname)], [])
-            return None
+            return
+
+        # Django is unable to reverse paths with named and unnamed arguments, in those instances
+        # don't fail the entire reversal - just leave a breadcrumb
+        if unnamed != endpoint.pattern.regex.groups:
+            unaccounted = endpoint.pattern.regex.groups - len(endpoint.pattern.regex.groupindex)
+            if unaccounted > 0:
+                if unaccounted - str(endpoint.pattern.regex).count('(?:') > 0:
+                    yield '/* this path may not be reversible */'
+                    return
 
         raise URLGenerationFailed(
-            f'Unable to generate url for {qname} with kwargs: '
-            f'{params.keys()} using pattern {endpoint}! You may need to register placeholders for '
+            f'Unable to generate url for {qname} with {unnamed} arguments ' if unnamed
+            else f'Unable to generate url for {qname} with kwargs: {params}'
+            f'using pattern {endpoint}! You may need to register placeholders for '
             f'this url\'s arguments'
         )
 

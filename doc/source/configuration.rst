@@ -151,3 +151,19 @@ parameter must contain the full path where the template will be rendered includi
 
 Provide additional parameters for each template in the ``context`` dictionary. Any context variables
 specified here that clash with global context variables will override them.
+
+
+``RENDER_STATIC_REVERSAL_LIMIT``
+--------------------------------
+
+The guess and check reversal mechanism used to ensure that `urls_to_js` produces the same reversals
+as Django's `reverse` is an **O(n^p)** operation where **n** is the number of placeholder candidates
+to try and **p** is the number of arguments in the url. Its possible for this to produce a
+complexity explosion for rare cases where the URL has a large number of arguments with unregistered
+placeholders. A limit on the number of tries is enforced to guard against this. User's may adjust
+the limit via the ``RENDER_STATIC_REVERSAL_LIMIT`` settings parameter. By default it is 2**14 tries
+which runs in ~seconds per URL.
+
+The solution if this limit is hit, is to provide more specific placeholders as placeholders are
+attempted in order of specificity where specificity is defined by url name, variable name,
+app name and/or converter type.
