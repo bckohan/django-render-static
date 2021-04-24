@@ -2,6 +2,12 @@
 Change Log
 ==========
 
+v1.0.1
+====================
+
+* Fixed `Bound complexity of URL Generation <https://github.com/bckohan/django-render-static/issues/10>`_
+* Fixed `Unnamed/named urls of the same name sometimes fail <https://github.com/bckohan/django-render-static/issues/9>`_
+* Fixed `Default placeholders not activated <https://github.com/bckohan/django-render-static/issues/8>`_
 
 v1.0.0
 ====================
