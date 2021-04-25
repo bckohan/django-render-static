@@ -46,7 +46,7 @@ setting.
 Minimal Configuration
 ---------------------
 
-To run render_static, ``STATIC_TEMPLATES`` must be defined in settings. If it's an empty
+To run `renderstatic`, ``STATIC_TEMPLATES`` must be defined in settings. If it's an empty
 dictionary (or None):
 
 .. code-block:: python
@@ -148,13 +148,13 @@ Where module.py might contain:
 ``templates``
 -------------
 
-The ``templates`` dictionary lists all templates that should be generated when `render_static` is
+The ``templates`` dictionary lists all templates that should be generated when `renderstatic` is
 run with no arguments. If specific configuration directives including rendered path and context are
 needed for a template they must be specified here.
 
 .. note::
 
-    `render_static` will be able to generate templates not listed in ``templates``, but only if
+    `renderstatic` will be able to generate templates not listed in ``templates``, but only if
     supplied by name on the command line. Only the default context will be available to them.
 
 ``dest``

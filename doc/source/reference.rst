@@ -51,21 +51,21 @@ templatetags.django\_static\_templates
 
 .. automodule:: render_static.templatetags.render_static
 
-   .. autofunction:: split
-   .. autofunction:: to_js
-   .. autofunction:: classes_to_js
-   .. autofunction:: modules_to_js
-   .. autofunction:: urls_to_js
+    .. autofunction:: split
+    .. autofunction:: to_js
+    .. autofunction:: classes_to_js
+    .. autofunction:: modules_to_js
+    .. autofunction:: urls_to_js
 
-.. exceptions:
+.. _exceptions:
 
 exceptions
 ----------------------------------------------------------------
 
 .. automodule:: render_static.exceptions
 
-   .. autoclass:: URLGenerationFailed
-   .. autoclass:: ReversalLimitHit
+    .. autoclass:: URLGenerationFailed
+    .. autoclass:: ReversalLimitHit
 
 
 .. _placeholders:

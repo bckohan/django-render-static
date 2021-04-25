@@ -8,11 +8,13 @@ r"""
 """
 from .url_tree import ClassURLWriter, SimpleURLWriter, URLTreeVisitor
 
+VERSION = (1, 1, 0)
+
 __title__ = 'Django Render Static'
-__version__ = '1.0.1'
+__version__ = '.'.join(str(i) for i in VERSION)
 __author__ = 'Brian Kohan'
 __license__ = 'MIT'
-__copyright__ = 'Copyright 2021 Brian Kohan'
+__copyright__ = f'Copyright 2020-2021 Brian Kohan'
 
 
 default_app_config = 'render_static.apps.RenderStaticConfig'  # pylint: disable=C0103

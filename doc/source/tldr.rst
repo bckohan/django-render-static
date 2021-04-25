@@ -59,9 +59,9 @@ class their settings file might look like this::
         }
     }
 
-And then of course they would call `render_static` before `collectstatic`::
+And then of course they would call :ref:`renderstatic` before `collectstatic`::
 
-    $> ./manage.py render_static
+    $> ./manage.py renderstatic
     $> ./manage.py collectstatic
 
 This would create the following file::
@@ -128,9 +128,9 @@ Your settings file might look like::
         }
     }
 
-Then call `render_static` before `collectstatic`::
+Then call :ref:`renderstatic` before `collectstatic`::
 
-    $> ./manage.py render_static
+    $> ./manage.py renderstatic
     $> ./manage.py collectstatic
 
 If your root urls.py looks like this::
@@ -196,9 +196,9 @@ So you can now fetch paths like this::
 
 .. warning::
 
-    If you get an exception when you run render_static that originated from a URLGenerationFailed
-    exception, you mostly likely need to register some :ref:`placeholders` before calling
-    :ref:`urls_to_js`.
+    If you get an exception when you run :ref:`renderstatic` that originated from a
+    :py:meth:`mymodule.MyClass``URLGenerationFailed`` exception, you mostly likely need to register some
+    :ref:`placeholders` before calling :ref:`urls_to_js`.
 
 .. note::
     The JavaScript URL resolution is guaranteed to produce the same paths as Django's reversal

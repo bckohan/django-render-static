@@ -64,7 +64,7 @@ class TestGenerateStaticParserAccessor(TestCase):
 
     def test_get_parser(self):
         from django.core.management.base import CommandParser
-        from render_static.management.commands.render_static import get_parser
+        from render_static.management.commands.renderstatic import get_parser
         self.assertTrue(isinstance(get_parser(), CommandParser))
 
 
@@ -120,7 +120,7 @@ class NominalTestCase(BaseTestCase):
         - verifies that render_static accepts template arguments
     """
     def test_generate(self):
-        call_command('render_static', 'app1/html/nominal1.html')
+        call_command('renderstatic', 'app1/html/nominal1.html')
         self.assertEqual(len(os.listdir(APP1_STATIC_DIR)), 1)
         self.assertTrue(not APP2_STATIC_DIR.exists() or len(os.listdir(APP2_STATIC_DIR)) == 0)
         self.assertTrue(filecmp.cmp(
@@ -128,7 +128,7 @@ class NominalTestCase(BaseTestCase):
             EXPECTED_DIR / 'nominal1.html',
             shallow=False
         ))
-        call_command('render_static', 'app1/html/nominal2.html')
+        call_command('renderstatic', 'app1/html/nominal2.html')
         self.assertEqual(len(os.listdir(APP1_STATIC_DIR)), 1)
         self.assertEqual(len(os.listdir(APP2_STATIC_DIR)), 1)
         self.assertTrue(filecmp.cmp(
@@ -169,7 +169,7 @@ class CallableContextTestCase(BaseTestCase):
     Tests that show callable contexts work as expected.
     """
     def test_nominal_generate(self):
-        call_command('render_static')
+        call_command('renderstatic')
         self.assertTrue(filecmp.cmp(
             APP1_STATIC_DIR / 'app1' / 'html' / 'hello.html',
             EXPECTED_DIR / 'ctx_override.html',
@@ -184,7 +184,7 @@ class CallableContextTestCase(BaseTestCase):
         }
     })
     def test_off_nominal_tmpl(self):
-        self.assertRaises(ImproperlyConfigured, lambda: call_command('render_static'))
+        self.assertRaises(ImproperlyConfigured, lambda: call_command('renderstatic'))
         
     @override_settings(STATIC_TEMPLATES={
         'context': invalid_context_return,
@@ -193,7 +193,7 @@ class CallableContextTestCase(BaseTestCase):
         }
     })
     def test_off_nominal_global(self):
-        self.assertRaises(CommandError, lambda: call_command('render_static'))
+        self.assertRaises(CommandError, lambda: call_command('renderstatic'))
 
     # def tearDown(self):
     #     pass
@@ -219,7 +219,7 @@ class ContextOverrideTestCase(BaseTestCase):
     used.
     """
     def test_generate(self):
-        call_command('render_static')
+        call_command('renderstatic')
         self.assertTrue(filecmp.cmp(
             APP1_STATIC_DIR / 'app1' / 'html' / 'hello.html',
             EXPECTED_DIR / 'ctx_override.html',
@@ -245,7 +245,7 @@ class DestOverrideTestCase(BaseTestCase):
     a string path
     """
     def test_generate(self):
-        call_command('render_static')
+        call_command('renderstatic')
         self.assertTrue(filecmp.cmp(
             GLOBAL_STATIC_DIR / 'dest_override.html',
             EXPECTED_DIR / 'dest_override.html',
@@ -282,7 +282,7 @@ class FSLoaderTestCase(BaseTestCase):
         - That app directory static template dirs can be configured @ the backend level
     """
     def test_generate(self):
-        call_command('render_static', 'nominal_fs.html', 'nominal_fs2.html')
+        call_command('renderstatic', 'nominal_fs.html', 'nominal_fs2.html')
         self.assertFalse(APP1_STATIC_DIR.exists())
         self.assertEqual(len(os.listdir(APP2_STATIC_DIR)), 1)
         self.assertEqual(len(os.listdir(GLOBAL_STATIC_DIR)), 1)
@@ -319,7 +319,7 @@ class Jinja2TestCase(BaseTestCase):
         - That app directory static template dirs can be configured @ the backend level
     """
     def test_generate(self):
-        call_command('render_static')
+        call_command('renderstatic')
         self.assertEqual(len(os.listdir(APP1_STATIC_DIR)), 1)
         self.assertEqual(len(os.listdir(GLOBAL_STATIC_DIR)), 1)
         self.assertTrue(filecmp.cmp(
@@ -360,7 +360,7 @@ class Jinja2CustomTestCase(BaseTestCase):
         - Jinja2 contexts are present and that local overrides global
     """
     def test_generate(self):
-        call_command('render_static')
+        call_command('renderstatic')
         self.assertEqual(len(os.listdir(APP2_STATIC_DIR)), 1)
         self.assertFalse(APP1_STATIC_DIR.exists())
         self.assertTrue(filecmp.cmp(
@@ -625,10 +625,10 @@ class RenderErrorsTestCase(BaseTestCase):
 
     @override_settings(STATIC_ROOT=None)
     def test_render_no_dest(self):
-        self.assertRaises(CommandError, lambda: call_command('render_static'))
+        self.assertRaises(CommandError, lambda: call_command('renderstatic'))
 
     def test_render_default_static_root(self):
-        call_command('render_static')
+        call_command('renderstatic')
         self.assertTrue(filecmp.cmp(
             settings.STATIC_ROOT / 'nominal_fs.html',
             EXPECTED_DIR / 'nominal_fs.html',
@@ -638,7 +638,7 @@ class RenderErrorsTestCase(BaseTestCase):
     def test_render_missing(self):
         self.assertRaises(
             CommandError,
-            lambda: call_command('render_static', 'this/template/doesnt/exist.html')
+            lambda: call_command('renderstatic', 'this/template/doesnt/exist.html')
         )
 
 
@@ -649,7 +649,7 @@ class GenerateNothing(BaseTestCase):
         When no templates are configured, render_static should generate nothing and it should not
         raise
         """
-        call_command('render_static')
+        call_command('renderstatic')
         self.assertFalse(APP1_STATIC_DIR.exists())
         self.assertEqual(len(os.listdir(APP2_STATIC_DIR)), 0)
         self.assertFalse(GLOBAL_STATIC_DIR.exists())
@@ -663,7 +663,7 @@ class GenerateNothing(BaseTestCase):
         self.generate_nothing()
 
     def test_missing_settings_raises(self):
-        self.assertRaises(ImproperlyConfigured, lambda: call_command('render_static'))
+        self.assertRaises(ImproperlyConfigured, lambda: call_command('renderstatic'))
 
 
 @override_settings(STATIC_TEMPLATES={
@@ -740,7 +740,7 @@ class DefinesToJavascriptTest(BaseTestCase):
         )
 
     def test_classes_to_js(self):
-        call_command('render_static', 'defines1.js')
+        call_command('renderstatic', 'defines1.js')
         self.assertEqual(
             self.diff_classes(
                 js_file=GLOBAL_STATIC_DIR / 'defines1.js',
@@ -756,7 +756,7 @@ class DefinesToJavascriptTest(BaseTestCase):
             self.assertTrue(jf.readline().startswith('  '))
 
     def test_modules_to_js(self):
-        call_command('render_static', 'defines2.js')
+        call_command('renderstatic', 'defines2.js')
         self.assertEqual(
             self.diff_modules(
                 js_file=GLOBAL_STATIC_DIR / 'defines2.js',
@@ -772,9 +772,8 @@ class DefinesToJavascriptTest(BaseTestCase):
             self.assertFalse(jf.readline().startswith(' '))
 
     def test_classes_to_js_error(self):
-        self.assertRaises(CommandError, lambda: call_command('render_static', 'defines_error.js'))
+        self.assertRaises(CommandError, lambda: call_command('renderstatic', 'defines_error.js'))
 
-    [defines, 'render_static.tests.defines2']
     @override_settings(STATIC_TEMPLATES={
         'ENGINES': [{
             'BACKEND': 'render_static.backends.StaticDjangoTemplates',
@@ -804,7 +803,7 @@ class DefinesToJavascriptTest(BaseTestCase):
         }
     })
     def test_split(self):
-        call_command('render_static', 'defines1.js', 'defines2.js')
+        call_command('renderstatic', 'defines1.js', 'defines2.js')
         self.assertEqual(
             self.diff_classes(
                 js_file=GLOBAL_STATIC_DIR / 'defines1.js',
@@ -1069,7 +1068,7 @@ class URLSToJavascriptTest(URLJavascriptMixin, BaseTestCase):
         """
         Admin urls should work out-of-box - just check that it doesnt raise
         """
-        call_command('render_static', 'urls.js')
+        call_command('renderstatic', 'urls.js')
         self.assertTrue(True)
 
     @override_settings(STATIC_TEMPLATES={
@@ -1118,7 +1117,7 @@ class URLSToJavascriptTest(URLJavascriptMixin, BaseTestCase):
         self.es5_mode = es5
         self.url_js = None
 
-        call_command('render_static', 'urls.js')
+        call_command('renderstatic', 'urls.js')
 
         #################################################################
         # root urls
@@ -1279,7 +1278,7 @@ class URLSToJavascriptTest(URLJavascriptMixin, BaseTestCase):
         self.es5_mode = True
         self.url_js = None
 
-        call_command('render_static', 'urls.js')
+        call_command('renderstatic', 'urls.js')
 
         self.assertFalse(self.exists('admin:index'))
 
@@ -1368,7 +1367,7 @@ class URLSToJavascriptTest(URLJavascriptMixin, BaseTestCase):
         self.es5_mode = True
         self.url_js = None
 
-        call_command('render_static', 'urls.js')
+        call_command('renderstatic', 'urls.js')
 
         self.assertFalse(self.exists('admin:index'))
 
@@ -1459,7 +1458,7 @@ class URLSToJavascriptTest(URLJavascriptMixin, BaseTestCase):
         self.es6_mode = True
         self.url_js = None
 
-        call_command('render_static', 'urls.js')
+        call_command('renderstatic', 'urls.js')
 
         self.assertFalse(self.exists('admin:index'))
 
@@ -1544,7 +1543,7 @@ class URLSToJavascriptTest(URLJavascriptMixin, BaseTestCase):
         self.es6_mode = True
         self.url_js = None
 
-        call_command('render_static', 'urls.js')
+        call_command('renderstatic', 'urls.js')
 
         self.assertFalse(self.exists('admin:index'))
 
@@ -1604,13 +1603,9 @@ class URLSToJavascriptTest(URLJavascriptMixin, BaseTestCase):
     #    pass
 
 
-@override_settings(ROOT_URLCONF='render_static.tests.urls2')
-class CornerCaseTest(URLJavascriptMixin, BaseTestCase):
-
-    def setUp(self):
-        self.clear_placeholder_registries()
-
-    @override_settings(STATIC_TEMPLATES={
+@override_settings(
+    ROOT_URLCONF='render_static.tests.urls2',
+    STATIC_TEMPLATES={
         'ENGINES': [{
             'BACKEND': 'render_static.backends.StaticDjangoTemplates',
             'OPTIONS': {
@@ -1626,7 +1621,13 @@ class CornerCaseTest(URLJavascriptMixin, BaseTestCase):
             },
         }],
         'templates': {'urls.js': {'context': {'include': ['default']}}}
-    })
+    }
+)
+class CornerCaseTest(URLJavascriptMixin, BaseTestCase):
+
+    def setUp(self):
+        self.clear_placeholder_registries()
+
     def test_no_default_registered(self):
         """
         Tests: https://github.com/bckohan/django-render-static/issues/8
@@ -1636,7 +1637,25 @@ class CornerCaseTest(URLJavascriptMixin, BaseTestCase):
         self.url_js = None
         self.class_mode = ClassURLWriter.class_name_
 
-        call_command('render_static', 'urls.js')
+        call_command('renderstatic', 'urls.js')
+        self.compare('default', kwargs={'def': 'named'})
+        self.compare('default', args=['unnamed'])
+
+    def test_command_deprecation(self):
+        """
+        Tests: https://github.com/bckohan/django-render-static/issues/8
+        :return:
+        """
+        import warnings
+        self.es6_mode = True
+        self.url_js = None
+        self.class_mode = ClassURLWriter.class_name_
+
+        with warnings.catch_warnings(record=True) as w:
+            warnings.simplefilter("always")
+            call_command('render_static', 'urls.js')
+            self.assertTrue(issubclass(w[-1].category, DeprecationWarning))
+
         self.compare('default', kwargs={'def': 'named'})
         self.compare('default', args=['unnamed'])
 
@@ -1669,7 +1688,7 @@ class CornerCaseTest(URLJavascriptMixin, BaseTestCase):
         self.class_mode = ClassURLWriter.class_name_
 
         placeholders.register_unnamed_placeholders('no_capture', ['0000'])
-        call_command('render_static', 'urls.js')
+        call_command('renderstatic', 'urls.js')
         self.compare('no_capture', args=['5555'])
 
     @override_settings(STATIC_TEMPLATES={
@@ -1697,14 +1716,14 @@ class CornerCaseTest(URLJavascriptMixin, BaseTestCase):
         self.url_js = None
         self.class_mode = ClassURLWriter.class_name_
 
-        self.assertRaises(CommandError, lambda: call_command('render_static', 'urls.js'))
+        self.assertRaises(CommandError, lambda: call_command('renderstatic', 'urls.js'))
 
         placeholders.register_variable_placeholder('choice', 'first')
         placeholders.register_variable_placeholder('choice1', 'second')
-        self.assertRaises(CommandError, lambda: call_command('render_static', 'urls.js'))
+        self.assertRaises(CommandError, lambda: call_command('renderstatic', 'urls.js'))
         placeholders.register_unnamed_placeholders('special', ['third'])
 
-        call_command('render_static', 'urls.js')
+        call_command('renderstatic', 'urls.js')
         self.compare('special', {'choice': 'second'})
         self.compare('special', {'choice': 'second', 'choice1': 'first'})
         self.compare('special', args=['third'])
@@ -1738,14 +1757,14 @@ class CornerCaseTest(URLJavascriptMixin, BaseTestCase):
         self.url_js = None
         self.class_mode = ClassURLWriter.class_name_
 
-        self.assertRaises(CommandError, lambda: call_command('render_static', 'urls.js'))
+        self.assertRaises(CommandError, lambda: call_command('renderstatic', 'urls.js'))
 
         placeholders.register_variable_placeholder('choice', 'first')
         placeholders.register_variable_placeholder('choice1', 'second')
-        self.assertRaises(CommandError, lambda: call_command('render_static', 'urls.js'))
+        self.assertRaises(CommandError, lambda: call_command('renderstatic', 'urls.js'))
         placeholders.register_unnamed_placeholders('special', ['third'])
 
-        call_command('render_static', 'urls.js')
+        call_command('renderstatic', 'urls.js')
         self.compare('special', {'choice': 'second'})
         self.compare('special', {'choice': 'second', 'choice1': 'first'})
         self.compare('special', args=['third'])
@@ -1781,7 +1800,7 @@ class CornerCaseTest(URLJavascriptMixin, BaseTestCase):
 
         placeholders.register_variable_placeholder('choice', 'first')
         placeholders.register_unnamed_placeholders('special', ['first'])
-        call_command('render_static', 'urls.js')
+        call_command('renderstatic', 'urls.js')
 
         with open(GLOBAL_STATIC_DIR / 'urls.js', 'r') as urls:
             if 'reverse matched unexpected pattern' not in urls.read():
@@ -1818,7 +1837,7 @@ class CornerCaseTest(URLJavascriptMixin, BaseTestCase):
 
         placeholders.register_variable_placeholder('named', '1111')
         placeholders.register_unnamed_placeholders('bad_mix', ['unnamed'])
-        call_command('render_static', 'urls.js')
+        call_command('renderstatic', 'urls.js')
 
         with open(GLOBAL_STATIC_DIR / 'urls.js', 'r') as urls:
             self.assertTrue('this path may not be reversible' in urls.read())
@@ -1859,7 +1878,7 @@ class CornerCaseTest(URLJavascriptMixin, BaseTestCase):
 
         placeholders.register_variable_placeholder('named', '1111')
         placeholders.register_unnamed_placeholders('bad_mix2', ['unnamed'])
-        self.assertRaises(CommandError, lambda: call_command('render_static', 'urls.js'))
+        self.assertRaises(CommandError, lambda: call_command('renderstatic', 'urls.js'))
 
     @override_settings(STATIC_TEMPLATES={
         'ENGINES': [{
@@ -1893,7 +1912,7 @@ class CornerCaseTest(URLJavascriptMixin, BaseTestCase):
         t1 = perf_counter()
         tb_str = ''
         try:
-            call_command('render_static', 'urls.js')
+            call_command('renderstatic', 'urls.js')
         except Exception as complexity_error:
             tb_str = traceback.format_exc()
             t2 = perf_counter()
@@ -1913,7 +1932,7 @@ class CornerCaseTest(URLJavascriptMixin, BaseTestCase):
         placeholders.register_variable_placeholder('seven', '666')
         placeholders.register_variable_placeholder('eight', '666')
 
-        call_command('render_static', 'urls.js')
+        call_command('renderstatic', 'urls.js')
 
         self.compare(
             'complex',
@@ -1966,12 +1985,12 @@ class URLSToJavascriptOffNominalTest(URLJavascriptMixin, BaseTestCase):
 
         # this works even though its registered against a different app
         # all placeholders that match at least one criteria are tried
-        self.assertRaises(CommandError, lambda: call_command('render_static', 'urls.js'))
+        self.assertRaises(CommandError, lambda: call_command('renderstatic', 'urls.js'))
         placeholders.register_variable_placeholder('name', 'does_not_match', app_name='app1')
-        self.assertRaises(CommandError, lambda: call_command('render_static', 'urls.js'))
+        self.assertRaises(CommandError, lambda: call_command('renderstatic', 'urls.js'))
         placeholders.register_variable_placeholder('name', 'name1', app_name='app1')
         placeholders.register_variable_placeholder('name', 'name1', app_name='app1')
-        call_command('render_static', 'urls.js')
+        call_command('renderstatic', 'urls.js')
         self.compare('unreg_conv_tst', {'name': 'name1'})
 
     @override_settings(STATIC_TEMPLATES={
@@ -1996,10 +2015,10 @@ class URLSToJavascriptOffNominalTest(URLJavascriptMixin, BaseTestCase):
     })
     def test_no_unnamed_placeholders(self):
 
-        self.assertRaises(CommandError, lambda: call_command('render_static', 'urls.js'))
+        self.assertRaises(CommandError, lambda: call_command('renderstatic', 'urls.js'))
         placeholders.register_unnamed_placeholders('re_path_unnamed', [143, 'adf'])  # shouldnt work
         placeholders.register_unnamed_placeholders('re_path_unnamed', ['adf', 143])  # but this will
-        call_command('render_static', 'urls.js')
+        call_command('renderstatic', 'urls.js')
         self.compare(
             'sub1:re_path_unnamed',
             args=['af', 5678],
@@ -2029,7 +2048,7 @@ class URLSToJavascriptOffNominalTest(URLJavascriptMixin, BaseTestCase):
     def test_bad_only_bad_unnamed_placeholders(self):
 
         placeholders.register_unnamed_placeholders('re_path_unnamed', [])  # shouldnt work
-        self.assertRaises(CommandError, lambda: call_command('render_static', 'urls.js'))
+        self.assertRaises(CommandError, lambda: call_command('renderstatic', 'urls.js'))
 
     @override_settings(STATIC_TEMPLATES={
         'ENGINES': [{
@@ -2046,7 +2065,7 @@ class URLSToJavascriptOffNominalTest(URLJavascriptMixin, BaseTestCase):
         }]
     })
     def test_bad_visitor_type(self):
-        self.assertRaises(CommandError, lambda: call_command('render_static', 'urls.js'))
+        self.assertRaises(CommandError, lambda: call_command('renderstatic', 'urls.js'))
 
     @override_settings(STATIC_TEMPLATES={
         'ENGINES': [{
@@ -2069,7 +2088,7 @@ class URLSToJavascriptOffNominalTest(URLJavascriptMixin, BaseTestCase):
         }
     })
     def test_no_urlpatterns(self):
-        self.assertRaises(CommandError, lambda: call_command('render_static', 'urls.js'))
+        self.assertRaises(CommandError, lambda: call_command('renderstatic', 'urls.js'))
 
     @override_settings(STATIC_TEMPLATES={
         'ENGINES': [{
@@ -2092,7 +2111,7 @@ class URLSToJavascriptOffNominalTest(URLJavascriptMixin, BaseTestCase):
         }
     })
     def test_unknown_pattern(self):
-        self.assertRaises(CommandError, lambda: call_command('render_static', 'urls.js'))
+        self.assertRaises(CommandError, lambda: call_command('renderstatic', 'urls.js'))
 
     def test_register_bogus_converter(self):
         self.assertRaises(
@@ -2159,7 +2178,7 @@ class URLSToJavascriptParametersTest(URLJavascriptMixin, BaseTestCase):
 
         self.es6_mode = False
         self.class_mode = ClassURLWriter.class_name_
-        call_command('render_static')
+        call_command('renderstatic')
         js_ret = self.get_url_from_js(
             'doest_not_exist',
             js_generator=URLJavascriptMixin.TestJSGenerator(
@@ -2267,7 +2286,7 @@ class URLSToJavascriptParametersTest(URLJavascriptMixin, BaseTestCase):
 
         self.es6_mode = True
         self.class_mode = ClassURLWriter.class_name_
-        call_command('render_static')
+        call_command('renderstatic')
         js_ret = self.get_url_from_js(
             'doest_not_exist',
             js_generator=URLJavascriptMixin.TestJSGenerator(
