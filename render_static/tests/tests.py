@@ -2270,3 +2270,43 @@ class URLSToJavascriptParametersTest(URLJavascriptMixin, BaseTestCase):
     # uncomment to not delete generated js
     # def tearDown(self):
     #     pass
+
+
+@override_settings(
+    ROOT_URLCONF='render_static.tests.js_reverse_urls',
+    STATIC_TEMPLATES={
+        'ENGINES': [{
+            'BACKEND': 'render_static.backends.StaticDjangoTemplates',
+            'OPTIONS': {
+                'loaders': [
+                    ('render_static.loaders.StaticLocMemLoader', {
+                        'urls.js': '{% urls_to_js '
+                                   'visitor="render_static.ClassURLWriter" '
+                                   'exclude="exclude_namespace"|split '
+                                   '%};'
+                    })
+                ],
+                'builtins': ['render_static.templatetags.render_static']
+            },
+        }]
+    }
+)
+class DjangoJSReverseTest(URLJavascriptMixin, BaseTestCase):
+    """
+    Run additional tests pilfered from django-js-reverse for the hell of it.
+    https://github.com/ierror/django-js-reverse/blob/master/django_js_reverse/tests/test_urls.py
+    """
+
+    def setUp(self):
+        self.clear_placeholder_registries()
+
+    def test_js_reverse_urls(self, es6=True):
+        self.es5_mode = False
+        self.url_js = None
+        self.class_mode = ClassURLWriter.class_name_
+
+        call_command('render_static', 'urls.js')
+
+    # uncomment to not delete generated js
+    def tearDown(self):
+        pass
