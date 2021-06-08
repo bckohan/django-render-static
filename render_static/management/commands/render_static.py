@@ -1,8 +1,9 @@
 """
 Deprecated old style name - will be removed in V2.0
 """
-from render_static.management.commands.renderstatic import Command as RSCommand
 import warnings
+
+from render_static.management.commands.renderstatic import Command as RSCommand
 
 
 class Command(RSCommand):

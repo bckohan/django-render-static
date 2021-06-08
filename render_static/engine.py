@@ -3,7 +3,7 @@
 import os
 from collections import Counter
 from pathlib import Path
-from typing import Dict, List, Optional, Union, Callable
+from typing import Callable, Dict, List, Optional, Union
 
 from django.conf import settings
 from django.core.exceptions import ImproperlyConfigured

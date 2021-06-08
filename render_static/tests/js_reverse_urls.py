@@ -30,12 +30,9 @@ THE SOFTWARE.
 from copy import copy
 
 from django.conf.urls import include as django_include
-from django.urls import (
-    path,
-    re_path
-)
-from .views import TestView
+from django.urls import path, re_path
 
+from .views import TestView
 
 basic_patterns = [
     re_path(
