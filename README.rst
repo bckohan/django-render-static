@@ -301,6 +301,19 @@ So you can now fetch paths like this:
     // /different/143/emma
     const urls = new URLResolver();
     urls.reverse('different', {'arg1': 143, 'arg2': 'emma'});
+
+    // reverse also supports query parameters
+    // /different/143/emma?intarg=0&listarg=A&listarg=B&listarg=C
+    url.reverse(
+        'different',
+        {
+            kwargs: {arg1: 143, arg2: 'emma'},
+            query: {
+                intarg: 0,
+                listarg: ['A', 'B', 'C']
+            }
+        }
+    );
     
     
 URLGenerationFailed Exceptions & Placeholders

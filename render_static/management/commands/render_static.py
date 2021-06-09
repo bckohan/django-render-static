@@ -13,4 +13,4 @@ class Command(RSCommand):
 
     def handle(self, *args, **options):
         warnings.warn("Deprecated, use 'renderstatic' instead!", DeprecationWarning)
-        super().handle(*args, **options)
+        super().handle(*args, **options)  # type: ignore

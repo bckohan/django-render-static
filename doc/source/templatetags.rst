@@ -194,25 +194,27 @@ And passed through::
 Would generate::
 
     var urls = {
-        "simple": function(kwargs={}, args=[]) {
+        "simple": (options={}, args=[]) => {
+            const kwargs = ((options.kwargs || null) || options) || {};
+            args = ((options.args || null) || args) || [];
             if (Object.keys(kwargs).length === 0 && args.length === 0)
                 return "/simple";
-            if (
-                Object.keys(kwargs).length === 1 &&
-                ['arg1'].every(value => kwargs.hasOwnProperty(value))
+            if (Object.keys(kwargs).length === 1 && ['arg1'].every(
+                value => kwargs.hasOwnProperty(value))
             )
                 return `/simple/${kwargs["arg1"]}`;
             throw new TypeError("No reversal available for parameters at path: simple");
         },
-        "different": function(kwargs={}, args=[]) {
-            if (
-                Object.keys(kwargs).length === 2 &&
-                ['arg1','arg2'].every(value => kwargs.hasOwnProperty(value))
+        "different": (options={}, args=[]) => {
+            const kwargs = ((options.kwargs || null) || options) || {};
+            args = ((options.args || null) || args) || [];
+            if (Object.keys(kwargs).length === 2 && ['arg1','arg2'].every(
+                value => kwargs.hasOwnProperty(value))
             )
                 return `/different/${kwargs["arg1"]}/${kwargs["arg2"]}`;
             throw new TypeError("No reversal available for parameters at path: different");
-        }
-    }
+        },
+    };
 
 It is strongly encouraged as a best practice to use `path` instead of `re_path`. If an
 argument requires a regex that isn't supported by the existing Django `converter` set it is very
@@ -274,12 +276,13 @@ it minifies better than the default `SimpleURLWriter`. To use the class writer::
 
 This will generate an ES6 class by default::
 
-    class URLReverser {
+    class URLResolver {
 
         match(kwargs, args, expected) {
             if (Array.isArray(expected)) {
-                return Object.keys(kwargs).length === expected.length &&
-                    expected.every(value => kwargs.hasOwnProperty(value));
+                return Object.keys(kwargs).length === expected.length && expected.every(
+                    value => kwargs.hasOwnProperty(value)
+                );
             } else if (expected) {
                 return args.length === expected;
             } else {
@@ -287,21 +290,39 @@ This will generate an ES6 class by default::
             }
         }
 
-        reverse(qname, kwargs={}, args=[]) {
+        reverse(qname, options={}, args=[], query={}) {
+            const kwargs = ((options.kwargs || null) || options) || {};
+            args = ((options.args || null) || args) || [];
+            query = ((options.query || null) || query) || {};
             let url = this.urls;
             for (const ns of qname.split(':')) {
                 if (ns && url) { url = url.hasOwnProperty(ns) ? url[ns] : null; }
             }
             if (url) {
                 let pth = url(kwargs, args);
-                if (typeof pth === "string") { return pth; }
+                if (typeof pth === "string") {
+                    if (Object.keys(query).length !== 0) {
+                        const params = new URLSearchParams();
+                        for (const [key, value] of Object.entries(query)) {
+                            if (value === null || value === '')
+                                continue;
+                            if (Array.isArray(value))
+                                value.forEach(element => params.append(key, element));
+                            else
+                                params.append(key, value);
+                        }
+                        const qryStr = params.toString();
+                        if (qryStr) return `${pth.replace(/\/+$/, '')}?${qryStr}`;
+                    }
+                    return pth;
+                }
             }
             throw new TypeError(`No reversal available for parameters at path: ${qname}`);
         }
 
         urls = {
             "simple": (kwargs={}, args=[]) => {
-                if (this.match(kwargs, args)) { return "/simple/"; }
+                if (this.match(kwargs, args)) { return "/simple"; }
                 if (this.match(kwargs, args, ['arg1'])) { return `/simple/${kwargs["arg1"]}`; }
             },
             "different": (kwargs={}, args=[]) => {
@@ -312,10 +333,32 @@ This will generate an ES6 class by default::
         }
     };
 
+
 Which can be used as::
 
     // /different/143/emma
     const urls = new URLReverser();
     urls.reverse('different', {'arg1': 143, 'arg2': 'emma'});
+
+Note that the reverse function can take an options dictionary containing named parameters instead
+of passing kwargs and args positionally:
+
+    * **kwargs** - analogous to kwargs in Django's `reverse`
+    * **args** - analogous to args in Django's `reverse`
+    * **query** - optional GET query parameters for the URL string
+
+For instance::
+
+    // /different/143/emma?intarg=0&listarg=A&listarg=B&listarg=C
+    url.reverse(
+        'different',
+        {
+            kwargs: {arg1: 143, arg2: 'emma'},
+            query: {
+                intarg: 0,
+                listarg: ['A', 'B', 'C']
+            }
+        }
+    );
 
 The default `class_name` is URLResolver. Reverse should behave exactly as Django's `reverse`.

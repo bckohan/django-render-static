@@ -193,12 +193,24 @@ So you can now fetch paths like this::
     const urls = new URLResolver();
     urls.reverse('different', {'arg1': 143, 'arg2': 'emma'});
 
+    // reverse also supports query parameters
+    // /different/143/emma?intarg=0&listarg=A&listarg=B&listarg=C
+    url.reverse(
+        'different',
+        {
+            kwargs: {arg1: 143, arg2: 'emma'},
+            query: {
+                intarg: 0,
+                listarg: ['A', 'B', 'C']
+            }
+        }
+    );
 
 .. warning::
 
     If you get an exception when you run :ref:`renderstatic` that originated from a
-    :py:meth:`mymodule.MyClass``URLGenerationFailed`` exception, you mostly likely need to register some
-    :ref:`placeholders` before calling :ref:`urls_to_js`.
+    :py:meth:`mymodule.MyClass``URLGenerationFailed`` exception, you mostly likely need to register
+    some :ref:`placeholders` before calling :ref:`urls_to_js`.
 
 .. note::
     The JavaScript URL resolution is guaranteed to produce the same paths as Django's reversal

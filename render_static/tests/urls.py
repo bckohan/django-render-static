@@ -16,7 +16,7 @@ urlpatterns = [
     path('', include('render_static.tests.app3.urls')),  # included into the default ns
     re_path(r'^re_path/[adfa]{2,3}$', TestView.as_view(), name='re_path_tst'),
     re_path(r'^re_path/(?P<strarg>\w+)/$', TestView.as_view(), name='re_path_tst'),
-    re_path(r'^re_path/(?P<strarg>\w+)/(?P<intarg>\d+)/$', TestView.as_view(), name='re_path_tst'),
+    re_path(r'^re_path/(?P<strarg>\w+)/(?P<intarg>\d+)$', TestView.as_view(), name='re_path_tst'),
     re_path(r'^re_path/unamed/([adfa]{2,3})/(\d+)$', TestView.as_view(), name='re_path_unnamed'),
     re_path(
         r're_path/solo/([adfa]{2,3})/(\d+)/trailing/stuff/$',

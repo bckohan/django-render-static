@@ -828,6 +828,7 @@ class URLJavascriptMixin:
     url_js = None
     es5_mode = False
     class_mode = None
+    legacy_args = False
 
     def clear_placeholder_registries(self):
         from importlib import reload
@@ -839,14 +840,16 @@ class URLJavascriptMixin:
     class TestJSGenerator(JavaScriptGenerator):
 
         class_mode = None
+        legacy_args = False  # generate code that uses separate arguments to js reverse calls
         catch = True
 
-        def __init__(self, class_mode=None, catch=True, **kwargs):
+        def __init__(self, class_mode=None, catch=True, legacy_args=False, **kwargs):
             self.class_mode = class_mode
             self.catch = catch
+            self.legacy_args = legacy_args
             super().__init__(**kwargs)
 
-        def generate(self, qname, kwargs=None, args=None):
+        def generate(self, qname, kwargs=None, args=None, query=None):
             def do_gen():
                 yield 'try {' if self.catch else ''
                 self.indent()
@@ -856,18 +859,23 @@ class URLJavascriptMixin:
                     self.indent()
                     yield f'urls.reverse('
                     self.indent()
-                    yield f'"{qname}",'
+                    yield f'"{qname}",{"" if self.legacy_args else " {"}'
                 else:
                     accessor_str = ''.join([f'["{comp}"]' for comp in qname.split(':')])
                     yield 'console.log('
                     self.indent()
-                    yield f'urls{accessor_str}('
+                    yield f'urls{accessor_str}({"" if self.legacy_args else "{"}'
                     self.indent()
-                yield f'{json.dumps(kwargs, cls=BestEffortEncoder)}{"," if args else ""}'
+                yield f'{"" if self.legacy_args else "kwargs: "}' \
+                      f'{json.dumps(kwargs, cls=BestEffortEncoder)}{"," if args or query else ""}'
                 if args:
-                    yield f'{json.dumps(args, cls=BestEffortEncoder)}'
-                self.outdent(2);
-                yield "));"
+                    yield f'{"" if self.legacy_args else "args: "}' \
+                          f'{json.dumps(args, cls=BestEffortEncoder)}{"," if query else ""}'
+                if query:
+                    yield f'{"" if self.legacy_args else "query: "}' \
+                          f'{json.dumps(query, cls=BestEffortEncoder)}'
+                self.outdent(2)
+                yield f'{"" if self.legacy_args else "}"}));'
                 if self.catch:
                     self.outdent()
                     yield '} catch (error) {}'
@@ -882,6 +890,7 @@ class URLJavascriptMixin:
             qname,
             kwargs=None,
             args=None,
+            query=None,
             js_generator=None,
             url_path=GLOBAL_STATIC_DIR / 'urls.js'
     ):  # pragma: no cover
@@ -889,14 +898,19 @@ class URLJavascriptMixin:
             kwargs = {}
         if args is None:
             args = []
+        if query is None:
+            query = {}
         if js_generator is None:
-            js_generator = URLJavascriptMixin.TestJSGenerator(self.class_mode)
+            js_generator = URLJavascriptMixin.TestJSGenerator(
+                self.class_mode,
+                legacy_args=self.legacy_args
+            )
         tmp_file_pth = GLOBAL_STATIC_DIR / f'get_{url_path.stem}.js'
 
         if USE_NODE_JS:
             shutil.copyfile(url_path, tmp_file_pth)
             with open(tmp_file_pth, 'a+') as tmp_js:
-                for line in js_generator.generate(qname, kwargs, args):
+                for line in js_generator.generate(qname, kwargs, args, query):
                     tmp_js.write(f'{line}')
             try:
                 return subprocess.check_output([
@@ -943,6 +957,7 @@ class URLJavascriptMixin:
             qname,
             kwargs=None,
             args=None,
+            query=None,
             object_hook=lambda dct: dct,
             args_hook=lambda args: args,
             url_path=GLOBAL_STATIC_DIR / 'urls.js'
@@ -951,8 +966,10 @@ class URLJavascriptMixin:
             kwargs = {}
         if args is None:
             args = []
+        if query is None or not self.class_mode:
+            query = {}
 
-        tst_pth = self.get_url_from_js(qname, kwargs, args, url_path=url_path)
+        tst_pth = self.get_url_from_js(qname, kwargs, args, query, url_path=url_path)
         resp = self.client.get(tst_pth)
 
         resp = resp.json(object_hook=object_hook)
@@ -960,7 +977,8 @@ class URLJavascriptMixin:
         self.assertEqual({
                 'request': reverse(qname, kwargs=kwargs, args=args),
                 'args': args,
-                'kwargs': kwargs
+                'kwargs': kwargs,
+                'query': query
             },
             resp
         )
@@ -975,6 +993,12 @@ class URLJavascriptMixin:
     def convert_to_int(dct, key):
         if key in dct:
             dct[key] = int(dct[key])
+        return dct
+
+    @staticmethod
+    def convert_to_int_list(dct, key):
+        if key in dct:
+            dct[key] = [int(val) for val in dct[key]]
         return dct
 
     @staticmethod
@@ -1052,6 +1076,29 @@ class URLSToJavascriptTest(URLJavascriptMixin, BaseTestCase):
             'OPTIONS': {
                 'loaders': [
                     ('render_static.loaders.StaticLocMemLoader', {
+                        'urls.js': '{% urls_to_js visitor="render_static.ClassURLWriter" %}'
+                    })
+                ],
+                'builtins': ['render_static.templatetags.render_static']
+            },
+        }],
+    })
+    def test_full_url_dump_class_es6_legacy_args(self):
+        """
+        Test class code with legacy arguments specified individually - may be deprecated in 2.0
+        """
+        self.class_mode = ClassURLWriter.class_name_
+        self.legacy_args = True
+        self.test_full_url_dump(es5=False)
+        self.class_mode = None
+        self.legacy_args = False
+
+    @override_settings(STATIC_TEMPLATES={
+        'ENGINES': [{
+            'BACKEND': 'render_static.backends.StaticDjangoTemplates',
+            'OPTIONS': {
+                'loaders': [
+                    ('render_static.loaders.StaticLocMemLoader', {
                         'urls.js': 'var urls = {\n'
                                    '{% urls_to_js include=include %}'
                                    '\n};'
@@ -1099,6 +1146,30 @@ class URLSToJavascriptTest(URLJavascriptMixin, BaseTestCase):
             'OPTIONS': {
                 'loaders': [
                     ('render_static.loaders.StaticLocMemLoader', {
+                        'urls.js': '{% urls_to_js visitor="render_static.ClassURLWriter" es5=True%}'
+                    })
+                ],
+                'builtins': ['render_static.templatetags.render_static']
+            },
+        }],
+    })
+    def test_full_url_dump_class_legacy_args(self):
+        """
+        This ES6 test is horrendously slow when not using node for reasons mentioned by the Js2Py
+        warning
+        """
+        self.class_mode = ClassURLWriter.class_name_
+        self.legacy_args = True
+        self.test_full_url_dump(es5=True)
+        self.class_mode = None
+        self.legacy_args = False
+
+    @override_settings(STATIC_TEMPLATES={
+        'ENGINES': [{
+            'BACKEND': 'render_static.backends.StaticDjangoTemplates',
+            'OPTIONS': {
+                'loaders': [
+                    ('render_static.loaders.StaticLocMemLoader', {
                         'urls.js': 'var urls = {\n{% urls_to_js %}};'
                     })
                 ],
@@ -1113,6 +1184,32 @@ class URLSToJavascriptTest(URLJavascriptMixin, BaseTestCase):
         """
         self.test_full_url_dump(es5=False)
 
+    @override_settings(STATIC_TEMPLATES={
+        'ENGINES': [{
+            'BACKEND': 'render_static.backends.StaticDjangoTemplates',
+            'OPTIONS': {
+                'loaders': [
+                    ('render_static.loaders.StaticLocMemLoader', {
+                        'urls.js': 'var urls = {\n{% urls_to_js %}};'
+                    })
+                ],
+                'builtins': ['render_static.templatetags.render_static']
+            },
+        }],
+    })
+    def test_full_url_dump_es6_legacy_args(self):
+        """
+        Test legacy argument signature - args specified individually on url() calls in javascript.
+        """
+        self.legacy_args = True
+        self.test_full_url_dump(es5=False)
+        self.legacy_args = False
+
+    def test_full_url_dump_legacy_args(self, es5=True):
+        self.legacy_args = True
+        self.test_full_url_dump(es5=False)
+        self.legacy_args = False
+
     def test_full_url_dump(self, es5=True):
         self.es5_mode = es5
         self.url_js = None
@@ -1123,7 +1220,12 @@ class URLSToJavascriptTest(URLJavascriptMixin, BaseTestCase):
         # root urls
         qname = 'path_tst'
         self.compare(qname)
-        self.compare(qname, {'arg1': 1})
+        self.compare(
+            qname,
+            {'arg1': 1},
+            query={'intq1': 0, 'str': 'aadf'} if not self.legacy_args else {},
+            object_hook=lambda dct: self.convert_to_int(dct, 'intq1')
+        )
         self.compare(qname, {'arg1': 12, 'arg2': 'xo'})
         #################################################################
 
@@ -1132,13 +1234,18 @@ class URLSToJavascriptTest(URLJavascriptMixin, BaseTestCase):
         qname = 'sub1:app1_pth'
         self.compare(qname)
         self.compare(qname, {'arg1': 143})  # emma
-        self.compare(qname, {'arg1': 5678, 'arg2': 'xo'})
+        self.compare(
+            qname,
+            {'arg1': 5678, 'arg2': 'xo'},
+            query={'intq1': '0', 'intq2': '2'} if not self.legacy_args else {},
+        )
         self.compare('sub1:app1_detail', {'id': uuid.uuid1()}, object_hook=self.convert_to_id)
         self.compare('sub1:custom_tst', {'year': 2021})
         self.compare('sub1:unreg_conv_tst', {'name': 'name2'})
         self.compare(
             'sub1:re_path_unnamed',
             args=['af', 5678],
+            query={'intq1': '0', 'intq2': '2'} if not self.legacy_args else {},
             args_hook=lambda arr: self.convert_idx_to_type(arr, 1, int)
         )
         #################################################################
@@ -1211,11 +1318,17 @@ class URLSToJavascriptTest(URLJavascriptMixin, BaseTestCase):
         #################################################################
         # re_paths
 
-        self.compare('re_path_tst')
+        self.compare(
+            're_path_tst',
+            query={'pre': 'A', 'list1': ['0', '3', '4'], 'post': 'B'} if not self.legacy_args else {}
+        )
         self.compare('re_path_tst', {'strarg': 'DEMOPLY'})
         self.compare(
             're_path_tst',
             {'strarg': 'is', 'intarg': 1337},
+            query={
+                'pre': 'A', 'list1': ['0', '3', '4'], 'intarg': 237
+            } if not self.legacy_args else {},
             object_hook=lambda dct: self.convert_to_int(dct, 'intarg')
         )
 
@@ -1235,7 +1348,14 @@ class URLSToJavascriptTest(URLJavascriptMixin, BaseTestCase):
         #################################################################
         # app3 urls - these should be included into the null namespace
         self.compare('app3_idx')
-        self.compare('app3_arg', {'arg1': 1})
+        self.compare(
+            'app3_arg',
+            {'arg1': 1},
+            query={
+                'list1': ['0', '3', '4'], 'intarg': [0, 2, 5], 'post': 'A'
+            } if not self.legacy_args else {},
+            object_hook=lambda dct: self.convert_to_int_list(dct, 'intarg')
+        )
         self.compare('unreg_conv_tst', {'name': 'name1'})
         #################################################################
 
@@ -1949,8 +2069,8 @@ class CornerCaseTest(URLJavascriptMixin, BaseTestCase):
         )
 
     # uncomment to not delete generated js
-    def tearDown(self):
-        pass
+    # def tearDown(self):
+    #    pass
 
 
 class URLSToJavascriptOffNominalTest(URLJavascriptMixin, BaseTestCase):
@@ -2352,7 +2472,7 @@ class URLSToJavascriptParametersTest(URLJavascriptMixin, BaseTestCase):
 
     # uncomment to not delete generated js
     # def tearDown(self):
-    #     pass
+    #    pass
 
 
 @override_settings(
@@ -2389,6 +2509,40 @@ class DjangoJSReverseTest(URLJavascriptMixin, BaseTestCase):
         self.class_mode = ClassURLWriter.class_name_
 
         call_command('render_static', 'urls.js')
+
+    # uncomment to not delete generated js
+    # def tearDown(self):
+    #    pass
+
+
+@override_settings(
+    ROOT_URLCONF='render_static.tests.ex_urls',
+    STATIC_TEMPLATES={
+        'ENGINES': [{
+            'BACKEND': 'render_static.backends.StaticDjangoTemplates',
+            'OPTIONS': {
+                'loaders': [
+                    ('render_static.loaders.StaticLocMemLoader', {
+                        'urls_simple.js': 'var urls = {\n{% urls_to_js exclude="admin"|split %}};'
+                    }),
+                    ('render_static.loaders.StaticLocMemLoader', {
+                        'urls_class.js': '{% urls_to_js visitor="render_static.ClassURLWriter" '
+                                         'exclude="admin"|split%}'
+                    })
+                ],
+                'builtins': ['render_static.templatetags.render_static']
+            },
+        }],
+        'templates': {
+            'urls_simple.js': {},
+            'urls_class.js': {}
+        }
+    }
+)
+class GenerateExampleCode(BaseTestCase):
+
+    def test_generate_examples(self):
+        call_command('renderstatic')
 
     # uncomment to not delete generated js
     def tearDown(self):
