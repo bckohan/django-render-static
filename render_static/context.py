@@ -54,7 +54,7 @@ def _from_json(file_path: str) -> Optional[Dict]:
     try:
         with open(file_path, 'r') as ctx_f:
             return json.load(ctx_f)
-    except (FileNotFoundError, json.JSONDecodeError, TypeError, UnicodeDecodeError):
+    except Exception:  # pylint: disable=W0703
         pass
     return None
 
@@ -70,7 +70,7 @@ def _from_pickle(file_path: str) -> Optional[Dict]:
             ctx = pickle.load(ctx_f)
             if isinstance(ctx, dict):
                 return ctx
-    except (FileNotFoundError, pickle.UnpicklingError, TypeError):
+    except Exception:  # pylint: disable=W0703
         pass
     return None
 
@@ -95,6 +95,6 @@ def _from_import(import_path: str) -> Optional[Dict]:
             context = context()
         if isinstance(context, dict):
             return context
-    except (ImportError, TypeError):
+    except Exception:  # pylint: disable=W0703
         pass
     return None
