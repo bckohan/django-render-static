@@ -105,3 +105,24 @@ url_tree
    .. autoclass:: Substitute
    .. autofunction:: normalize_ns
    .. autofunction:: build_tree
+
+
+.. _context:
+
+context
+----------------------------------------------------------------
+
+.. automodule:: render_static.context
+
+   .. autofunction:: resolve_context
+
+
+.. _resource:
+
+resource
+----------------------------------------------------------------
+
+.. automodule:: render_static.resource
+
+   .. autofunction:: resource
+

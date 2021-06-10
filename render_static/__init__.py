@@ -6,6 +6,8 @@ r"""
 /_/ |_|\___/_/ /_/\__,_/\___/_/      /____/\__/\__,_/\__/_/\___/
 
 """
+from .context import resolve_context
+from .resource import resource
 from .url_tree import ClassURLWriter, SimpleURLWriter, URLTreeVisitor
 
 VERSION = (1, 1, 0)

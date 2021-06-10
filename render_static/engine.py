@@ -12,12 +12,14 @@ from django.template.exceptions import TemplateDoesNotExist
 from django.template.utils import InvalidTemplateEngineError
 from django.utils.functional import cached_property
 from django.utils.module_loading import import_string
+from render_static.context import resolve_context
+from render_static.exceptions import InvalidContext
 
 __all__ = ['StaticTemplateEngine']
 
 
 def _resolve_context(
-        context: Optional[Union[Dict, Callable, str]],
+        context: Optional[Union[Dict, Callable, str, Path]],
         template: Optional[str] = None
 ) -> Dict:
     """
@@ -31,24 +33,14 @@ def _resolve_context(
     :return: dictionary holding the context
     :raises ImproperlyConfigured: if there is a failure to produce a dictionary context
     """
-    if context:
-        if isinstance(context, str):
-            try:
-                context = import_string(context)
-            except Exception as imp_err:
-                raise ImproperlyConfigured(
-                    f'STATIC_TEMPLATES: Unable to import context generator: {context}'
-                ) from imp_err
-        if callable(context):
-            context = context()
-        if not isinstance(context, dict):
-            raise ImproperlyConfigured(
-                f"STATIC_TEMPLATES 'context' configuration directive"
-                f"{' for ' + template if template else '' } must be a dictionary or a "
-                f"callable that returns a dictionary!"
-            )
-        return context
-    return {}
+    try:
+        return resolve_context(context)
+    except InvalidContext as inval_ctx:
+        raise ImproperlyConfigured(
+            f"STATIC_TEMPLATES 'context' configuration directive"
+            f"{' for ' + template if template else '' } must be a dictionary or a "
+            f"callable that returns a dictionary!"
+        ) from inval_ctx
 
 
 class StaticTemplateEngine:

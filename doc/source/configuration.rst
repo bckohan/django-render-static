@@ -126,9 +126,20 @@ there is no request object to build context off of. Dynamic templates are also o
 contextual data built from the database but static templates are only rendered at deployment time,
 so stuffing dynamic database information in static template contexts is not advisable.
 
-Context configuration parameters may also contain a callable or an import string to a callable that
-generates a dictionary context. This can be used to generate context parameters that require the
-full Django stack to be initialized. For example:
+Context configuration parameters may be any of the following:
+
+    - **dictionary**: Simply specify context dictionary inline
+    - **callable**: That returns a dictionary. This allows lazy context initialization to take
+      place after Django bootstrapping
+    - **path to json file**: A path to a json file
+    - **path to a pickle file**: A path to a python pickled dictionary
+    - **path to a python file**: A path to a python file. The locals defined in the file will
+      comprise the context.
+    - **a packaged resource**: Any of the above files imported as a packaged resource via
+      :ref:`resource` to any of the above files.
+    - **import string**: to any of the above.
+
+For example:
 
 .. code-block:: python
 
@@ -144,6 +155,16 @@ Where module.py might contain:
         return {
             # ... build context dict
         }
+
+Or:
+
+.. code-block:: python
+
+      from render_static import resource
+      STATIC_TEMPLATES = {
+        'context': resource('package.module', 'context.json')
+      }
+
 
 ``templates``
 -------------
@@ -169,8 +190,8 @@ parameter must contain the full path where the template will be rendered includi
 ~~~~~~~~~~~
 
 Provide additional parameters for each template in the ``context`` dictionary. Any context variables
-specified here that clash with global context variables will override them. As with the global
-context parameter, may also be a callable that generates a dictionary.
+specified here that clash with global context variables will override them. May be specified using
+any of the same context specifiers that work for the global context.
 
 
 ``RENDER_STATIC_REVERSAL_LIMIT``

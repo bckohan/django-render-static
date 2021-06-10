@@ -21,9 +21,10 @@ from django.test import TestCase, override_settings
 from django.urls import reverse
 from django.urls.exceptions import NoReverseMatch
 from django.utils.module_loading import import_string
-from render_static import placeholders
+from render_static import placeholders, resolve_context, resource
 from render_static.backends import StaticDjangoTemplates, StaticJinja2Templates
 from render_static.engine import StaticTemplateEngine
+from render_static.exceptions import InvalidContext
 from render_static.javascript import JavaScriptGenerator
 from render_static.origin import AppOrigin, Origin
 from render_static.tests import bad_pattern, defines
@@ -2515,6 +2516,84 @@ class DjangoJSReverseTest(URLJavascriptMixin, BaseTestCase):
     #    pass
 
 
+class TestContextResolution(BaseTestCase):
+
+    def test_pickle_context(self):
+        self.assertEqual(
+            resolve_context(Path(__file__).parent / 'resources' / 'context.pickle'),
+            {'context': 'pickle'}
+        )
+
+    def test_json_context(self):
+        self.assertEqual(
+            resolve_context(str(Path(__file__).parent / 'resources' / 'context.json')),
+            {'context': 'json'}
+        )
+
+    def test_python_context(self):
+        self.assertEqual(
+            resolve_context(Path(__file__).parent / 'resources' / 'context.py'),
+            {'context': 'python'}
+        )
+
+    def test_pickle_context_resource(self):
+        self.assertEqual(
+            resolve_context(resource('render_static.tests.resources', 'context.pickle')),
+            {'context': 'pickle'}
+        )
+
+    def test_json_context_resource(self):
+        self.assertEqual(
+            resolve_context(resource('render_static.tests.resources', 'context.json')),
+            {'context': 'json'}
+        )
+        from render_static.tests import resources
+        self.assertEqual(
+            resolve_context(resource(resources, 'context.json')),
+            {'context': 'json'}
+        )
+
+    def test_python_context_resource(self):
+        self.assertEqual(
+            resolve_context(resource('render_static.tests.resources', 'context.py')),
+            {'context': 'python'}
+        )
+
+    def test_python_context_embedded_import(self):
+        self.assertEqual(
+            resolve_context('render_static.tests.resources.context_embedded.context'),
+            {'context': 'embedded'}
+        )
+        self.assertEqual(
+            resolve_context('render_static.tests.resources.context_embedded.get_context'),
+            {'context': 'embedded_callable'}
+        )
+
+    def test_bad_contexts(self):
+        self.assertRaises(
+            InvalidContext,
+            lambda: resolve_context('render_static.tests.resources.context_embedded.not_a_dict')
+        )
+        self.assertRaises(
+            InvalidContext,
+            lambda: resolve_context(resource('render_static.tests.resources', 'bad.pickle'))
+        )
+        self.assertRaises(
+            InvalidContext,
+            lambda: resolve_context(resource('render_static.tests.resources', 'bad_code.py'))
+        )
+        self.assertRaises(
+            InvalidContext,
+            lambda: resolve_context(resource('render_static.tests.resources', 'dne'))
+        )
+
+        self.assertRaises(
+            InvalidContext,
+            lambda: resolve_context(resource('render_static.tests.dne', 'dne'))
+        )
+
+
+"""
 @override_settings(
     ROOT_URLCONF='render_static.tests.ex_urls',
     STATIC_TEMPLATES={
@@ -2547,3 +2626,4 @@ class GenerateExampleCode(BaseTestCase):
     # uncomment to not delete generated js
     def tearDown(self):
         pass
+"""
