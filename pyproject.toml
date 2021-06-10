@@ -46,7 +46,7 @@ django-renderstatic = 'render_static.console:main'
 python = "^3.6"
 Django = "^2.2||^3.0"
 Jinja2 = { version = "^2.9", optional = true }
-importlib-resources = { version = "^5.1.4", optional = true }
+importlib-resources = version = "^5.1.4"
 
 [tool.poetry.dev-dependencies]
 pytest = "^5.2"
