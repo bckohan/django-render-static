@@ -6,8 +6,9 @@ v1.1.0
 ====================
 
 * Fixed `Rename render_static -> renderstatic <https://github.com/bckohan/django-render-static/issues/11>`_
-* Fixed `Allow 'lazy' contexts built after Django bootstrapping <https://github.com/bckohan/django-render-static/issues/6>`_
-* Fixed `Add GET query parameters to ClassURLWriter's reverse function <https://github.com/bckohan/django-render-static/issues/12>`_
+* Added `Allow 'lazy' contexts built after Django bootstrapping <https://github.com/bckohan/django-render-static/issues/6>`_
+* Added `Flexible context specifiers <https://github.com/bckohan/django-render-static/issues/17>`_
+* Added `Add GET query parameters to ClassURLWriter's reverse function <https://github.com/bckohan/django-render-static/issues/12>`_
 
 
 v1.0.1
