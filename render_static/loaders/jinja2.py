@@ -6,18 +6,34 @@ with renderstatic that will be transparent to users.
 
 https://jinja.palletsprojects.com/en/3.0.x/api/#loaders
 """
-
-from jinja2.loaders import (
-    ChoiceLoader,
-    DictLoader,
-    FileSystemLoader,
-    FunctionLoader,
-    ModuleLoader,
-    PackageLoader,
-    PrefixLoader,
-)
 from render_static.loaders.mixins import BatchLoaderMixin
 
+try:
+    from jinja2.loaders import (
+        ChoiceLoader,
+        DictLoader,
+        FileSystemLoader,
+        FunctionLoader,
+        ModuleLoader,
+        PackageLoader,
+        PrefixLoader,
+    )
+except ImportError:  # pragma: no cover
+    class Jinja2DependencyNeeded:
+        def __init__(self, *args, **kwargs):
+            raise ImportError(
+                'To use the Jinja2 backend you must install the Jinja2 python package.'
+            )
+
+    ChoiceLoader = Jinja2DependencyNeeded
+    DictLoader = Jinja2DependencyNeeded
+    FileSystemLoader = Jinja2DependencyNeeded
+    FunctionLoader = Jinja2DependencyNeeded
+    ModuleLoader = Jinja2DependencyNeeded
+    PackageLoader = Jinja2DependencyNeeded
+    PrefixLoader = Jinja2DependencyNeeded
+    
+    
 __all__ = [
     'StaticFileSystemLoader',
     'StaticFileSystemBatchLoader',
