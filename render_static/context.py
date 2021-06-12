@@ -10,9 +10,15 @@ import re
 from pathlib import Path
 from typing import Callable, Dict, Optional, Sequence, Tuple, Union
 
-import yaml
 from django.utils.module_loading import import_string
 from render_static.exceptions import InvalidContext
+
+try:
+    from yaml import load as yaml_load, FullLoader
+except ImportError:  # pragma: no cover
+    def yaml_load(*args, **kwargs):
+        raise ImportError('Install PyYAML to load contexts from YAML files.')
+    FullLoader = None
 
 __all__ = ['resolve_context']
 
@@ -77,7 +83,7 @@ def _from_yaml(file_path: str, throw: bool = True) -> Optional[Dict]:
     """
     try:
         with open(file_path, 'r') as ctx_f:
-            return yaml.load(ctx_f, Loader=yaml.FullLoader)
+            return yaml_load(ctx_f, Loader=FullLoader)
     except Exception as err:  # pylint: disable=W0703
         if throw:
             raise err
