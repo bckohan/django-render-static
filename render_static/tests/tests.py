@@ -40,6 +40,7 @@ STATIC_TEMP_DIR2 = Path(__file__).parent / 'static_templates2'
 EXPECTED_DIR = Path(__file__).parent / 'expected'
 
 BAD_PICKLE = Path(__file__).parent / 'resources' / 'bad.pickle'
+NOT_A_DICT_PICKLE = Path(__file__).parent / 'resources' / 'not_a_dict.pickle'
 CONTEXT_PICKLE = Path(__file__).parent / 'resources' / 'context.pickle'
 
 USE_NODE_JS = True if shutil.which('node') else False
@@ -106,19 +107,11 @@ class BaseTestCase(TestCase):
         GLOBAL_STATIC_DIR,
         APP2_STATIC_DIR / 'app1',
         APP2_STATIC_DIR / 'app2',
-        APP2_STATIC_DIR / 'exclusive',
-        BAD_PICKLE,
-        CONTEXT_PICKLE
+        APP2_STATIC_DIR / 'exclusive'
     ]
 
     def setUp(self):
         self.clean_generated()
-        if not BAD_PICKLE.exists():
-            with open(BAD_PICKLE, 'wb') as bp:
-                pickle.dump(['bad context'], bp)
-        if not CONTEXT_PICKLE.exists():
-            with open(CONTEXT_PICKLE, 'wb') as cp:
-                pickle.dump({'context': 'pickle'}, cp)
 
     def tearDown(self):
         self.clean_generated()
@@ -3228,6 +3221,15 @@ class DjangoJSReverseTest(URLJavascriptMixin, BaseTestCase):
 
 class TestContextResolution(BaseTestCase):
 
+    def setUp(self):
+        super().setUp()
+        with open(BAD_PICKLE, 'w') as bp:
+            bp.write('not pickle content')
+        with open(NOT_A_DICT_PICKLE, 'wb') as bp:
+            pickle.dump(['bad context'], bp)
+        with open(CONTEXT_PICKLE, 'wb') as cp:
+            pickle.dump({'context': 'pickle'}, cp)
+
     def test_pickle_context(self):
         self.assertEqual(
             resolve_context(Path(__file__).parent / 'resources' / 'context.pickle'),
@@ -3238,6 +3240,12 @@ class TestContextResolution(BaseTestCase):
         self.assertEqual(
             resolve_context(str(Path(__file__).parent / 'resources' / 'context.json')),
             {'context': 'json'}
+        )
+
+    def test_yaml_context(self):
+        self.assertEqual(
+            resolve_context(str(Path(__file__).parent / 'resources' / 'context.yaml')),
+            {'context': 'yaml'}
         )
 
     def test_python_context(self):
@@ -3290,7 +3298,19 @@ class TestContextResolution(BaseTestCase):
         )
         self.assertRaises(
             InvalidContext,
+            lambda: resolve_context(resource('render_static.tests.resources', 'not_a_dict.pickle'))
+        )
+        self.assertRaises(
+            InvalidContext,
             lambda: resolve_context(resource('render_static.tests.resources', 'bad_code.py'))
+        )
+        self.assertRaises(
+            InvalidContext,
+            lambda: resolve_context(str(Path(__file__).parent / 'resources' / 'bad.yaml')),
+        )
+        self.assertRaises(
+            InvalidContext,
+            lambda: resolve_context(str(Path(__file__).parent / 'resources' / 'bad.json')),
         )
         self.assertRaises(
             InvalidContext,
@@ -3301,6 +3321,12 @@ class TestContextResolution(BaseTestCase):
             InvalidContext,
             lambda: resolve_context(resource('render_static.tests.dne', 'dne'))
         )
+
+    def tearDown(self):
+        super().tearDown()
+        os.remove(BAD_PICKLE)
+        os.remove(NOT_A_DICT_PICKLE)
+        os.remove(CONTEXT_PICKLE)
 
 
 """

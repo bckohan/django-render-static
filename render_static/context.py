@@ -5,14 +5,18 @@ packages.
 """
 
 import json
+import yaml
 import pickle
 from pathlib import Path
-from typing import Callable, Dict, Optional, Union
+from typing import Callable, Dict, Optional, Union, List, Tuple
+import re
 
 from django.utils.module_loading import import_string
 from render_static.exceptions import InvalidContext
 
 __all__ = ['resolve_context']
+
+_import_regex = re.compile(r'^[\w]+([.][\w]+)*$')
 
 
 def resolve_context(context: Optional[Union[Dict, str, Path, Callable]]) -> Dict:
@@ -38,31 +42,53 @@ def resolve_context(context: Optional[Union[Dict, str, Path, Callable]]) -> Dict
     if getattr(context, 'module_not_found', False):
         raise InvalidContext('Unable to locate resource context!')
     context = str(context)
-    for try_load in [_from_json, _from_import, _from_pickle, _from_python]:
-        ctx = try_load(context)
-        if ctx:
-            return ctx
+    for try_load, priority in _loader_try_order(context):
+        try:
+            ctx = try_load(context, throw=priority)
+            if ctx:
+                return ctx
+        except Exception as err:
+            raise InvalidContext(f'Unable to load context from {context}!') from err
     raise InvalidContext(f"Unable to resolve context '{context}' to a dictionary type.")
 
 
-def _from_json(file_path: str) -> Optional[Dict]:
+def _from_json(file_path: str, throw: bool = True) -> Optional[Dict]:
     """
     Attempt to load context as a json file.
     :param file_path: The path to the json file
+    :param throw: If true, let any exceptions propagate out
     :return: A dictionary or None if the context was not a json file.
     """
     try:
         with open(file_path, 'r') as ctx_f:
             return json.load(ctx_f)
-    except Exception:  # pylint: disable=W0703
-        pass
+    except Exception as err:  # pylint: disable=W0703
+        if throw:
+            raise err
     return None
 
 
-def _from_pickle(file_path: str) -> Optional[Dict]:
+def _from_yaml(file_path: str, throw: bool = True) -> Optional[Dict]:
+    """
+    Attempt to load context as a YAML file.
+    :param file_path: The path to the yaml file
+    :param throw: If true, let any exceptions propagate out
+    :return: A dictionary or None if the context was not a yaml file.
+    """
+    try:
+        with open(file_path, 'r') as ctx_f:
+            return yaml.load(ctx_f, Loader=yaml.FullLoader)
+    except Exception as err:  # pylint: disable=W0703
+        if throw:
+            raise err
+    return None
+
+
+def _from_pickle(file_path: str, throw: bool = True) -> Optional[Dict]:
     """
     Attempt to load context as from a pickled dictionary.
     :param file_path: The path to the pickled file
+    :param throw: If true, let any exceptions propagate out
     :return: A dictionary or None if the context was not a pickled dictionary.
     """
     try:
@@ -70,31 +96,76 @@ def _from_pickle(file_path: str) -> Optional[Dict]:
             ctx = pickle.load(ctx_f)
             if isinstance(ctx, dict):
                 return ctx
-    except Exception:  # pylint: disable=W0703
-        pass
+    except Exception as err:  # pylint: disable=W0703
+        if throw:
+            raise err
     return None
 
 
-def _from_python(file_path: str) -> Optional[Dict]:
+def _from_python(file_path: str, throw: bool = True) -> Optional[Dict]:
+    """
+    Attempt to load context as from a pickled dictionary.
+
+    :param file_path: The path to the pickled file
+    :param throw: If true, let any exceptions propagate out
+    :return: A dictionary or None if the context was not a pickled dictionary.
+    """
     ctx: dict = {}
     try:
         with open(file_path, 'rb') as ctx_f:
             compiled_code = compile(ctx_f.read(), file_path, 'exec')
             exec(compiled_code, {}, ctx)  # pylint: disable=W0122
             return ctx
-    except Exception:  # pylint: disable=W0703
-        pass
+    except Exception as err:  # pylint: disable=W0703
+        if throw:
+            raise err
     return None
 
 
-def _from_import(import_path: str) -> Optional[Dict]:
+def _from_import(import_path: str, throw: bool = True) -> Optional[Dict]:
+    """
+    Attempt to load context as from an import string.
 
+    :param file_path: The path to the pickled file
+    :param throw: If true, let any exceptions propagate out
+    :return: A dictionary or None if the context was not a pickled dictionary.
+    """
     try:
         context = import_string(import_path)
         if callable(context):
             context = context()
         if isinstance(context, dict):
             return context
-    except Exception:  # pylint: disable=W0703
-        pass
+    except Exception as err:  # pylint: disable=W0703
+        if throw:
+            raise err
     return None
+
+
+loaders = [
+    (lambda ctx: ctx.lower().endswith('json'), _from_json),
+    (lambda ctx: ctx.lower().endswith('yaml'), _from_yaml),
+    (lambda ctx: ctx.lower().endswith('pickle'), _from_pickle),
+    (lambda ctx: ctx.lower().endswith('py'), _from_python),
+    (lambda ctx: bool(_import_regex.match(ctx)), _from_import)
+]
+
+
+def _loader_try_order(ctx: str) -> List[Tuple[Callable[[str, bool], bool], bool]]:
+    """
+    Prioritize the loaders in order of most likely to succeed first based on the context
+    string.
+
+    :param ctx: string context, could be file path or import
+    :return: List of loaders to try in order, each element of the list is a 2-tuple where the first
+        element is the loader and the second is a boolean set to true if this loader was flagged as
+        a priority, or false if it is a backup
+    """
+    priority = []
+    backup = []
+    for idx, loader in enumerate(loaders):
+        if loader[0](ctx):
+            priority.append((loader[1], True))
+        else:
+            backup.append((loader[1], False))
+    return priority + backup
