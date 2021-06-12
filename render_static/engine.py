@@ -228,8 +228,8 @@ class StaticTemplateEngine:
     @cached_property
     def templates(self) -> dict:
         """
-        Lazy templates property. Fetch the dictionary mapping template names to TemplateConfig
-        objects initializing them if necessary.
+        Lazy template property Fetch the dictionary mapping template names to TemplateConfig objects
+        initializing them if necessary.
 
         :return: A dictionary mapping template names to configurations
         :raise ImproperlyConfigured: If there are any configuration issues with the templates
@@ -464,7 +464,6 @@ class StaticTemplateEngine:
         :raises ImproperlyConfigured: if not enough information was given to render and write the
             template
         """
-
         if context:
             context = resolve_context(context)
         renders = []
@@ -521,7 +520,7 @@ class StaticTemplateEngine:
                 )
 
         for render in renders:
-            ctx = render.config.context
+            ctx = render.config.context.copy()
             if context is not None:
                 ctx.update(context)
             with open(str(render.destination), 'w') as temp_out:
