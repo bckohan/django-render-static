@@ -11,8 +11,10 @@ defines, or enum like structures in server side Python code that are simply repl
 side JavaScript. Single-sourcing these structures by generating client side code from the server
 side code maintains DRYness.
 
-Have you ever wished you could replicate Django's `reverse` function in a JavaScript library for
-your site? Now you can with the `urls_to_js` template tag included with `django-render-static`.
+`django-render-static` includes builtins for:
+    - Replicating Django's `reverse` function in JavaScript (:ref:`urls_to_js`)
+    - Auto-translating Python class and module structures into JavaScript
+      (:ref:`modules_to_js`, :ref:`classes_to_js`)
 
 You can report bugs and discuss features on the
 `issues page <https://github.com/bckohan/django-render-static/issues>`_.

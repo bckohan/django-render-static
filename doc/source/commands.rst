@@ -29,8 +29,9 @@ To generate all templates configured in ``STATIC_TEMPLATES`` settings:
     $ manage.py renderstatic
 
 Alternatively individual templates can be generated, regardless of their presence
-in ``STATIC_TEMPLATES``. They will be given the global context:
+in ``STATIC_TEMPLATES``. They will be given the global context with any overriding context
+parameters supplied on the command line:
 
 .. code::
 
-    $ manage.py renderstatic name/of/template1.js name/of/template2.js
+    $ manage.py renderstatic path/*.js -c ./js_context.yaml -d outputdir

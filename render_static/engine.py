@@ -116,7 +116,6 @@ class StaticTemplateEngine:
 
     DEFAULT_ENGINE_CONFIG = [{
         'BACKEND': 'render_static.backends.StaticDjangoTemplates',
-        'DIRS': [],
         'OPTIONS': {
             'loaders': ['render_static.loaders.StaticAppDirectoriesBatchLoader'],
             'builtins': ['render_static.templatetags.render_static']

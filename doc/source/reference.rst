@@ -24,16 +24,44 @@ backends
    .. autoclass:: StaticJinja2Templates
 
 
-.. _loaders:
+.. _django_loaders:
 
-loaders
+loaders.django
 ---------------------------------
 
-.. automodule:: render_static.loaders
+.. automodule:: render_static.loaders.django
 
    .. autoclass:: StaticAppDirectoriesLoader
    .. autoclass:: StaticFilesystemLoader
+   .. autoclass:: StaticAppDirectoriesBatchLoader
+   .. autoclass:: StaticFilesystemBatchLoader
    .. autoclass:: StaticLocMemLoader
+
+.. _jinja2_loaders:
+
+loaders.jinja2
+---------------------------------
+
+.. automodule:: render_static.loaders.jinja2
+
+   .. autoclass:: StaticFileSystemLoader
+   .. autoclass:: StaticFileSystemBatchLoader
+   .. autoclass:: StaticPackageLoader
+   .. autoclass:: StaticPrefixLoader
+   .. autoclass:: StaticFunctionLoader
+   .. autoclass:: StaticDictLoader
+   .. autoclass:: StaticChoiceLoader
+   .. autoclass:: StaticModuleLoader
+
+
+.. _loader_mixins:
+
+loaders.mixins
+---------------------------------
+
+.. automodule:: render_static.loaders.mixins
+
+   .. autoclass:: BatchLoaderMixin
 
 .. _origin:
 

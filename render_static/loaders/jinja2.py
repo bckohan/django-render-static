@@ -1,7 +1,8 @@
 """
 Subclass the Jinja2 loaders. It is recommended that even for loaders that are simple empty
-subclasses of the Jinja2 loaders, that these static redefinitions be used. If in future, changes to
-these loaders need to be made to keep code working with renderstatic that will be transparent.
+subclasses of the Jinja2 loaders, that these static redefinitions be used for static template
+engines insteead. If in the future, changes to these loaders need to be made to keep code working
+with renderstatic that will be transparent to users.
 
 https://jinja.palletsprojects.com/en/3.0.x/api/#loaders
 """
@@ -37,7 +38,11 @@ class StaticFileSystemLoader(FileSystemLoader):
 
 class StaticFileSystemBatchLoader(FileSystemLoader, BatchLoaderMixin):
     """
-    File system search that works with batch loading selectors.
+    This loader extends the basic StaticFileSystemLoader to work with batch selectors. Use this
+    loader if you want to be able to use wildcards to load Jinja2 templates.
+
+    .. note::
+        This is the default loader used for the Jinja2 backend if no loader is specified.
     """
 
     def get_dirs(self):

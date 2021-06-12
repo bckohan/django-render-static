@@ -209,8 +209,8 @@ So you can now fetch paths like this::
 .. warning::
 
     If you get an exception when you run :ref:`renderstatic` that originated from a
-    :py:meth:`mymodule.MyClass``URLGenerationFailed`` exception, you mostly likely need to register
-    some :ref:`placeholders` before calling :ref:`urls_to_js`.
+    :py:class:`render_static.exceptions.URLGenerationFailed` exception, you mostly likely need to
+    register some :ref:`placeholders` before calling :ref:`urls_to_js`.
 
 .. note::
     The JavaScript URL resolution is guaranteed to produce the same paths as Django's reversal
