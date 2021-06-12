@@ -5,12 +5,12 @@ packages.
 """
 
 import json
-import yaml
 import pickle
-from pathlib import Path
-from typing import Callable, Dict, Optional, Union, List, Tuple
 import re
+from pathlib import Path
+from typing import Callable, Dict, Optional, Sequence, Tuple, Union
 
+import yaml
 from django.utils.module_loading import import_string
 from render_static.exceptions import InvalidContext
 
@@ -42,9 +42,9 @@ def resolve_context(context: Optional[Union[Dict, str, Path, Callable]]) -> Dict
     if getattr(context, 'module_not_found', False):
         raise InvalidContext('Unable to locate resource context!')
     context = str(context)
-    for try_load, priority in _loader_try_order(context):
+    for try_load, can_load in _loader_try_order(context):
         try:
-            ctx = try_load(context, throw=priority)
+            ctx = try_load(context, can_load)
             if ctx:
                 return ctx
         except Exception as err:
@@ -151,7 +151,7 @@ loaders = [
 ]
 
 
-def _loader_try_order(ctx: str) -> List[Tuple[Callable[[str, bool], bool], bool]]:
+def _loader_try_order(ctx: str) -> Sequence[Tuple[Callable[[str, bool], Optional[Dict]], bool]]:
     """
     Prioritize the loaders in order of most likely to succeed first based on the context
     string.
@@ -163,8 +163,9 @@ def _loader_try_order(ctx: str) -> List[Tuple[Callable[[str, bool], bool], bool]
     """
     priority = []
     backup = []
-    for idx, loader in enumerate(loaders):
-        if loader[0](ctx):
+    for loader in loaders:
+        can_load: Callable[[str], bool] = loader[0]
+        if can_load(ctx):
             priority.append((loader[1], True))
         else:
             backup.append((loader[1], False))

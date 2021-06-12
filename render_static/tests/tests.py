@@ -2,13 +2,13 @@ import filecmp
 import inspect
 import json
 import os
+import pickle
 import shutil
 import subprocess
 import traceback
 import uuid
 from pathlib import Path
 from time import perf_counter
-import pickle
 
 import js2py
 from deepdiff import DeepDiff
