@@ -26,6 +26,7 @@ from render_static.backends import StaticDjangoTemplates, StaticJinja2Templates
 from render_static.engine import StaticTemplateEngine
 from render_static.exceptions import InvalidContext
 from render_static.javascript import JavaScriptGenerator
+from render_static.loaders.jinja2 import StaticFileSystemLoader
 from render_static.origin import AppOrigin, Origin
 from render_static.tests import bad_pattern, defines
 from render_static.url_tree import ClassURLWriter
@@ -34,10 +35,17 @@ APP1_STATIC_DIR = Path(__file__).parent / 'app1' / 'static'  # this dir does not
 APP2_STATIC_DIR = Path(__file__).parent / 'app2' / 'static'  # this dir exists and is checked in
 GLOBAL_STATIC_DIR = settings.STATIC_ROOT  # this dir does not exist and must be cleaned up
 STATIC_TEMP_DIR = Path(__file__).parent / 'static_templates'
+STATIC_TEMP_DIR2 = Path(__file__).parent / 'static_templates2'
 EXPECTED_DIR = Path(__file__).parent / 'expected'
 
 
 USE_NODE_JS = True if shutil.which('node') else False
+
+
+def empty_or_dne(directory):
+    if os.path.exists(str(directory)):
+        return len(os.listdir(directory)) == 0
+    return True
 
 
 class BadVisitor:
@@ -94,7 +102,8 @@ class BaseTestCase(TestCase):
         APP1_STATIC_DIR,
         GLOBAL_STATIC_DIR,
         APP2_STATIC_DIR / 'app1',
-        APP2_STATIC_DIR / 'app2'
+        APP2_STATIC_DIR / 'app2',
+        APP2_STATIC_DIR / 'exclusive'
     ]
 
     def setUp(self):
@@ -137,6 +146,9 @@ class NominalTestCase(BaseTestCase):
             EXPECTED_DIR / 'nominal2.html',
             shallow=False
         ))
+
+    # def tearDown(self):
+    #     pass
 
 
 def generate_context1():
@@ -196,8 +208,8 @@ class CallableContextTestCase(BaseTestCase):
     def test_off_nominal_global(self):
         self.assertRaises(CommandError, lambda: call_command('renderstatic'))
 
-    # def tearDown(self):
-    #     pass
+    #def tearDown(self):
+    #    pass
 
 
 @override_settings(STATIC_TEMPLATES={
@@ -226,6 +238,582 @@ class ContextOverrideTestCase(BaseTestCase):
             EXPECTED_DIR / 'ctx_override.html',
             shallow=False
         ))
+
+
+@override_settings(STATIC_TEMPLATES={
+    'context': {
+        'title': 'TEST'
+    },
+    'templates': {
+        'app1/html/inheritance.html': {}
+    }
+})
+class TemplateInheritanceTestCase(BaseTestCase):
+    """
+    Tests that template inheritance is working correctly. Static templates lightly touches the
+    template engines so its not impossible that template resolution could be effected.
+    """
+
+    def test_django_templates(self):
+        """
+        Tests that template inheritance is working for the static django template engine.
+        """
+        call_command('renderstatic')
+        self.assertTrue(filecmp.cmp(
+            APP2_STATIC_DIR / 'app1' / 'html' / 'inheritance.html',
+            EXPECTED_DIR / 'inheritance.html',
+            shallow=False
+        ))
+
+    @override_settings(STATIC_TEMPLATES={
+        'ENGINES': [{
+            'BACKEND': 'render_static.backends.StaticJinja2Templates',
+            'APP_DIRS': True
+        }],
+        'templates': {
+            'app2/html/inheritance.html': {}
+        }
+    })
+    def test_jinja2_templates(self):
+        """
+        Tests that template inheritance is working for the static Jinja2 template engine.
+        """
+        call_command('renderstatic')
+        self.assertTrue(filecmp.cmp(
+            APP2_STATIC_DIR / 'app2' / 'html' / 'inheritance.html',
+            EXPECTED_DIR / 'inheritance_jinja2.html',
+            shallow=False
+        ))
+
+
+@override_settings(STATIC_TEMPLATES={
+    'ENGINES': [{
+        'BACKEND': 'render_static.backends.StaticDjangoTemplates',
+        'DIRS': [STATIC_TEMP_DIR],
+        'OPTIONS': {
+            'loaders': [
+                'render_static.loaders.StaticFilesystemBatchLoader',
+                'render_static.loaders.StaticAppDirectoriesBatchLoader'
+            ]
+        },
+    }]
+})
+class BatchFileSystemRenderTestCase(BaseTestCase):
+    """
+    Tests that exercise the batch template loaders.
+    """
+
+    def test_batch_filesystem_render1(self):
+        call_command('renderstatic', 'batch_fs*')
+        self.assertTrue(filecmp.cmp(
+            GLOBAL_STATIC_DIR / 'batch_fs_test0.html',
+            EXPECTED_DIR / 'nominal_fs.html',
+            shallow=False
+        ))
+        self.assertTrue(filecmp.cmp(
+            GLOBAL_STATIC_DIR / 'batch_fs_test1.html',
+            EXPECTED_DIR / 'nominal_fs.html',
+            shallow=False
+        ))
+        self.assertEqual(len(os.listdir(GLOBAL_STATIC_DIR)), 2)
+
+    def test_batch_filesystem_render2(self):
+        call_command('renderstatic', '**/batch_fs*')
+        self.assertTrue(filecmp.cmp(
+            GLOBAL_STATIC_DIR / 'batch_fs_test0.html',
+            EXPECTED_DIR / 'nominal_fs.html',
+            shallow=False
+        ))
+        self.assertTrue(filecmp.cmp(
+            GLOBAL_STATIC_DIR / 'batch_fs_test1.html',
+            EXPECTED_DIR / 'nominal_fs.html',
+            shallow=False
+        ))
+        self.assertTrue(filecmp.cmp(
+            GLOBAL_STATIC_DIR / 'subdir' / 'batch_fs_test2.html',
+            EXPECTED_DIR / 'nominal1.html',
+            shallow=False
+        ))
+        self.assertEqual(len(os.listdir(GLOBAL_STATIC_DIR)), 3)
+
+    # def tearDown(self):
+    #    pass
+
+
+@override_settings(STATIC_TEMPLATES={
+    'ENGINES': [{
+        'BACKEND': 'render_static.backends.StaticDjangoTemplates',
+        'DIRS': [STATIC_TEMP_DIR, STATIC_TEMP_DIR2],
+        'OPTIONS': {
+            'loaders': [
+                'render_static.loaders.StaticFilesystemBatchLoader',
+                'render_static.loaders.StaticAppDirectoriesBatchLoader'
+            ]
+        },
+    }]
+})
+class TemplatePreferenceFSTestCase(BaseTestCase):
+    """
+    Tests that load preferences flag works as described and that destinations also work as
+    described:
+
+        - first_loader
+        - first_preference
+
+    Do the right files get picked and do they go to the expected locations?
+    """
+
+    def test_nopref(self):
+        call_command('renderstatic', 'exclusive/*')
+        self.validate_nopref()
+
+    def validate_nopref(self):
+        self.assertTrue(filecmp.cmp(
+            GLOBAL_STATIC_DIR / 'exclusive' / 'template1.html',
+            EXPECTED_DIR / 'glb_template1.html',
+            shallow=False
+        ))
+        self.assertTrue(filecmp.cmp(
+            GLOBAL_STATIC_DIR / 'exclusive' / 'template2.html',
+            EXPECTED_DIR / 'glb_template2.html',
+            shallow=False
+        ))
+        self.assertTrue(filecmp.cmp(
+            GLOBAL_STATIC_DIR / 'exclusive' / 'template3.html',
+            EXPECTED_DIR / 'glb_template3.html',
+            shallow=False
+        ))
+        self.assertTrue(filecmp.cmp(
+            GLOBAL_STATIC_DIR / 'exclusive' / 'template4.html',
+            EXPECTED_DIR / 'glb2_template4.html',
+            shallow=False
+        ))
+        self.assertTrue(filecmp.cmp(
+            APP2_STATIC_DIR / 'exclusive' / 'template5.html',
+            EXPECTED_DIR / 'app2_template5.html',
+            shallow=False
+        ))
+        self.assertTrue(filecmp.cmp(
+            APP1_STATIC_DIR / 'exclusive' / 'template6.html',
+            EXPECTED_DIR / 'app1_template6.html',
+            shallow=False
+        ))
+        self.assertEqual(len(os.listdir(GLOBAL_STATIC_DIR / 'exclusive')), 4)
+        self.assertEqual(len(os.listdir(APP2_STATIC_DIR / 'exclusive')), 1)
+        self.assertEqual(len(os.listdir(APP1_STATIC_DIR / 'exclusive')), 1)
+
+    def test_first_loader(self):
+        call_command('renderstatic', 'exclusive/*', first_loader=True)
+        self.validate_first_loader()
+
+    def validate_first_loader(self):
+        self.assertTrue(filecmp.cmp(
+            GLOBAL_STATIC_DIR / 'exclusive' / 'template1.html',
+            EXPECTED_DIR / 'glb_template1.html',
+            shallow=False
+        ))
+        self.assertTrue(filecmp.cmp(
+            GLOBAL_STATIC_DIR / 'exclusive' / 'template2.html',
+            EXPECTED_DIR / 'glb_template2.html',
+            shallow=False
+        ))
+        self.assertTrue(filecmp.cmp(
+            GLOBAL_STATIC_DIR / 'exclusive' / 'template3.html',
+            EXPECTED_DIR / 'glb_template3.html',
+            shallow=False
+        ))
+        self.assertTrue(filecmp.cmp(
+            GLOBAL_STATIC_DIR / 'exclusive' / 'template4.html',
+            EXPECTED_DIR / 'glb2_template4.html',
+            shallow=False
+        ))
+        self.assertEqual(len(os.listdir(GLOBAL_STATIC_DIR / 'exclusive')), 4)
+        self.assertTrue(empty_or_dne(APP1_STATIC_DIR))
+        self.assertTrue(empty_or_dne(APP2_STATIC_DIR))
+
+    def test_first_pref(self):
+        call_command('renderstatic', 'exclusive/*', first_preference=True)
+        self.validate_first_pref()
+
+    def validate_first_pref(self):
+        self.assertTrue(filecmp.cmp(
+            GLOBAL_STATIC_DIR / 'exclusive' / 'template1.html',
+            EXPECTED_DIR / 'glb_template1.html',
+            shallow=False
+        ))
+        self.assertTrue(filecmp.cmp(
+            GLOBAL_STATIC_DIR / 'exclusive' / 'template2.html',
+            EXPECTED_DIR / 'glb_template2.html',
+            shallow=False
+        ))
+        self.assertTrue(filecmp.cmp(
+            GLOBAL_STATIC_DIR / 'exclusive' / 'template3.html',
+            EXPECTED_DIR / 'glb_template3.html',
+            shallow=False
+        ))
+        self.assertTrue(filecmp.cmp(
+            APP1_STATIC_DIR / 'exclusive' / 'template6.html',
+            EXPECTED_DIR / 'app1_template6.html',
+            shallow=False
+        ))
+        self.assertEqual(len(os.listdir(GLOBAL_STATIC_DIR / 'exclusive')), 3)
+        self.assertEqual(len(os.listdir(APP1_STATIC_DIR / 'exclusive')), 1)
+        self.assertTrue(empty_or_dne(APP2_STATIC_DIR))
+
+    def test_first_loader_and_pref(self):
+        call_command('renderstatic', 'exclusive/*', first_loader=True, first_preference=True)
+        self.validate_first_load_and_pref()
+
+    def validate_first_load_and_pref(self):
+        self.assertTrue(filecmp.cmp(
+            GLOBAL_STATIC_DIR / 'exclusive' / 'template1.html',
+            EXPECTED_DIR / 'glb_template1.html',
+            shallow=False
+        ))
+        self.assertTrue(filecmp.cmp(
+            GLOBAL_STATIC_DIR / 'exclusive' / 'template2.html',
+            EXPECTED_DIR / 'glb_template2.html',
+            shallow=False
+        ))
+        self.assertTrue(filecmp.cmp(
+            GLOBAL_STATIC_DIR / 'exclusive' / 'template3.html',
+            EXPECTED_DIR / 'glb_template3.html',
+            shallow=False
+        ))
+        self.assertEqual(len(os.listdir(GLOBAL_STATIC_DIR / 'exclusive')), 3)
+        self.assertTrue(empty_or_dne(APP1_STATIC_DIR))
+        self.assertTrue(empty_or_dne(APP2_STATIC_DIR))
+
+    def test_batch_destination_override(self):
+        call_command('renderstatic', 'exclusive/*', destination=GLOBAL_STATIC_DIR)
+        self.validate_batch_destination_override()
+
+    def validate_batch_destination_override(self):
+        self.assertTrue(filecmp.cmp(
+            GLOBAL_STATIC_DIR / 'exclusive' / 'template1.html',
+            EXPECTED_DIR / 'glb_template1.html',
+            shallow=False
+        ))
+        self.assertTrue(filecmp.cmp(
+            GLOBAL_STATIC_DIR / 'exclusive' / 'template2.html',
+            EXPECTED_DIR / 'glb_template2.html',
+            shallow=False
+        ))
+        self.assertTrue(filecmp.cmp(
+            GLOBAL_STATIC_DIR / 'exclusive' / 'template3.html',
+            EXPECTED_DIR / 'glb_template3.html',
+            shallow=False
+        ))
+        self.assertTrue(filecmp.cmp(
+            GLOBAL_STATIC_DIR / 'exclusive' / 'template4.html',
+            EXPECTED_DIR / 'glb2_template4.html',
+            shallow=False
+        ))
+        self.assertTrue(filecmp.cmp(
+            GLOBAL_STATIC_DIR / 'exclusive' / 'template5.html',
+            EXPECTED_DIR / 'app2_template5.html',
+            shallow=False
+        ))
+        self.assertTrue(filecmp.cmp(
+            GLOBAL_STATIC_DIR / 'exclusive' / 'template6.html',
+            EXPECTED_DIR / 'app1_template6.html',
+            shallow=False
+        ))
+        self.assertEqual(len(os.listdir(GLOBAL_STATIC_DIR / 'exclusive')), 6)
+
+    # def tearDown(self):
+    #    pass
+
+
+@override_settings(STATIC_TEMPLATES={
+    'ENGINES': [{
+        'BACKEND': 'render_static.backends.StaticDjangoTemplates',
+        'DIRS': [STATIC_TEMP_DIR, STATIC_TEMP_DIR2],
+        'OPTIONS': {
+            'loaders': [
+                'render_static.loaders.StaticAppDirectoriesBatchLoader',
+                'render_static.loaders.StaticFilesystemBatchLoader'
+            ]
+        },
+    }]
+})
+class TemplatePreferenceAPPSTestCase(BaseTestCase):
+    """
+    Tests that load preferences flag works as described and that destinations also work as
+    described, for the app directories loader.
+
+        - first_loader
+        - first_preference
+
+    Do the right files get picked and do they go to the expected locations?
+    """
+
+    def test_nopref(self):
+        call_command('renderstatic', 'exclusive/*')
+        self.validate_nopref()
+
+    def validate_nopref(self):
+        self.assertTrue(filecmp.cmp(
+            APP1_STATIC_DIR / 'exclusive' / 'template1.html',
+            EXPECTED_DIR / 'app1_template1.html',
+            shallow=False
+        ))
+        self.assertTrue(filecmp.cmp(
+            APP2_STATIC_DIR / 'exclusive' / 'template2.html',
+            EXPECTED_DIR / 'app2_template2.html',
+            shallow=False
+        ))
+        self.assertTrue(filecmp.cmp(
+            GLOBAL_STATIC_DIR / 'exclusive' / 'template3.html',
+            EXPECTED_DIR / 'glb_template3.html',
+            shallow=False
+        ))
+        self.assertTrue(filecmp.cmp(
+            GLOBAL_STATIC_DIR / 'exclusive' / 'template4.html',
+            EXPECTED_DIR / 'glb2_template4.html',
+            shallow=False
+        ))
+        self.assertTrue(filecmp.cmp(
+            APP2_STATIC_DIR / 'exclusive' / 'template5.html',
+            EXPECTED_DIR / 'app2_template5.html',
+            shallow=False
+        ))
+        self.assertTrue(filecmp.cmp(
+            APP1_STATIC_DIR / 'exclusive' / 'template6.html',
+            EXPECTED_DIR / 'app1_template6.html',
+            shallow=False
+        ))
+        self.assertEqual(len(os.listdir(GLOBAL_STATIC_DIR / 'exclusive')), 2)
+        self.assertEqual(len(os.listdir(APP2_STATIC_DIR / 'exclusive')), 2)
+        self.assertEqual(len(os.listdir(APP1_STATIC_DIR / 'exclusive')), 2)
+
+    def test_first_loader(self):
+        call_command('renderstatic', 'exclusive/*', first_loader=True)
+        self.validate_first_loader()
+
+    def validate_first_loader(self):
+        self.assertTrue(filecmp.cmp(
+            APP1_STATIC_DIR / 'exclusive' / 'template1.html',
+            EXPECTED_DIR / 'app1_template1.html',
+            shallow=False
+        ))
+        self.assertTrue(filecmp.cmp(
+            APP2_STATIC_DIR / 'exclusive' / 'template2.html',
+            EXPECTED_DIR / 'app2_template2.html',
+            shallow=False
+        ))
+        self.assertTrue(filecmp.cmp(
+            APP2_STATIC_DIR / 'exclusive' / 'template5.html',
+            EXPECTED_DIR / 'app2_template5.html',
+            shallow=False
+        ))
+        self.assertTrue(filecmp.cmp(
+            APP1_STATIC_DIR / 'exclusive' / 'template6.html',
+            EXPECTED_DIR / 'app1_template6.html',
+            shallow=False
+        ))
+        self.assertEqual(len(os.listdir(APP1_STATIC_DIR / 'exclusive')), 2)
+        self.assertEqual(len(os.listdir(APP2_STATIC_DIR / 'exclusive')), 2)
+        self.assertTrue(empty_or_dne(GLOBAL_STATIC_DIR))
+
+    def test_first_pref(self):
+        call_command('renderstatic', 'exclusive/*', first_preference=True)
+        self.validate_first_pref()
+
+    def validate_first_pref(self):
+        self.assertTrue(filecmp.cmp(
+            APP1_STATIC_DIR / 'exclusive' / 'template1.html',
+            EXPECTED_DIR / 'app1_template1.html',
+            shallow=False
+        ))
+
+        # app2's template is resolved because selection criteria only counts for resolving template
+        # names, so template2.html is picked - but then when the template name is resolved to a file
+        # the app loader has precedence and picks the app2 template over the filesystem one.
+        # this is expected, if a little confusing - these options are for corner cases anyway.
+        self.assertTrue(filecmp.cmp(
+            APP2_STATIC_DIR / 'exclusive' / 'template2.html',
+            EXPECTED_DIR / 'app2_template2.html',
+            shallow=False
+        ))
+        self.assertTrue(filecmp.cmp(
+            GLOBAL_STATIC_DIR / 'exclusive' / 'template3.html',
+            EXPECTED_DIR / 'glb_template3.html',
+            shallow=False
+        ))
+        self.assertTrue(filecmp.cmp(
+            APP1_STATIC_DIR / 'exclusive' / 'template6.html',
+            EXPECTED_DIR / 'app1_template6.html',
+            shallow=False
+        ))
+        self.assertEqual(len(os.listdir(GLOBAL_STATIC_DIR / 'exclusive')), 1)
+        self.assertEqual(len(os.listdir(APP1_STATIC_DIR / 'exclusive')), 2)
+        self.assertEqual(len(os.listdir(APP2_STATIC_DIR / 'exclusive')), 1)
+
+    def test_first_loader_and_pref(self):
+        call_command('renderstatic', 'exclusive/*', first_loader=True, first_preference=True)
+        self.validate_first_load_and_pref()
+
+    def validate_first_load_and_pref(self):
+        self.assertTrue(filecmp.cmp(
+            APP1_STATIC_DIR / 'exclusive' / 'template1.html',
+            EXPECTED_DIR / 'app1_template1.html',
+            shallow=False
+        ))
+        self.assertTrue(filecmp.cmp(
+            APP1_STATIC_DIR / 'exclusive' / 'template6.html',
+            EXPECTED_DIR / 'app1_template6.html',
+            shallow=False
+        ))
+        self.assertEqual(len(os.listdir(APP1_STATIC_DIR / 'exclusive')), 2)
+        self.assertTrue(empty_or_dne(GLOBAL_STATIC_DIR))
+        self.assertTrue(empty_or_dne(APP2_STATIC_DIR))
+
+    def test_batch_destination_override(self):
+        call_command('renderstatic', 'exclusive/*', destination=GLOBAL_STATIC_DIR)
+        self.assertTrue(filecmp.cmp(
+            GLOBAL_STATIC_DIR / 'exclusive' / 'template1.html',
+            EXPECTED_DIR / 'app1_template1.html',
+            shallow=False
+        ))
+        self.assertTrue(filecmp.cmp(
+            GLOBAL_STATIC_DIR / 'exclusive' / 'template2.html',
+            EXPECTED_DIR / 'app2_template2.html',
+            shallow=False
+        ))
+        self.assertTrue(filecmp.cmp(
+            GLOBAL_STATIC_DIR / 'exclusive' / 'template3.html',
+            EXPECTED_DIR / 'glb_template3.html',
+            shallow=False
+        ))
+        self.assertTrue(filecmp.cmp(
+            GLOBAL_STATIC_DIR / 'exclusive' / 'template4.html',
+            EXPECTED_DIR / 'glb2_template4.html',
+            shallow=False
+        ))
+        self.assertTrue(filecmp.cmp(
+            GLOBAL_STATIC_DIR / 'exclusive' / 'template5.html',
+            EXPECTED_DIR / 'app2_template5.html',
+            shallow=False
+        ))
+        self.assertTrue(filecmp.cmp(
+            GLOBAL_STATIC_DIR / 'exclusive' / 'template6.html',
+            EXPECTED_DIR / 'app1_template6.html',
+            shallow=False
+        ))
+        self.assertEqual(len(os.listdir(GLOBAL_STATIC_DIR / 'exclusive')), 6)
+
+    # def tearDown(self):
+    #     pass
+
+
+@override_settings(STATIC_TEMPLATES={
+    'ENGINES': [{
+        'BACKEND': 'render_static.backends.StaticDjangoTemplates',
+        'NAME': 'Engine0',
+        'OPTIONS': {
+            'loaders': [
+                'render_static.loaders.StaticAppDirectoriesBatchLoader'
+            ]
+        },
+    }, {
+        'BACKEND': 'render_static.backends.StaticDjangoTemplates',
+        'NAME': 'Engine1',
+        'DIRS': [STATIC_TEMP_DIR, STATIC_TEMP_DIR2],
+        'OPTIONS': {
+            'loaders': [
+                'render_static.loaders.StaticFilesystemBatchLoader'
+            ]
+        },
+    }]
+})
+class TemplateEnginePreferenceTestCase(TemplatePreferenceAPPSTestCase):
+    """
+    Tests that load preferences flag works as described and that destinations also work as
+    described, for multiple engines.
+
+        - first_engine
+        - first_loader
+        - first_preference
+
+    Do the right files get picked and do they go to the expected locations?
+    """
+
+    def test_nopref(self):
+        call_command('renderstatic', 'exclusive/*')
+        self.validate_nopref()
+
+    def test_first_loader(self):
+        call_command('renderstatic', 'exclusive/*', first_engine=True)
+        self.validate_first_loader()
+
+    def test_first_pref(self):
+        call_command('renderstatic', 'exclusive/*', first_preference=True)
+        self.validate_first_pref()
+
+    def validate_first_pref(self):
+        self.assertTrue(filecmp.cmp(
+            APP1_STATIC_DIR / 'exclusive' / 'template1.html',
+            EXPECTED_DIR / 'app1_template1.html',
+            shallow=False
+        ))
+
+        # I don't understand why the file system one is picked, but this is corner case behavior
+        # and it only really matters that this remains consistent
+        self.assertTrue(filecmp.cmp(
+            GLOBAL_STATIC_DIR / 'exclusive' / 'template2.html',
+            EXPECTED_DIR / 'glb_template2.html',
+            shallow=False
+        ))
+        self.assertTrue(filecmp.cmp(
+            GLOBAL_STATIC_DIR / 'exclusive' / 'template3.html',
+            EXPECTED_DIR / 'glb_template3.html',
+            shallow=False
+        ))
+        self.assertTrue(filecmp.cmp(
+            APP1_STATIC_DIR / 'exclusive' / 'template6.html',
+            EXPECTED_DIR / 'app1_template6.html',
+            shallow=False
+        ))
+        self.assertEqual(len(os.listdir(GLOBAL_STATIC_DIR / 'exclusive')), 2)
+        self.assertEqual(len(os.listdir(APP1_STATIC_DIR / 'exclusive')), 2)
+        self.assertTrue(empty_or_dne(APP2_STATIC_DIR))
+
+    def test_first_loader_and_pref(self):
+        call_command('renderstatic', 'exclusive/*', first_engine=True, first_preference=True)
+        self.validate_first_load_and_pref()
+
+    # def tearDown(self):
+    #    pass
+
+
+@override_settings(STATIC_TEMPLATES={
+    'ENGINES': [{
+        'BACKEND': 'render_static.backends.StaticJinja2Templates',
+        'DIRS': [STATIC_TEMP_DIR, STATIC_TEMP_DIR2],
+        'APP_DIRS': True,
+        'OPTIONS': {
+            'app_dir': 'static_templates'
+        },
+    }]
+})
+class TemplatePreferenceJinjaTestCase(TemplatePreferenceFSTestCase):
+    """
+    This config should be almost functionality equivalent to the base tests. The template dont have
+    any actual template logic in them so jinja2 will render them as well.
+
+    The main difference is that there's only one loader so first_loader doesnt do anything and
+    first_pref is the same as having both flags set.
+    """
+
+    def validate_first_pref(self):
+        self.validate_first_load_and_pref()
+
+    def validate_first_loader(self):
+        self.validate_nopref()
+
+    # def tearDown(self):
+    #    pass
 
 
 @override_settings(STATIC_TEMPLATES={
@@ -306,7 +894,7 @@ class FSLoaderTestCase(BaseTestCase):
         'APP_DIRS': True
     }],
     'templates': {
-        'nominal_jinja2.html': {
+        'nominal.jinja2': {
             'dest': GLOBAL_STATIC_DIR / 'nominal_jinja2.html'
         },
         'app1/html/app_jinja2.html': {}
@@ -333,6 +921,30 @@ class Jinja2TestCase(BaseTestCase):
             EXPECTED_DIR / 'app1_jinja2.html',
             shallow=False
         ))
+
+    @override_settings(STATIC_TEMPLATES={
+        'ENGINES': [{
+            'BACKEND': 'render_static.backends.StaticJinja2Templates',
+            'OPTIONS': {
+                'loader': StaticFileSystemLoader(STATIC_TEMP_DIR)
+            }
+        }],
+        'templates': {
+            'nominal.jinja2': {
+                'dest': GLOBAL_STATIC_DIR / 'nominal_jinja2.html'
+            }
+        }
+    })
+    def test_fs_loader(self):
+        call_command('renderstatic')
+        self.assertTrue(empty_or_dne(APP1_STATIC_DIR))
+        self.assertEqual(len(os.listdir(GLOBAL_STATIC_DIR)), 1)
+        self.assertTrue(filecmp.cmp(
+            GLOBAL_STATIC_DIR / 'nominal_jinja2.html',
+            EXPECTED_DIR / 'nominal_jinja2.html',
+            shallow=False
+        ))
+        self.assertRaises(CommandError, lambda: call_command('renderstatic', 'bogus.tmpl'))
 
 
 @override_settings(STATIC_TEMPLATES={
@@ -472,6 +1084,29 @@ class ConfigTestCase(TestCase):
         engine = StaticTemplateEngine()
         self.assertRaises(ImproperlyConfigured, lambda: engine.config)
 
+    @override_settings(
+        STATIC_ROOT=None,
+        STATIC_TEMPLATES={
+            'ENGINES': [{
+                'BACKEND': 'render_static.backends.StaticDjangoTemplates',
+                'DIRS': [STATIC_TEMP_DIR],
+                'OPTIONS': {
+                    'loaders': [
+                        'render_static.loaders.StaticFilesystemBatchLoader'
+                    ]
+                },
+            }]
+        }
+    )
+    def test_no_destination(self):
+        """
+        If no  setting is present we should raise.
+        """
+        self.assertRaises(
+            CommandError,
+            lambda: call_command('renderstatic', 'nominal_fs.html')
+        )
+
     def test_unrecognized_settings(self):
         """
         Unrecognized configuration keys should raise.
@@ -557,6 +1192,70 @@ class ConfigTestCase(TestCase):
             TemplateDoesNotExist,
             lambda: engine.render_to_disk('../app1/html/nominal1.html')
         )
+
+    def test_suspicious_selector_fs(self):
+        engine = StaticTemplateEngine({
+            'ENGINES': [{
+                'BACKEND': 'render_static.backends.StaticDjangoTemplates',
+                'DIRS': [STATIC_TEMP_DIR],
+                'OPTIONS': {
+                    'loaders': [
+                        'render_static.loaders.StaticFilesystemBatchLoader'
+                    ]
+                },
+            }]
+        })
+        self.assertRaises(
+            TemplateDoesNotExist,
+            lambda: engine.render_to_disk('../static_templates2/exclusive/template1.html')
+        )
+
+    def test_suspicious_selector_appdirs(self):
+        engine = StaticTemplateEngine({
+            'ENGINES': [{
+                'BACKEND': 'render_static.backends.StaticDjangoTemplates',
+                'OPTIONS': {
+                    'loaders': [
+                        'render_static.loaders.StaticAppDirectoriesBatchLoader'
+                    ]
+                },
+            }]
+        })
+        self.assertRaises(
+            TemplateDoesNotExist,
+            lambda: engine.render_to_disk('../custom_templates/nominal_fs.html')
+        )
+
+    def test_suspicious_selector_jinja2_appdirs(self):
+        engine = StaticTemplateEngine({
+            'ENGINES': [{
+                'BACKEND': 'render_static.backends.StaticJinja2Templates',
+                'APP_DIRS': True
+            }]
+        })
+        self.assertRaises(
+            TemplateDoesNotExist,
+            lambda: engine.render_to_disk('../custom_templates/nominal_fs.html')
+        )
+
+    def test_no_selector_templates_found(self):
+        engine = StaticTemplateEngine({
+            'ENGINES': [{
+                'BACKEND': 'render_static.backends.StaticDjangoTemplates',
+                'OPTIONS': {
+                    'loaders': [
+                        'render_static.loaders.StaticAppDirectoriesBatchLoader'
+                    ]
+                },
+            }]
+        })
+        self.assertRaises(
+            TemplateDoesNotExist,
+            lambda: engine.render_to_disk('*.css')
+        )
+
+    # def tearDown(self):
+    #     pass
 
 
 @override_settings(STATIC_TEMPLATES=None)

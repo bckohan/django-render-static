@@ -30,30 +30,82 @@ class Command(BaseCommand):
     def add_arguments(self, parser):
 
         parser.add_argument(
-            'templates',
-            metavar='T',
+            'selectors',
+            metavar='S',
             nargs='*',
             type=str,
-            help='The template names to render. Default: All templates specified in settings.'
+            help='Template name selectors for the templates to render. Selectors are like template '
+                 'names, but can be glob patterns, or patterns understood by specifically '
+                 'configured loaders. Template selectors can resolve to more than one valid '
+                 'template name. Default: All template selectors specified in settings.'
+        )
+
+        parser.add_argument(
+            '-d',
+            '--destination',
+            dest='dest',
+            type=str,
+            default=None,
+            help='The location to render templates to. This will override the destination '
+                 'specified in settings for selected template, if one exists. If no destination is '
+                 'specified in settings or here, the default destination is settings.STATIC_ROOT.'
+        )
+
+        parser.add_argument(
+            '--first-engine',
+            dest='first_engine',
+            action='store_true',
+            default=False,
+            help='Render only the set of templates that match the selector that are found by the '
+                 'highest priority rendering engine. By default (False) any templates that match '
+                 'the selector from any engine will be rendered.'
+        )
+
+        parser.add_argument(
+            '--first-loader',
+            dest='first_loader',
+            action='store_true',
+            default=False,
+            help='Render only the set of templates found by the first loader that match any part '
+                 'of the selector. By default (False) any template name that matches the selector '
+                 'from any loader will be rendered.'
+        )
+
+        parser.add_argument(
+            '--first-preference',
+            dest='first_preference',
+            action='store_true',
+            default=False,
+            help='Render only the templates that match the first preference for each loader. When '
+                 'combined with --first-loader render only the first preference(s) of the '
+                 'first loader. Preferences are loader specific and documented on the '
+                 'loader. For instance, for the App directories loader preference is defined as '
+                 'app precedence in settings - so if any templates match the selector for the '
+                 'highest priority app, only those templates would be rendered.'
         )
 
     def handle(self, *args, **options):
 
         engine = StaticTemplateEngine()
 
-        templates = options.get('templates', [])
-        if not templates:
-            templates = list(engine.templates.keys())
+        selectors = options.get('selectors', [])
+        if not selectors:
+            selectors = list(engine.templates.keys())
 
-        if not templates:
+        if not selectors:
             self.stdout.write(self.style.WARNING('No templates selected for generation.'))
             return
 
-        for template in templates:
-            try:
-                destination = engine.render_to_disk(template)
+        try:
+            for render in engine.render_each(
+                    *selectors,
+                    dest=options.get('dest', None),
+                    first_engine=options.get('first_engine', False),
+                    first_loader=options.get('first_loader', False),
+                    first_preference=options.get('first_preference', False)
+            ):
                 self.stdout.write(
-                    self.style.SUCCESS(f'Rendered template {template} to {destination}.')
+                    self.style.SUCCESS(f'Rendered {render}.')
                 )
-            except Exception as exp:
-                raise CommandError(f'Error rendering template {template} to disk: {exp}') from exp
+        except Exception as exp:
+            raise CommandError(f'Error rendering template to disk: {exp}') from exp

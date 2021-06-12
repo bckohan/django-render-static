@@ -1,21 +1,39 @@
 # pylint: disable=C0114
 
 import os
-from collections import Counter
+from collections import Counter, namedtuple
 from pathlib import Path
-from typing import Callable, Dict, List, Optional, Union
+from typing import Callable, Dict, Generator, List, Optional, Union
 
 from django.conf import settings
 from django.core.exceptions import ImproperlyConfigured
-from django.template.backends.base import BaseEngine
+from django.template.backends.django import Template as DjangoTemplate
+from django.template.backends.jinja2 import Template as Jinja2Template
 from django.template.exceptions import TemplateDoesNotExist
 from django.template.utils import InvalidTemplateEngineError
 from django.utils.functional import cached_property
 from django.utils.module_loading import import_string
+from render_static.backends import StaticDjangoTemplates, StaticJinja2Templates
 from render_static.context import resolve_context
 from render_static.exceptions import InvalidContext
 
-__all__ = ['StaticTemplateEngine']
+__all__ = ['StaticTemplateEngine', 'Render']
+
+
+class Render(namedtuple('_Render', ['selector', 'config', 'template', 'destination'])):
+    """
+    A named tuple that holds all the pertinent information for a template including:
+
+        - The selector used to select it
+        - Its configuration from settings, if any
+        - Its template engine Template class - could be a Django or Jinja2 template
+        - The destination where it will be/was rendered
+    """
+    def __str__(self) -> str:
+        app = getattr(self.template.origin, 'app', None)
+        if app:
+            return f'[{app.label}] {self.template.origin.template_name} -> {self.destination}'
+        return f'{self.template.origin.template_name} -> {self.destination}'
 
 
 def _resolve_context(
@@ -100,7 +118,7 @@ class StaticTemplateEngine:
         'BACKEND': 'render_static.backends.StaticDjangoTemplates',
         'DIRS': [],
         'OPTIONS': {
-            'loaders': ['render_static.loaders.StaticAppDirectoriesLoader'],
+            'loaders': ['render_static.loaders.StaticAppDirectoriesBatchLoader'],
             'builtins': ['render_static.templatetags.render_static']
         },
     }]
@@ -172,7 +190,7 @@ class StaticTemplateEngine:
         ``STATIC_TEMPLATES`` setting.
 
         :return: The ``STATIC_TEMPLATES`` configuration this engine has initialized from
-        :raises ImproperlyConfigured:
+        :raises ImproperlyConfigured: If there are any terminal errors with the configurations
         """
         if not self.config_:
             if not hasattr(settings, 'STATIC_TEMPLATES'):
@@ -286,7 +304,7 @@ class StaticTemplateEngine:
 
         return engines
 
-    def __getitem__(self, alias: str) -> BaseEngine:
+    def __getitem__(self, alias: str) -> Union[StaticDjangoTemplates, StaticJinja2Templates]:
         """
         Accessor for backend instances indexed by name.
 
@@ -308,49 +326,32 @@ class StaticTemplateEngine:
         """
         return iter(self.engines)
 
-    def all(self) -> List[BaseEngine]:
+    def all(self) -> List[Union[StaticDjangoTemplates, StaticJinja2Templates]]:
         """
         Get a list of all registered engines in order of precedence.
         :return: A list of engine instances in order of precedence
         """
         return [self[alias] for alias in self]
 
-    def render_to_disk(
-            self,
-            template_name: str,
-            context: Optional[Dict] = None,
+    @staticmethod
+    def resolve_destination(
+            config: TemplateConfig,
+            template: Union[Jinja2Template, DjangoTemplate],
+            batch: bool,
             dest: Optional[Union[str, Path]] = None
     ) -> Path:
         """
-        Render the template of the highest precedence for the given template name to disk.
-        The location of the directory location of the rendered template will either be based on the
-        `dest` configuration parameter for the template or the app the template was found in.
+        Resolve the destination for a template, given all present configuration parameters for it
+        and arguments passed in.
 
-        :param template_name: The name of the template to render to disk
-        :param context: Additional context parameters that will override configured context
-            parameters
-        :param dest: Override the configured path to render the template at this path,
-            either a string path, or Path like object
-        :return: The path to the rendered template on disk
-        :raises TemplateDoesNotExist: if no template by the given name is found
-        :raises ImproperlyConfigured: if not enough information was given to render and write the
+        :param config: The template configuration
+        :param template: The template object created by the backend, could be a Jinja2 or Django
             template
+        :param batch: True if this is part of a batch render, false otherwise
+        :param dest: The destination passed in from the command line
+        :return: An absolute destination path
+        :raises ImproperlyConfigured: if a render destination cannot be determined
         """
-        config = self.templates.get(
-            template_name,
-            StaticTemplateEngine.TemplateConfig(name=template_name)
-        )
-        template = None
-        chain = []
-        for engine in self.all():
-            try:
-                template = engine.get_template(template_name)
-            except TemplateDoesNotExist as tdne:
-                chain.append(tdne)
-                continue
-        if template is None:
-            raise TemplateDoesNotExist(template_name, chain=chain)
-
         app = getattr(template.origin, 'app', None)
 
         if dest is None:
@@ -358,34 +359,176 @@ class StaticTemplateEngine:
 
         if dest is None:
             if app:
-                dest = Path(app.path) / 'static' / template_name
+                dest = Path(app.path) / 'static'
             else:
-                dest = getattr(settings, 'STATIC_ROOT', None)
-                if dest:
-                    dest = Path(dest) / template_name
-                else:
+                try:
+                    dest = Path(settings.STATIC_ROOT)
+                except (AttributeError, TypeError) as err:
                     raise ImproperlyConfigured(
-                        f"Template {template_name} must either be configured with a 'dest' or "
-                        f"STATIC_ROOT must be defined in settings, because it was not loaded "
+                        f"Template {template.template.name} must either be configured with a 'dest'"
+                        f"or STATIC_ROOT must be defined in settings, because it was not loaded "
                         f"from an app!"
-                    )
+                    ) from err
 
-        if isinstance(dest, str):
-            dest = Path(dest)
+            dest /= template.template.name
+        elif batch or Path(dest).is_dir():
+            dest /= template.template.name
 
-        if not dest.parent.exists():
-            os.makedirs(str(dest.parent))
+        os.makedirs(str(Path(dest if dest else '').parent), exist_ok=True)
 
-        ctx = config.context
-        if context is not None:
-            ctx.update(context)
+        return Path(dest if dest else '')
 
-        with open(dest, 'w') as temp_out:
-            temp_out.write(
-                template.render({
-                    **self.context,
-                    **ctx
-                })
+    def render_to_disk(  # pylint: disable=R0913
+            self,
+            selector: str,
+            context: Optional[Dict] = None,
+            dest: Optional[Union[str, Path]] = None,
+            first_engine: bool = False,
+            first_loader: bool = False,
+            first_preference: bool = False
+    ) -> List[Render]:
+        """
+        Wrap render_each generator function and return the whole list of rendered templates for the
+        given selector.
+
+        :param selector: The name of the template to render to disk
+        :param context: Additional context parameters that will override configured context
+            parameters
+        :param dest: Override the configured path to render the template at this path,
+            either a string path, or Path like object. If the selector resolves to multiple
+            templates, dest will be considered a directory. If the the selector resolves to a
+            single template, dest will be considered the final file path, unless it already exists
+            as a directory.
+        :param first_engine: If true, render only the set of template names that match the selector
+            that are found by the first rendering engine. By default (False) any templates that
+            match the selector from any engine will be rendered.
+        :param first_loader: If True, render only the set of template names from the first loader
+            that matches any part of the selector. By default (False) any template name that matches
+            the selector from any loader will be rendered.
+        :param first_preference: If true, render only the templates that match the first preference
+            for each loader. When combined with first_loader will render only the first
+            preference(s) of the first loader. Preferences are loader specific and documented on the
+            loader.
+        :return: Render object for all the template(s) rendered to disk
+        :raises TemplateDoesNotExist: if no template by the given name is found
+        :raises ImproperlyConfigured: if not enough information was given to render and write the
+            template
+        """
+        return [  # pylint: disable=R1721
+            render for render in self.render_each(
+                selector,
+                context=context,
+                dest=dest,
+                first_engine=first_engine,
+                first_loader=first_loader,
+                first_preference=first_preference
             )
+        ]
 
-        return dest
+    def render_each(  # pylint: disable=R0914
+            self,
+            *selectors: str,
+            context: Optional[Dict] = None,
+            dest: Optional[Union[str, Path]] = None,
+            first_engine: bool = False,
+            first_loader: bool = False,
+            first_preference: bool = False
+    ) -> Generator[Render, None, None]:
+        """
+        A generator function that renders all selected templates of the highest precedence for each
+        matching template name to disk.
+
+        The location of the directory of the rendered template will either be based on the
+        `dest` configuration parameter for the template or the app the template was found in.
+
+        :param selectors: The name(s) of the template(s) to render to disk
+        :param context: Additional context parameters that will override configured context
+            parameters
+        :param dest: Override the configured path to render the template at this path,
+            either a string path, or Path like object. If the selector(s) resolve to multiple
+            templates, dest will be considered a directory. If the the selector(s) resolve to a
+            single template, dest will be considered the final file path, unless it already exists
+            as a directory.
+        :param first_engine: If true, render only the set of template names that match the selector
+            that are found by the first rendering engine. By default (False) any templates that
+            match the selector from any engine will be rendered.
+        :param first_loader: If True, render only the set of template names from the first loader
+            that matches any part of the selector. By default (False) any template name that matches
+            the selector from any loader will be rendered.
+        :param first_preference: If true, render only the templates that match the first preference
+            for each loader. When combined with first_loader will render only the first
+            preference(s) of the first loader. Preferences are loader specific and documented on the
+            loader.
+        :yield: Render objects for each template to disk
+        :raises TemplateDoesNotExist: if no template by the given name is found
+        :raises ImproperlyConfigured: if not enough information was given to render and write the
+            template
+        """
+
+        if context:
+            context = resolve_context(context)
+        renders = []
+
+        # all jobs are considered part of a batch if dest is provided and more than one selector
+        # is provided
+        batch = len(selectors) > 1 and dest
+        for selector in selectors:
+            config = self.templates.get(
+                selector,
+                StaticTemplateEngine.TemplateConfig(name=selector)
+            )
+            templates: Dict[str, Union[DjangoTemplate, Jinja2Template]] = {}
+            chain = []
+            for engine in self.all():
+                try:
+                    for template_name in engine.select_templates(
+                            selector,
+                            first_loader=first_loader,
+                            first_preference=first_preference
+                    ):
+                        try:
+                            templates.setdefault(template_name, engine.get_template(template_name))
+                        except TemplateDoesNotExist as tdne:  # pragma: no cover
+                            # this should be impossible w/o a loader bug!
+                            if len(templates):
+                                raise RuntimeError(
+                                    f'Selector resolved to template {template_name} which is '
+                                    f'not loadable: {tdne}'
+                                ) from tdne
+                    if first_engine and templates:
+                        break
+                except TemplateDoesNotExist as tdne:
+                    chain.append(tdne)
+                    continue
+
+            if not templates:
+                raise TemplateDoesNotExist(selector, chain=chain)
+
+            for name, template in templates.items():  # pylint: disable=W0612
+                renders.append(
+                    Render(
+                        selector=selector,
+                        config=config,
+                        template=template,
+                        destination=self.resolve_destination(
+                            config,
+                            template,
+                            # each selector is a batch if it resolves to more than one template
+                            bool(batch or len(templates) > 1),
+                            dest
+                        )
+                    )
+                )
+
+        for render in renders:
+            ctx = render.config.context
+            if context is not None:
+                ctx.update(context)
+            with open(str(render.destination), 'w') as temp_out:
+                temp_out.write(
+                    render.template.render({
+                        **self.context,
+                        **ctx
+                    })
+                )
+            yield render
