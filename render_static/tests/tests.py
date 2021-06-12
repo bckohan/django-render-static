@@ -8,6 +8,7 @@ import traceback
 import uuid
 from pathlib import Path
 from time import perf_counter
+import pickle
 
 import js2py
 from deepdiff import DeepDiff
@@ -38,6 +39,8 @@ STATIC_TEMP_DIR = Path(__file__).parent / 'static_templates'
 STATIC_TEMP_DIR2 = Path(__file__).parent / 'static_templates2'
 EXPECTED_DIR = Path(__file__).parent / 'expected'
 
+BAD_PICKLE = Path(__file__).parent / 'resources' / 'bad.pickle'
+CONTEXT_PICKLE = Path(__file__).parent / 'resources' / 'context.pickle'
 
 USE_NODE_JS = True if shutil.which('node') else False
 
@@ -103,11 +106,19 @@ class BaseTestCase(TestCase):
         GLOBAL_STATIC_DIR,
         APP2_STATIC_DIR / 'app1',
         APP2_STATIC_DIR / 'app2',
-        APP2_STATIC_DIR / 'exclusive'
+        APP2_STATIC_DIR / 'exclusive',
+        BAD_PICKLE,
+        CONTEXT_PICKLE
     ]
 
     def setUp(self):
         self.clean_generated()
+        if not BAD_PICKLE.exists():
+            with open(BAD_PICKLE, 'wb') as bp:
+                pickle.dump(['bad context'], bp)
+        if not CONTEXT_PICKLE.exists():
+            with open(CONTEXT_PICKLE, 'wb') as cp:
+                pickle.dump({'context': 'pickle'}, cp)
 
     def tearDown(self):
         self.clean_generated()
