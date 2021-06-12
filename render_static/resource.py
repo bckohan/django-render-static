@@ -13,7 +13,7 @@ __all__ = ['resource']
 
 try:
     from importlib.resources import as_file, files  # type: ignore
-except ImportError:
+except ImportError:  # pragma: no cover
     # Use backport to PY<3.9 `importlib_resources`.
     # importlib_resources is included in python stdlib starting at 3.7 but
     # the files function is not available until python 3.9

@@ -39,6 +39,7 @@ STATIC_TEMP_DIR = Path(__file__).parent / 'static_templates'
 STATIC_TEMP_DIR2 = Path(__file__).parent / 'static_templates2'
 EXPECTED_DIR = Path(__file__).parent / 'expected'
 
+# create pickle files each time, in case python pickle format changes between python versions
 BAD_PICKLE = Path(__file__).parent / 'resources' / 'bad.pickle'
 NOT_A_DICT_PICKLE = Path(__file__).parent / 'resources' / 'not_a_dict.pickle'
 CONTEXT_PICKLE = Path(__file__).parent / 'resources' / 'context.pickle'
