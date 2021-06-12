@@ -39,6 +39,17 @@ class Command(BaseCommand):
                  'configured loaders. Template selectors can resolve to more than one valid '
                  'template name. Default: All template selectors specified in settings.'
         )
+        parser.add_argument(
+            '-c',
+            '--context',
+            dest='context',
+            type=str,
+            default=None,
+            help='An alternate context to use when rendering the selected templates. This will '
+                 'override any conflicting context parameters in the context(s) specified in '
+                 'settings. Will be treated as a path to any of the following file types: '
+                 'python files, json files, yaml files, or pickled python dictionaries.'
+        )
 
         parser.add_argument(
             '-d',
@@ -100,6 +111,7 @@ class Command(BaseCommand):
             for render in engine.render_each(
                     *selectors,
                     dest=options.get('dest', None),
+                    context=options.get('context', None),
                     first_engine=options.get('first_engine', False),
                     first_loader=options.get('first_loader', False),
                     first_preference=options.get('first_preference', False)

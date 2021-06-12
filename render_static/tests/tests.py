@@ -244,6 +244,20 @@ class ContextOverrideTestCase(BaseTestCase):
             shallow=False
         ))
 
+    def test_command_line_override(self):
+        call_command(
+            'renderstatic',
+            context=str(Path(__file__).parent / 'resources' / 'override.yaml')
+        )
+        self.assertTrue(filecmp.cmp(
+            APP1_STATIC_DIR / 'app1' / 'html' / 'hello.html',
+            EXPECTED_DIR / 'ctx_override_cmdline.html',
+            shallow=False
+        ))
+
+    #def tearDown(self):
+    #    pass
+
 
 @override_settings(STATIC_TEMPLATES={
     'context': {
