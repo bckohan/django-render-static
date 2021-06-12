@@ -31,7 +31,7 @@ jobs:
       run: |
         poetry config virtualenvs.in-project true
         poetry run pip install --upgrade pip
-        poetry install
+        poetry install -E all
         poetry run pip install -U "${{ matrix.django-version }}"
     - name: Run Unit Tests
       run: |
