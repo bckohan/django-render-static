@@ -14,11 +14,16 @@ from django.utils.module_loading import import_string
 from render_static.exceptions import InvalidContext
 
 try:
-    from yaml import load as yaml_load, FullLoader
+    from yaml import FullLoader
+    from yaml import load as yaml_load
 except ImportError:  # pragma: no cover
-    def yaml_load(*args, **kwargs):
+    def yaml_load(*args, **kwargs):  # type: ignore
+        """
+        YAML is an optional dependency - lazy fail if its use is attempted without it being
+        present on the python path.
+        """
         raise ImportError('Install PyYAML to load contexts from YAML files.')
-    FullLoader = None
+    FullLoader = None  # type: ignore
 
 __all__ = ['resolve_context']
 

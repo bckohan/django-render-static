@@ -19,21 +19,23 @@ try:
         PrefixLoader,
     )
 except ImportError:  # pragma: no cover
-    class Jinja2DependencyNeeded:
+    class Jinja2DependencyNeeded:  # pylint: disable=R0903
+        """
+        Jinja2 is an optional dependency - lazy fail if its use is attempted without it being
+        present on the python path.
+        """
         def __init__(self, *args, **kwargs):
             raise ImportError(
                 'To use the Jinja2 backend you must install the Jinja2 python package.'
             )
+    ChoiceLoader = Jinja2DependencyNeeded  # type: ignore
+    DictLoader = Jinja2DependencyNeeded  # type: ignore
+    FileSystemLoader = Jinja2DependencyNeeded  # type: ignore
+    FunctionLoader = Jinja2DependencyNeeded  # type: ignore
+    ModuleLoader = Jinja2DependencyNeeded  # type: ignore
+    PackageLoader = Jinja2DependencyNeeded  # type: ignore
+    PrefixLoader = Jinja2DependencyNeeded  # type: ignore
 
-    ChoiceLoader = Jinja2DependencyNeeded
-    DictLoader = Jinja2DependencyNeeded
-    FileSystemLoader = Jinja2DependencyNeeded
-    FunctionLoader = Jinja2DependencyNeeded
-    ModuleLoader = Jinja2DependencyNeeded
-    PackageLoader = Jinja2DependencyNeeded
-    PrefixLoader = Jinja2DependencyNeeded
-    
-    
 __all__ = [
     'StaticFileSystemLoader',
     'StaticFileSystemBatchLoader',
