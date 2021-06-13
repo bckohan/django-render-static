@@ -1,3 +1,5 @@
+# pylint: disable=C0302
+
 """
 Utilities, functions and classes for generating JavaScript from Django's url configuration files.
 """
@@ -679,20 +681,21 @@ class SimpleURLWriter(URLTreeVisitor):
 
     def enter_path_group(self, qname: str) -> Generator[str, None, None]:
         """
-        Start of the reversal function for a collection of paths of the given qname. If in ES5 mode,
-        sets default args.
+        Start of the reversal function for a collection of paths of the given qname.
 
         :param qname: The fully qualified path name being reversed
         :yield: LoC for the start out of the JavaScript reversal function
         """
         if self.es5_:
-            yield f'"{qname.split(":")[-1]}": function(kwargs, args) {{'
+            yield f'"{qname.split(":")[-1]}": function(options, args) {{'
             self.indent()
-            yield 'kwargs = kwargs || {};'
-            yield 'args = args || [];'
+            yield 'var kwargs = ((options.kwargs || null) || options) || {};'
+            yield 'args = ((options.args || null) || args) || [];'
         else:
-            yield f'"{qname.split(":")[-1]}": function(kwargs={{}}, args=[]) {{'
+            yield f'"{qname.split(":")[-1]}": (options={{}}, args=[]) => {{'
             self.indent()
+            yield 'const kwargs = ((options.kwargs || null) || options) || {};'
+            yield 'args = ((options.args || null) || args) || [];'
 
     def exit_path_group(self, qname: str) -> Generator[str, None, None]:
         """
@@ -722,7 +725,6 @@ class SimpleURLWriter(URLTreeVisitor):
         :param kwargs: The names of the named arguments, if any, for the path
         :yield: The JavaScript lines of code
         """
-
         if len(path) == 1:
             yield 'if (Object.keys(kwargs).length === 0 && args.length === 0)'
             self.indent()
@@ -828,11 +830,13 @@ class ClassURLWriter(URLTreeVisitor):
             yield '}'
             self.outdent()
             yield '},'
-            yield 'reverse: function(qname, kwargs, args) {'
+            yield 'reverse: function(qname, options, args, query) {'
             self.indent()
-            yield 'kwargs = kwargs || {};'
-            yield 'args = args || [];'
+            yield 'const kwargs = ((options.kwargs || null) || options) || {};'
+            yield 'args = ((options.args || null) || args) || [];'
+            yield 'query = ((options.query || null) || query) || {};'
             yield 'let url = this.urls;'
+            yield 'var params = new URLSearchParams();'
             yield "qname.split(':').forEach(function(ns) {"
             self.indent()
             yield 'if (ns && url) { url = url.hasOwnProperty(ns) ? url[ns] : null; }'
@@ -841,7 +845,30 @@ class ClassURLWriter(URLTreeVisitor):
             yield 'if (url) {'
             self.indent()
             yield 'let pth = url.call(this, kwargs, args);'
-            yield 'if (typeof pth === "string") { return pth; }'
+            yield 'if (typeof pth === "string") {'
+            self.indent()
+            yield 'if (Object.keys(query).length !== 0) {'
+            self.indent()
+            yield 'var qryStr = Object.keys(query).map(function(key) {'
+            self.indent()
+            yield 'var val = query[key];'
+            yield "if (val === null || val === '') return '';"
+            yield 'if (Array.isArray(val)) {'
+            self.indent()
+            yield 'var lst = [];'
+            yield "val.forEach(function(element) {lst.push(key + '=' + element);});"
+            yield "return lst.join('&');"
+            self.outdent()
+            yield '}'
+            yield "return key + '=' + val;"
+            self.outdent()
+            yield "}).join('&');"
+            yield r"if (qryStr) return pth.replace(/\/+$/, '')+'?'+qryStr;"
+            self.outdent()
+            yield '}'
+            yield 'return pth;'
+            self.outdent()
+            yield '}'
             self.outdent()
             yield '}'
             if self.raise_on_not_found_:
@@ -874,8 +901,11 @@ class ClassURLWriter(URLTreeVisitor):
             self.outdent()
             yield '}'
             yield ''
-            yield 'reverse(qname, kwargs={}, args=[]) {'
+            yield 'reverse(qname, options={}, args=[], query={}) {'
             self.indent()
+            yield 'const kwargs = ((options.kwargs || null) || options) || {};'
+            yield 'args = ((options.args || null) || args) || [];'
+            yield 'query = ((options.query || null) || query) || {};'
             yield 'let url = this.urls;'
             yield "for (const ns of qname.split(':')) {"
             self.indent()
@@ -885,7 +915,25 @@ class ClassURLWriter(URLTreeVisitor):
             yield 'if (url) {'
             self.indent()
             yield 'let pth = url(kwargs, args);'
-            yield 'if (typeof pth === "string") { return pth; }'
+            yield 'if (typeof pth === "string") {'
+            self.indent()
+            yield 'if (Object.keys(query).length !== 0) {'
+            self.indent()
+            yield 'const params = new URLSearchParams();'
+            yield 'for (const [key, value] of Object.entries(query)) {'
+            self.indent()
+            yield "if (value === null || value === '') continue;"
+            yield 'if (Array.isArray(value)) value.forEach(element => params.append(key, element));'
+            yield 'else params.append(key, value);'
+            self.outdent()
+            yield '}'
+            yield 'const qryStr = params.toString();'
+            yield r"if (qryStr) return `${pth.replace(/\/+$/, '')}?${qryStr}`;"
+            self.outdent()
+            yield '}'
+            yield 'return pth;'
+            self.outdent()
+            yield '}'
             self.outdent()
             yield '}'
             if self.raise_on_not_found_:

@@ -6,6 +6,12 @@ __pycache__/
 # C extensions
 *.so
 
+# MAC garbage
+.DS_Store
+
+# pycharm
+.idea
+
 # Distribution / packaging
 .Python
 build/
@@ -115,6 +121,7 @@ venv/
 ENV/
 env.bak/
 venv.bak/
+.python-version
 
 # Spyder project settings
 .spyderproject
@@ -140,4 +147,6 @@ dmypy.json
 # Cython debug symbols
 cython_debug/
 /render_static/tests/app1/static/
+/render_static/tests/app2/static/exclusive
 /render_static/tests/global_static/
+/render_static/tests/resources/*.pickle

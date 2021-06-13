@@ -2,6 +2,7 @@ import filecmp
 import inspect
 import json
 import os
+import pickle
 import shutil
 import subprocess
 import traceback
@@ -21,10 +22,12 @@ from django.test import TestCase, override_settings
 from django.urls import reverse
 from django.urls.exceptions import NoReverseMatch
 from django.utils.module_loading import import_string
-from render_static import placeholders
+from render_static import placeholders, resolve_context, resource
 from render_static.backends import StaticDjangoTemplates, StaticJinja2Templates
 from render_static.engine import StaticTemplateEngine
+from render_static.exceptions import InvalidContext
 from render_static.javascript import JavaScriptGenerator
+from render_static.loaders.jinja2 import StaticFileSystemLoader
 from render_static.origin import AppOrigin, Origin
 from render_static.tests import bad_pattern, defines
 from render_static.url_tree import ClassURLWriter
@@ -33,10 +36,21 @@ APP1_STATIC_DIR = Path(__file__).parent / 'app1' / 'static'  # this dir does not
 APP2_STATIC_DIR = Path(__file__).parent / 'app2' / 'static'  # this dir exists and is checked in
 GLOBAL_STATIC_DIR = settings.STATIC_ROOT  # this dir does not exist and must be cleaned up
 STATIC_TEMP_DIR = Path(__file__).parent / 'static_templates'
+STATIC_TEMP_DIR2 = Path(__file__).parent / 'static_templates2'
 EXPECTED_DIR = Path(__file__).parent / 'expected'
 
+# create pickle files each time, in case python pickle format changes between python versions
+BAD_PICKLE = Path(__file__).parent / 'resources' / 'bad.pickle'
+NOT_A_DICT_PICKLE = Path(__file__).parent / 'resources' / 'not_a_dict.pickle'
+CONTEXT_PICKLE = Path(__file__).parent / 'resources' / 'context.pickle'
 
 USE_NODE_JS = True if shutil.which('node') else False
+
+
+def empty_or_dne(directory):
+    if os.path.exists(str(directory)):
+        return len(os.listdir(directory)) == 0
+    return True
 
 
 class BadVisitor:
@@ -64,7 +78,7 @@ class TestGenerateStaticParserAccessor(TestCase):
 
     def test_get_parser(self):
         from django.core.management.base import CommandParser
-        from render_static.management.commands.render_static import get_parser
+        from render_static.management.commands.renderstatic import get_parser
         self.assertTrue(isinstance(get_parser(), CommandParser))
 
 
@@ -93,7 +107,8 @@ class BaseTestCase(TestCase):
         APP1_STATIC_DIR,
         GLOBAL_STATIC_DIR,
         APP2_STATIC_DIR / 'app1',
-        APP2_STATIC_DIR / 'app2'
+        APP2_STATIC_DIR / 'app2',
+        APP2_STATIC_DIR / 'exclusive'
     ]
 
     def setUp(self):
@@ -120,7 +135,7 @@ class NominalTestCase(BaseTestCase):
         - verifies that render_static accepts template arguments
     """
     def test_generate(self):
-        call_command('render_static', 'app1/html/nominal1.html')
+        call_command('renderstatic', 'app1/html/nominal1.html')
         self.assertEqual(len(os.listdir(APP1_STATIC_DIR)), 1)
         self.assertTrue(not APP2_STATIC_DIR.exists() or len(os.listdir(APP2_STATIC_DIR)) == 0)
         self.assertTrue(filecmp.cmp(
@@ -128,7 +143,7 @@ class NominalTestCase(BaseTestCase):
             EXPECTED_DIR / 'nominal1.html',
             shallow=False
         ))
-        call_command('render_static', 'app1/html/nominal2.html')
+        call_command('renderstatic', 'app1/html/nominal2.html')
         self.assertEqual(len(os.listdir(APP1_STATIC_DIR)), 1)
         self.assertEqual(len(os.listdir(APP2_STATIC_DIR)), 1)
         self.assertTrue(filecmp.cmp(
@@ -136,6 +151,70 @@ class NominalTestCase(BaseTestCase):
             EXPECTED_DIR / 'nominal2.html',
             shallow=False
         ))
+
+    # def tearDown(self):
+    #     pass
+
+
+def generate_context1():
+    return {
+        'to': 'world',
+        'punc': '!'
+    }
+
+
+def generate_context2():
+    return {
+        'greeting': 'Hello',
+        'to': 'World'
+    }
+
+
+def invalid_context_return():
+    return ['garbage']
+
+
+@override_settings(STATIC_TEMPLATES={
+    'context': 'tests.generate_context1',
+    'templates': {
+        'app1/html/hello.html': {
+            'context': generate_context2,
+        }
+    }
+})
+class CallableContextTestCase(BaseTestCase):
+    """
+    Tests that show callable contexts work as expected.
+    """
+    def test_nominal_generate(self):
+        call_command('renderstatic')
+        self.assertTrue(filecmp.cmp(
+            APP1_STATIC_DIR / 'app1' / 'html' / 'hello.html',
+            EXPECTED_DIR / 'ctx_override.html',
+            shallow=False
+        ))
+
+    @override_settings(STATIC_TEMPLATES={
+        'templates': {
+            'app1/html/hello.html': {
+                'context': 'does.not.exist'
+            }
+        }
+    })
+    def test_off_nominal_tmpl(self):
+        self.assertRaises(ImproperlyConfigured, lambda: call_command('renderstatic'))
+        
+    @override_settings(STATIC_TEMPLATES={
+        'context': invalid_context_return,
+        'templates': {
+            'app1/html/hello.html': {}
+        }
+    })
+    def test_off_nominal_global(self):
+        self.assertRaises(CommandError, lambda: call_command('renderstatic'))
+
+    #def tearDown(self):
+    #    pass
 
 
 @override_settings(STATIC_TEMPLATES={
@@ -154,15 +233,606 @@ class NominalTestCase(BaseTestCase):
 })
 class ContextOverrideTestCase(BaseTestCase):
     """
-    Tests that per template contexts override global contexts and that the global context is also used.
+    Tests that per template contexts override global contexts and that the global context is also
+    used.
     """
     def test_generate(self):
-        call_command('render_static')
+        call_command('renderstatic')
         self.assertTrue(filecmp.cmp(
             APP1_STATIC_DIR / 'app1' / 'html' / 'hello.html',
             EXPECTED_DIR / 'ctx_override.html',
             shallow=False
         ))
+
+    def test_command_line_override(self):
+        call_command(
+            'renderstatic',
+            context=str(Path(__file__).parent / 'resources' / 'override.yaml')
+        )
+        self.assertTrue(filecmp.cmp(
+            APP1_STATIC_DIR / 'app1' / 'html' / 'hello.html',
+            EXPECTED_DIR / 'ctx_override_cmdline.html',
+            shallow=False
+        ))
+
+    #def tearDown(self):
+    #    pass
+
+
+@override_settings(STATIC_TEMPLATES={
+    'context': {
+        'title': 'TEST'
+    },
+    'templates': {
+        'app1/html/inheritance.html': {}
+    }
+})
+class TemplateInheritanceTestCase(BaseTestCase):
+    """
+    Tests that template inheritance is working correctly. Static templates lightly touches the
+    template engines so its not impossible that template resolution could be effected.
+    """
+
+    def test_django_templates(self):
+        """
+        Tests that template inheritance is working for the static django template engine.
+        """
+        call_command('renderstatic')
+        self.assertTrue(filecmp.cmp(
+            APP2_STATIC_DIR / 'app1' / 'html' / 'inheritance.html',
+            EXPECTED_DIR / 'inheritance.html',
+            shallow=False
+        ))
+
+    @override_settings(STATIC_TEMPLATES={
+        'ENGINES': [{
+            'BACKEND': 'render_static.backends.StaticJinja2Templates',
+            'APP_DIRS': True
+        }],
+        'templates': {
+            'app2/html/inheritance.html': {}
+        }
+    })
+    def test_jinja2_templates(self):
+        """
+        Tests that template inheritance is working for the static Jinja2 template engine.
+        """
+        call_command('renderstatic')
+        self.assertTrue(filecmp.cmp(
+            APP2_STATIC_DIR / 'app2' / 'html' / 'inheritance.html',
+            EXPECTED_DIR / 'inheritance_jinja2.html',
+            shallow=False
+        ))
+
+
+@override_settings(STATIC_TEMPLATES={
+    'ENGINES': [{
+        'BACKEND': 'render_static.backends.StaticDjangoTemplates',
+        'DIRS': [STATIC_TEMP_DIR],
+        'OPTIONS': {
+            'loaders': [
+                'render_static.loaders.StaticFilesystemBatchLoader',
+                'render_static.loaders.StaticAppDirectoriesBatchLoader'
+            ]
+        },
+    }]
+})
+class BatchFileSystemRenderTestCase(BaseTestCase):
+    """
+    Tests that exercise the batch template loaders.
+    """
+
+    def test_batch_filesystem_render1(self):
+        call_command('renderstatic', 'batch_fs*')
+        self.assertTrue(filecmp.cmp(
+            GLOBAL_STATIC_DIR / 'batch_fs_test0.html',
+            EXPECTED_DIR / 'nominal_fs.html',
+            shallow=False
+        ))
+        self.assertTrue(filecmp.cmp(
+            GLOBAL_STATIC_DIR / 'batch_fs_test1.html',
+            EXPECTED_DIR / 'nominal_fs.html',
+            shallow=False
+        ))
+        self.assertEqual(len(os.listdir(GLOBAL_STATIC_DIR)), 2)
+
+    def test_batch_filesystem_render2(self):
+        call_command('renderstatic', '**/batch_fs*')
+        self.assertTrue(filecmp.cmp(
+            GLOBAL_STATIC_DIR / 'batch_fs_test0.html',
+            EXPECTED_DIR / 'nominal_fs.html',
+            shallow=False
+        ))
+        self.assertTrue(filecmp.cmp(
+            GLOBAL_STATIC_DIR / 'batch_fs_test1.html',
+            EXPECTED_DIR / 'nominal_fs.html',
+            shallow=False
+        ))
+        self.assertTrue(filecmp.cmp(
+            GLOBAL_STATIC_DIR / 'subdir' / 'batch_fs_test2.html',
+            EXPECTED_DIR / 'nominal1.html',
+            shallow=False
+        ))
+        self.assertEqual(len(os.listdir(GLOBAL_STATIC_DIR)), 3)
+
+    # def tearDown(self):
+    #    pass
+
+
+@override_settings(STATIC_TEMPLATES={
+    'ENGINES': [{
+        'BACKEND': 'render_static.backends.StaticDjangoTemplates',
+        'DIRS': [STATIC_TEMP_DIR, STATIC_TEMP_DIR2],
+        'OPTIONS': {
+            'loaders': [
+                'render_static.loaders.StaticFilesystemBatchLoader',
+                'render_static.loaders.StaticAppDirectoriesBatchLoader'
+            ]
+        },
+    }]
+})
+class TemplatePreferenceFSTestCase(BaseTestCase):
+    """
+    Tests that load preferences flag works as described and that destinations also work as
+    described:
+
+        - first_loader
+        - first_preference
+
+    Do the right files get picked and do they go to the expected locations?
+    """
+
+    def test_nopref(self):
+        call_command('renderstatic', 'exclusive/*')
+        self.validate_nopref()
+
+    def validate_nopref(self):
+        self.assertTrue(filecmp.cmp(
+            GLOBAL_STATIC_DIR / 'exclusive' / 'template1.html',
+            EXPECTED_DIR / 'glb_template1.html',
+            shallow=False
+        ))
+        self.assertTrue(filecmp.cmp(
+            GLOBAL_STATIC_DIR / 'exclusive' / 'template2.html',
+            EXPECTED_DIR / 'glb_template2.html',
+            shallow=False
+        ))
+        self.assertTrue(filecmp.cmp(
+            GLOBAL_STATIC_DIR / 'exclusive' / 'template3.html',
+            EXPECTED_DIR / 'glb_template3.html',
+            shallow=False
+        ))
+        self.assertTrue(filecmp.cmp(
+            GLOBAL_STATIC_DIR / 'exclusive' / 'template4.html',
+            EXPECTED_DIR / 'glb2_template4.html',
+            shallow=False
+        ))
+        self.assertTrue(filecmp.cmp(
+            APP2_STATIC_DIR / 'exclusive' / 'template5.html',
+            EXPECTED_DIR / 'app2_template5.html',
+            shallow=False
+        ))
+        self.assertTrue(filecmp.cmp(
+            APP1_STATIC_DIR / 'exclusive' / 'template6.html',
+            EXPECTED_DIR / 'app1_template6.html',
+            shallow=False
+        ))
+        self.assertEqual(len(os.listdir(GLOBAL_STATIC_DIR / 'exclusive')), 4)
+        self.assertEqual(len(os.listdir(APP2_STATIC_DIR / 'exclusive')), 1)
+        self.assertEqual(len(os.listdir(APP1_STATIC_DIR / 'exclusive')), 1)
+
+    def test_first_loader(self):
+        call_command('renderstatic', 'exclusive/*', first_loader=True)
+        self.validate_first_loader()
+
+    def validate_first_loader(self):
+        self.assertTrue(filecmp.cmp(
+            GLOBAL_STATIC_DIR / 'exclusive' / 'template1.html',
+            EXPECTED_DIR / 'glb_template1.html',
+            shallow=False
+        ))
+        self.assertTrue(filecmp.cmp(
+            GLOBAL_STATIC_DIR / 'exclusive' / 'template2.html',
+            EXPECTED_DIR / 'glb_template2.html',
+            shallow=False
+        ))
+        self.assertTrue(filecmp.cmp(
+            GLOBAL_STATIC_DIR / 'exclusive' / 'template3.html',
+            EXPECTED_DIR / 'glb_template3.html',
+            shallow=False
+        ))
+        self.assertTrue(filecmp.cmp(
+            GLOBAL_STATIC_DIR / 'exclusive' / 'template4.html',
+            EXPECTED_DIR / 'glb2_template4.html',
+            shallow=False
+        ))
+        self.assertEqual(len(os.listdir(GLOBAL_STATIC_DIR / 'exclusive')), 4)
+        self.assertTrue(empty_or_dne(APP1_STATIC_DIR))
+        self.assertTrue(empty_or_dne(APP2_STATIC_DIR))
+
+    def test_first_pref(self):
+        call_command('renderstatic', 'exclusive/*', first_preference=True)
+        self.validate_first_pref()
+
+    def validate_first_pref(self):
+        self.assertTrue(filecmp.cmp(
+            GLOBAL_STATIC_DIR / 'exclusive' / 'template1.html',
+            EXPECTED_DIR / 'glb_template1.html',
+            shallow=False
+        ))
+        self.assertTrue(filecmp.cmp(
+            GLOBAL_STATIC_DIR / 'exclusive' / 'template2.html',
+            EXPECTED_DIR / 'glb_template2.html',
+            shallow=False
+        ))
+        self.assertTrue(filecmp.cmp(
+            GLOBAL_STATIC_DIR / 'exclusive' / 'template3.html',
+            EXPECTED_DIR / 'glb_template3.html',
+            shallow=False
+        ))
+        self.assertTrue(filecmp.cmp(
+            APP1_STATIC_DIR / 'exclusive' / 'template6.html',
+            EXPECTED_DIR / 'app1_template6.html',
+            shallow=False
+        ))
+        self.assertEqual(len(os.listdir(GLOBAL_STATIC_DIR / 'exclusive')), 3)
+        self.assertEqual(len(os.listdir(APP1_STATIC_DIR / 'exclusive')), 1)
+        self.assertTrue(empty_or_dne(APP2_STATIC_DIR))
+
+    def test_first_loader_and_pref(self):
+        call_command('renderstatic', 'exclusive/*', first_loader=True, first_preference=True)
+        self.validate_first_load_and_pref()
+
+    def validate_first_load_and_pref(self):
+        self.assertTrue(filecmp.cmp(
+            GLOBAL_STATIC_DIR / 'exclusive' / 'template1.html',
+            EXPECTED_DIR / 'glb_template1.html',
+            shallow=False
+        ))
+        self.assertTrue(filecmp.cmp(
+            GLOBAL_STATIC_DIR / 'exclusive' / 'template2.html',
+            EXPECTED_DIR / 'glb_template2.html',
+            shallow=False
+        ))
+        self.assertTrue(filecmp.cmp(
+            GLOBAL_STATIC_DIR / 'exclusive' / 'template3.html',
+            EXPECTED_DIR / 'glb_template3.html',
+            shallow=False
+        ))
+        self.assertEqual(len(os.listdir(GLOBAL_STATIC_DIR / 'exclusive')), 3)
+        self.assertTrue(empty_or_dne(APP1_STATIC_DIR))
+        self.assertTrue(empty_or_dne(APP2_STATIC_DIR))
+
+    def test_batch_destination_override(self):
+        call_command('renderstatic', 'exclusive/*', destination=GLOBAL_STATIC_DIR)
+        self.validate_batch_destination_override()
+
+    def validate_batch_destination_override(self):
+        self.assertTrue(filecmp.cmp(
+            GLOBAL_STATIC_DIR / 'exclusive' / 'template1.html',
+            EXPECTED_DIR / 'glb_template1.html',
+            shallow=False
+        ))
+        self.assertTrue(filecmp.cmp(
+            GLOBAL_STATIC_DIR / 'exclusive' / 'template2.html',
+            EXPECTED_DIR / 'glb_template2.html',
+            shallow=False
+        ))
+        self.assertTrue(filecmp.cmp(
+            GLOBAL_STATIC_DIR / 'exclusive' / 'template3.html',
+            EXPECTED_DIR / 'glb_template3.html',
+            shallow=False
+        ))
+        self.assertTrue(filecmp.cmp(
+            GLOBAL_STATIC_DIR / 'exclusive' / 'template4.html',
+            EXPECTED_DIR / 'glb2_template4.html',
+            shallow=False
+        ))
+        self.assertTrue(filecmp.cmp(
+            GLOBAL_STATIC_DIR / 'exclusive' / 'template5.html',
+            EXPECTED_DIR / 'app2_template5.html',
+            shallow=False
+        ))
+        self.assertTrue(filecmp.cmp(
+            GLOBAL_STATIC_DIR / 'exclusive' / 'template6.html',
+            EXPECTED_DIR / 'app1_template6.html',
+            shallow=False
+        ))
+        self.assertEqual(len(os.listdir(GLOBAL_STATIC_DIR / 'exclusive')), 6)
+
+    # def tearDown(self):
+    #    pass
+
+
+@override_settings(STATIC_TEMPLATES={
+    'ENGINES': [{
+        'BACKEND': 'render_static.backends.StaticDjangoTemplates',
+        'DIRS': [STATIC_TEMP_DIR, STATIC_TEMP_DIR2],
+        'OPTIONS': {
+            'loaders': [
+                'render_static.loaders.StaticAppDirectoriesBatchLoader',
+                'render_static.loaders.StaticFilesystemBatchLoader'
+            ]
+        },
+    }]
+})
+class TemplatePreferenceAPPSTestCase(BaseTestCase):
+    """
+    Tests that load preferences flag works as described and that destinations also work as
+    described, for the app directories loader.
+
+        - first_loader
+        - first_preference
+
+    Do the right files get picked and do they go to the expected locations?
+    """
+
+    def test_nopref(self):
+        call_command('renderstatic', 'exclusive/*')
+        self.validate_nopref()
+
+    def validate_nopref(self):
+        self.assertTrue(filecmp.cmp(
+            APP1_STATIC_DIR / 'exclusive' / 'template1.html',
+            EXPECTED_DIR / 'app1_template1.html',
+            shallow=False
+        ))
+        self.assertTrue(filecmp.cmp(
+            APP2_STATIC_DIR / 'exclusive' / 'template2.html',
+            EXPECTED_DIR / 'app2_template2.html',
+            shallow=False
+        ))
+        self.assertTrue(filecmp.cmp(
+            GLOBAL_STATIC_DIR / 'exclusive' / 'template3.html',
+            EXPECTED_DIR / 'glb_template3.html',
+            shallow=False
+        ))
+        self.assertTrue(filecmp.cmp(
+            GLOBAL_STATIC_DIR / 'exclusive' / 'template4.html',
+            EXPECTED_DIR / 'glb2_template4.html',
+            shallow=False
+        ))
+        self.assertTrue(filecmp.cmp(
+            APP2_STATIC_DIR / 'exclusive' / 'template5.html',
+            EXPECTED_DIR / 'app2_template5.html',
+            shallow=False
+        ))
+        self.assertTrue(filecmp.cmp(
+            APP1_STATIC_DIR / 'exclusive' / 'template6.html',
+            EXPECTED_DIR / 'app1_template6.html',
+            shallow=False
+        ))
+        self.assertEqual(len(os.listdir(GLOBAL_STATIC_DIR / 'exclusive')), 2)
+        self.assertEqual(len(os.listdir(APP2_STATIC_DIR / 'exclusive')), 2)
+        self.assertEqual(len(os.listdir(APP1_STATIC_DIR / 'exclusive')), 2)
+
+    def test_first_loader(self):
+        call_command('renderstatic', 'exclusive/*', first_loader=True)
+        self.validate_first_loader()
+
+    def validate_first_loader(self):
+        self.assertTrue(filecmp.cmp(
+            APP1_STATIC_DIR / 'exclusive' / 'template1.html',
+            EXPECTED_DIR / 'app1_template1.html',
+            shallow=False
+        ))
+        self.assertTrue(filecmp.cmp(
+            APP2_STATIC_DIR / 'exclusive' / 'template2.html',
+            EXPECTED_DIR / 'app2_template2.html',
+            shallow=False
+        ))
+        self.assertTrue(filecmp.cmp(
+            APP2_STATIC_DIR / 'exclusive' / 'template5.html',
+            EXPECTED_DIR / 'app2_template5.html',
+            shallow=False
+        ))
+        self.assertTrue(filecmp.cmp(
+            APP1_STATIC_DIR / 'exclusive' / 'template6.html',
+            EXPECTED_DIR / 'app1_template6.html',
+            shallow=False
+        ))
+        self.assertEqual(len(os.listdir(APP1_STATIC_DIR / 'exclusive')), 2)
+        self.assertEqual(len(os.listdir(APP2_STATIC_DIR / 'exclusive')), 2)
+        self.assertTrue(empty_or_dne(GLOBAL_STATIC_DIR))
+
+    def test_first_pref(self):
+        call_command('renderstatic', 'exclusive/*', first_preference=True)
+        self.validate_first_pref()
+
+    def validate_first_pref(self):
+        self.assertTrue(filecmp.cmp(
+            APP1_STATIC_DIR / 'exclusive' / 'template1.html',
+            EXPECTED_DIR / 'app1_template1.html',
+            shallow=False
+        ))
+
+        # app2's template is resolved because selection criteria only counts for resolving template
+        # names, so template2.html is picked - but then when the template name is resolved to a file
+        # the app loader has precedence and picks the app2 template over the filesystem one.
+        # this is expected, if a little confusing - these options are for corner cases anyway.
+        self.assertTrue(filecmp.cmp(
+            APP2_STATIC_DIR / 'exclusive' / 'template2.html',
+            EXPECTED_DIR / 'app2_template2.html',
+            shallow=False
+        ))
+        self.assertTrue(filecmp.cmp(
+            GLOBAL_STATIC_DIR / 'exclusive' / 'template3.html',
+            EXPECTED_DIR / 'glb_template3.html',
+            shallow=False
+        ))
+        self.assertTrue(filecmp.cmp(
+            APP1_STATIC_DIR / 'exclusive' / 'template6.html',
+            EXPECTED_DIR / 'app1_template6.html',
+            shallow=False
+        ))
+        self.assertEqual(len(os.listdir(GLOBAL_STATIC_DIR / 'exclusive')), 1)
+        self.assertEqual(len(os.listdir(APP1_STATIC_DIR / 'exclusive')), 2)
+        self.assertEqual(len(os.listdir(APP2_STATIC_DIR / 'exclusive')), 1)
+
+    def test_first_loader_and_pref(self):
+        call_command('renderstatic', 'exclusive/*', first_loader=True, first_preference=True)
+        self.validate_first_load_and_pref()
+
+    def validate_first_load_and_pref(self):
+        self.assertTrue(filecmp.cmp(
+            APP1_STATIC_DIR / 'exclusive' / 'template1.html',
+            EXPECTED_DIR / 'app1_template1.html',
+            shallow=False
+        ))
+        self.assertTrue(filecmp.cmp(
+            APP1_STATIC_DIR / 'exclusive' / 'template6.html',
+            EXPECTED_DIR / 'app1_template6.html',
+            shallow=False
+        ))
+        self.assertEqual(len(os.listdir(APP1_STATIC_DIR / 'exclusive')), 2)
+        self.assertTrue(empty_or_dne(GLOBAL_STATIC_DIR))
+        self.assertTrue(empty_or_dne(APP2_STATIC_DIR))
+
+    def test_batch_destination_override(self):
+        call_command('renderstatic', 'exclusive/*', destination=GLOBAL_STATIC_DIR)
+        self.assertTrue(filecmp.cmp(
+            GLOBAL_STATIC_DIR / 'exclusive' / 'template1.html',
+            EXPECTED_DIR / 'app1_template1.html',
+            shallow=False
+        ))
+        self.assertTrue(filecmp.cmp(
+            GLOBAL_STATIC_DIR / 'exclusive' / 'template2.html',
+            EXPECTED_DIR / 'app2_template2.html',
+            shallow=False
+        ))
+        self.assertTrue(filecmp.cmp(
+            GLOBAL_STATIC_DIR / 'exclusive' / 'template3.html',
+            EXPECTED_DIR / 'glb_template3.html',
+            shallow=False
+        ))
+        self.assertTrue(filecmp.cmp(
+            GLOBAL_STATIC_DIR / 'exclusive' / 'template4.html',
+            EXPECTED_DIR / 'glb2_template4.html',
+            shallow=False
+        ))
+        self.assertTrue(filecmp.cmp(
+            GLOBAL_STATIC_DIR / 'exclusive' / 'template5.html',
+            EXPECTED_DIR / 'app2_template5.html',
+            shallow=False
+        ))
+        self.assertTrue(filecmp.cmp(
+            GLOBAL_STATIC_DIR / 'exclusive' / 'template6.html',
+            EXPECTED_DIR / 'app1_template6.html',
+            shallow=False
+        ))
+        self.assertEqual(len(os.listdir(GLOBAL_STATIC_DIR / 'exclusive')), 6)
+
+    # def tearDown(self):
+    #     pass
+
+
+@override_settings(STATIC_TEMPLATES={
+    'ENGINES': [{
+        'BACKEND': 'render_static.backends.StaticDjangoTemplates',
+        'NAME': 'Engine0',
+        'OPTIONS': {
+            'loaders': [
+                'render_static.loaders.StaticAppDirectoriesBatchLoader'
+            ]
+        },
+    }, {
+        'BACKEND': 'render_static.backends.StaticDjangoTemplates',
+        'NAME': 'Engine1',
+        'DIRS': [STATIC_TEMP_DIR, STATIC_TEMP_DIR2],
+        'OPTIONS': {
+            'loaders': [
+                'render_static.loaders.StaticFilesystemBatchLoader'
+            ]
+        },
+    }]
+})
+class TemplateEnginePreferenceTestCase(TemplatePreferenceAPPSTestCase):
+    """
+    Tests that load preferences flag works as described and that destinations also work as
+    described, for multiple engines.
+
+        - first_engine
+        - first_loader
+        - first_preference
+
+    Do the right files get picked and do they go to the expected locations?
+    """
+
+    def test_nopref(self):
+        call_command('renderstatic', 'exclusive/*')
+        self.validate_nopref()
+
+    def test_first_loader(self):
+        call_command('renderstatic', 'exclusive/*', first_engine=True)
+        self.validate_first_loader()
+
+    def test_first_pref(self):
+        call_command('renderstatic', 'exclusive/*', first_preference=True)
+        self.validate_first_pref()
+
+    def validate_first_pref(self):
+        self.assertTrue(filecmp.cmp(
+            APP1_STATIC_DIR / 'exclusive' / 'template1.html',
+            EXPECTED_DIR / 'app1_template1.html',
+            shallow=False
+        ))
+
+        # I don't understand why the file system one is picked, but this is corner case behavior
+        # and it only really matters that this remains consistent
+        self.assertTrue(filecmp.cmp(
+            GLOBAL_STATIC_DIR / 'exclusive' / 'template2.html',
+            EXPECTED_DIR / 'glb_template2.html',
+            shallow=False
+        ))
+        self.assertTrue(filecmp.cmp(
+            GLOBAL_STATIC_DIR / 'exclusive' / 'template3.html',
+            EXPECTED_DIR / 'glb_template3.html',
+            shallow=False
+        ))
+        self.assertTrue(filecmp.cmp(
+            APP1_STATIC_DIR / 'exclusive' / 'template6.html',
+            EXPECTED_DIR / 'app1_template6.html',
+            shallow=False
+        ))
+        self.assertEqual(len(os.listdir(GLOBAL_STATIC_DIR / 'exclusive')), 2)
+        self.assertEqual(len(os.listdir(APP1_STATIC_DIR / 'exclusive')), 2)
+        self.assertTrue(empty_or_dne(APP2_STATIC_DIR))
+
+    def test_first_loader_and_pref(self):
+        call_command('renderstatic', 'exclusive/*', first_engine=True, first_preference=True)
+        self.validate_first_load_and_pref()
+
+    # def tearDown(self):
+    #    pass
+
+
+@override_settings(STATIC_TEMPLATES={
+    'ENGINES': [{
+        'BACKEND': 'render_static.backends.StaticJinja2Templates',
+        'DIRS': [STATIC_TEMP_DIR, STATIC_TEMP_DIR2],
+        'APP_DIRS': True,
+        'OPTIONS': {
+            'app_dir': 'static_templates'
+        },
+    }]
+})
+class TemplatePreferenceJinjaTestCase(TemplatePreferenceFSTestCase):
+    """
+    This config should be almost functionality equivalent to the base tests. The template dont have
+    any actual template logic in them so jinja2 will render them as well.
+
+    The main difference is that there's only one loader so first_loader doesnt do anything and
+    first_pref is the same as having both flags set.
+    """
+
+    def validate_first_pref(self):
+        self.validate_first_load_and_pref()
+
+    def validate_first_loader(self):
+        self.validate_nopref()
+
+    # def tearDown(self):
+    #    pass
 
 
 @override_settings(STATIC_TEMPLATES={
@@ -179,10 +849,11 @@ class ContextOverrideTestCase(BaseTestCase):
 })
 class DestOverrideTestCase(BaseTestCase):
     """
-    Tests that destination can be overridden for app directory loaded templates and that dest can be a string path
+    Tests that destination can be overridden for app directory loaded templates and that dest can be
+    a string path
     """
     def test_generate(self):
-        call_command('render_static')
+        call_command('renderstatic')
         self.assertTrue(filecmp.cmp(
             GLOBAL_STATIC_DIR / 'dest_override.html',
             EXPECTED_DIR / 'dest_override.html',
@@ -219,7 +890,7 @@ class FSLoaderTestCase(BaseTestCase):
         - That app directory static template dirs can be configured @ the backend level
     """
     def test_generate(self):
-        call_command('render_static', 'nominal_fs.html', 'nominal_fs2.html')
+        call_command('renderstatic', 'nominal_fs.html', 'nominal_fs2.html')
         self.assertFalse(APP1_STATIC_DIR.exists())
         self.assertEqual(len(os.listdir(APP2_STATIC_DIR)), 1)
         self.assertEqual(len(os.listdir(GLOBAL_STATIC_DIR)), 1)
@@ -242,7 +913,7 @@ class FSLoaderTestCase(BaseTestCase):
         'APP_DIRS': True
     }],
     'templates': {
-        'nominal_jinja2.html': {
+        'nominal.jinja2': {
             'dest': GLOBAL_STATIC_DIR / 'nominal_jinja2.html'
         },
         'app1/html/app_jinja2.html': {}
@@ -256,7 +927,7 @@ class Jinja2TestCase(BaseTestCase):
         - That app directory static template dirs can be configured @ the backend level
     """
     def test_generate(self):
-        call_command('render_static')
+        call_command('renderstatic')
         self.assertEqual(len(os.listdir(APP1_STATIC_DIR)), 1)
         self.assertEqual(len(os.listdir(GLOBAL_STATIC_DIR)), 1)
         self.assertTrue(filecmp.cmp(
@@ -269,6 +940,30 @@ class Jinja2TestCase(BaseTestCase):
             EXPECTED_DIR / 'app1_jinja2.html',
             shallow=False
         ))
+
+    @override_settings(STATIC_TEMPLATES={
+        'ENGINES': [{
+            'BACKEND': 'render_static.backends.StaticJinja2Templates',
+            'OPTIONS': {
+                'loader': StaticFileSystemLoader(STATIC_TEMP_DIR)
+            }
+        }],
+        'templates': {
+            'nominal.jinja2': {
+                'dest': GLOBAL_STATIC_DIR / 'nominal_jinja2.html'
+            }
+        }
+    })
+    def test_fs_loader(self):
+        call_command('renderstatic')
+        self.assertTrue(empty_or_dne(APP1_STATIC_DIR))
+        self.assertEqual(len(os.listdir(GLOBAL_STATIC_DIR)), 1)
+        self.assertTrue(filecmp.cmp(
+            GLOBAL_STATIC_DIR / 'nominal_jinja2.html',
+            EXPECTED_DIR / 'nominal_jinja2.html',
+            shallow=False
+        ))
+        self.assertRaises(CommandError, lambda: call_command('renderstatic', 'bogus.tmpl'))
 
 
 @override_settings(STATIC_TEMPLATES={
@@ -297,7 +992,7 @@ class Jinja2CustomTestCase(BaseTestCase):
         - Jinja2 contexts are present and that local overrides global
     """
     def test_generate(self):
-        call_command('render_static')
+        call_command('renderstatic')
         self.assertEqual(len(os.listdir(APP2_STATIC_DIR)), 1)
         self.assertFalse(APP1_STATIC_DIR.exists())
         self.assertTrue(filecmp.cmp(
@@ -340,7 +1035,8 @@ class ConfigTestCase(TestCase):
             }],
         })
         self.assertEqual(
-            engine['StaticDjangoTemplates'].engine.loaders, ['render_static.loaders.StaticFilesystemLoader']
+            engine['StaticDjangoTemplates'].engine.loaders,
+            ['render_static.loaders.StaticFilesystemLoader']
         )
 
     def test_app_dirs_error(self):
@@ -386,7 +1082,7 @@ class ConfigTestCase(TestCase):
         Context must be a dictionary.
         """
         engine = StaticTemplateEngine({
-            'context': []
+            'context': [0]
         })
         self.assertRaises(ImproperlyConfigured, lambda: engine.context)
 
@@ -394,7 +1090,7 @@ class ConfigTestCase(TestCase):
             'templates': {
                 'nominal_fs.html': {
                     'dest': GLOBAL_STATIC_DIR / 'nominal_fs.html',
-                    'context': []
+                    'context': [0]
                 }
             }
         })
@@ -406,6 +1102,29 @@ class ConfigTestCase(TestCase):
         """
         engine = StaticTemplateEngine()
         self.assertRaises(ImproperlyConfigured, lambda: engine.config)
+
+    @override_settings(
+        STATIC_ROOT=None,
+        STATIC_TEMPLATES={
+            'ENGINES': [{
+                'BACKEND': 'render_static.backends.StaticDjangoTemplates',
+                'DIRS': [STATIC_TEMP_DIR],
+                'OPTIONS': {
+                    'loaders': [
+                        'render_static.loaders.StaticFilesystemBatchLoader'
+                    ]
+                },
+            }]
+        }
+    )
+    def test_no_destination(self):
+        """
+        If no  setting is present we should raise.
+        """
+        self.assertRaises(
+            CommandError,
+            lambda: call_command('renderstatic', 'nominal_fs.html')
+        )
 
     def test_unrecognized_settings(self):
         """
@@ -493,6 +1212,70 @@ class ConfigTestCase(TestCase):
             lambda: engine.render_to_disk('../app1/html/nominal1.html')
         )
 
+    def test_suspicious_selector_fs(self):
+        engine = StaticTemplateEngine({
+            'ENGINES': [{
+                'BACKEND': 'render_static.backends.StaticDjangoTemplates',
+                'DIRS': [STATIC_TEMP_DIR],
+                'OPTIONS': {
+                    'loaders': [
+                        'render_static.loaders.StaticFilesystemBatchLoader'
+                    ]
+                },
+            }]
+        })
+        self.assertRaises(
+            TemplateDoesNotExist,
+            lambda: engine.render_to_disk('../static_templates2/exclusive/template1.html')
+        )
+
+    def test_suspicious_selector_appdirs(self):
+        engine = StaticTemplateEngine({
+            'ENGINES': [{
+                'BACKEND': 'render_static.backends.StaticDjangoTemplates',
+                'OPTIONS': {
+                    'loaders': [
+                        'render_static.loaders.StaticAppDirectoriesBatchLoader'
+                    ]
+                },
+            }]
+        })
+        self.assertRaises(
+            TemplateDoesNotExist,
+            lambda: engine.render_to_disk('../custom_templates/nominal_fs.html')
+        )
+
+    def test_suspicious_selector_jinja2_appdirs(self):
+        engine = StaticTemplateEngine({
+            'ENGINES': [{
+                'BACKEND': 'render_static.backends.StaticJinja2Templates',
+                'APP_DIRS': True
+            }]
+        })
+        self.assertRaises(
+            TemplateDoesNotExist,
+            lambda: engine.render_to_disk('../custom_templates/nominal_fs.html')
+        )
+
+    def test_no_selector_templates_found(self):
+        engine = StaticTemplateEngine({
+            'ENGINES': [{
+                'BACKEND': 'render_static.backends.StaticDjangoTemplates',
+                'OPTIONS': {
+                    'loaders': [
+                        'render_static.loaders.StaticAppDirectoriesBatchLoader'
+                    ]
+                },
+            }]
+        })
+        self.assertRaises(
+            TemplateDoesNotExist,
+            lambda: engine.render_to_disk('*.css')
+        )
+
+    # def tearDown(self):
+    #     pass
+
 
 @override_settings(STATIC_TEMPLATES=None)
 class DirectRenderTestCase(BaseTestCase):
@@ -561,10 +1344,10 @@ class RenderErrorsTestCase(BaseTestCase):
 
     @override_settings(STATIC_ROOT=None)
     def test_render_no_dest(self):
-        self.assertRaises(CommandError, lambda: call_command('render_static'))
+        self.assertRaises(CommandError, lambda: call_command('renderstatic'))
 
     def test_render_default_static_root(self):
-        call_command('render_static')
+        call_command('renderstatic')
         self.assertTrue(filecmp.cmp(
             settings.STATIC_ROOT / 'nominal_fs.html',
             EXPECTED_DIR / 'nominal_fs.html',
@@ -574,7 +1357,7 @@ class RenderErrorsTestCase(BaseTestCase):
     def test_render_missing(self):
         self.assertRaises(
             CommandError,
-            lambda: call_command('render_static', 'this/template/doesnt/exist.html')
+            lambda: call_command('renderstatic', 'this/template/doesnt/exist.html')
         )
 
 
@@ -585,7 +1368,7 @@ class GenerateNothing(BaseTestCase):
         When no templates are configured, render_static should generate nothing and it should not
         raise
         """
-        call_command('render_static')
+        call_command('renderstatic')
         self.assertFalse(APP1_STATIC_DIR.exists())
         self.assertEqual(len(os.listdir(APP2_STATIC_DIR)), 0)
         self.assertFalse(GLOBAL_STATIC_DIR.exists())
@@ -599,7 +1382,7 @@ class GenerateNothing(BaseTestCase):
         self.generate_nothing()
 
     def test_missing_settings_raises(self):
-        self.assertRaises(ImproperlyConfigured, lambda: call_command('render_static'))
+        self.assertRaises(ImproperlyConfigured, lambda: call_command('renderstatic'))
 
 
 @override_settings(STATIC_TEMPLATES={
@@ -676,7 +1459,7 @@ class DefinesToJavascriptTest(BaseTestCase):
         )
 
     def test_classes_to_js(self):
-        call_command('render_static', 'defines1.js')
+        call_command('renderstatic', 'defines1.js')
         self.assertEqual(
             self.diff_classes(
                 js_file=GLOBAL_STATIC_DIR / 'defines1.js',
@@ -692,7 +1475,7 @@ class DefinesToJavascriptTest(BaseTestCase):
             self.assertTrue(jf.readline().startswith('  '))
 
     def test_modules_to_js(self):
-        call_command('render_static', 'defines2.js')
+        call_command('renderstatic', 'defines2.js')
         self.assertEqual(
             self.diff_modules(
                 js_file=GLOBAL_STATIC_DIR / 'defines2.js',
@@ -708,9 +1491,8 @@ class DefinesToJavascriptTest(BaseTestCase):
             self.assertFalse(jf.readline().startswith(' '))
 
     def test_classes_to_js_error(self):
-        self.assertRaises(CommandError, lambda: call_command('render_static', 'defines_error.js'))
+        self.assertRaises(CommandError, lambda: call_command('renderstatic', 'defines_error.js'))
 
-    [defines, 'render_static.tests.defines2']
     @override_settings(STATIC_TEMPLATES={
         'ENGINES': [{
             'BACKEND': 'render_static.backends.StaticDjangoTemplates',
@@ -740,7 +1522,7 @@ class DefinesToJavascriptTest(BaseTestCase):
         }
     })
     def test_split(self):
-        call_command('render_static', 'defines1.js', 'defines2.js')
+        call_command('renderstatic', 'defines1.js', 'defines2.js')
         self.assertEqual(
             self.diff_classes(
                 js_file=GLOBAL_STATIC_DIR / 'defines1.js',
@@ -756,8 +1538,8 @@ class DefinesToJavascriptTest(BaseTestCase):
             {}
         )
 
-    def tearDown(self):
-        pass
+    # def tearDown(self):
+    #     pass
 
 
 class URLJavascriptMixin:
@@ -765,6 +1547,7 @@ class URLJavascriptMixin:
     url_js = None
     es5_mode = False
     class_mode = None
+    legacy_args = False
 
     def clear_placeholder_registries(self):
         from importlib import reload
@@ -776,14 +1559,16 @@ class URLJavascriptMixin:
     class TestJSGenerator(JavaScriptGenerator):
 
         class_mode = None
+        legacy_args = False  # generate code that uses separate arguments to js reverse calls
         catch = True
 
-        def __init__(self, class_mode=None, catch=True, **kwargs):
+        def __init__(self, class_mode=None, catch=True, legacy_args=False, **kwargs):
             self.class_mode = class_mode
             self.catch = catch
+            self.legacy_args = legacy_args
             super().__init__(**kwargs)
 
-        def generate(self, qname, kwargs=None, args=None):
+        def generate(self, qname, kwargs=None, args=None, query=None):
             def do_gen():
                 yield 'try {' if self.catch else ''
                 self.indent()
@@ -793,18 +1578,23 @@ class URLJavascriptMixin:
                     self.indent()
                     yield f'urls.reverse('
                     self.indent()
-                    yield f'"{qname}",'
+                    yield f'"{qname}",{"" if self.legacy_args else " {"}'
                 else:
                     accessor_str = ''.join([f'["{comp}"]' for comp in qname.split(':')])
                     yield 'console.log('
                     self.indent()
-                    yield f'urls{accessor_str}('
+                    yield f'urls{accessor_str}({"" if self.legacy_args else "{"}'
                     self.indent()
-                yield f'{json.dumps(kwargs, cls=BestEffortEncoder)}{"," if args else ""}'
+                yield f'{"" if self.legacy_args else "kwargs: "}' \
+                      f'{json.dumps(kwargs, cls=BestEffortEncoder)}{"," if args or query else ""}'
                 if args:
-                    yield f'{json.dumps(args, cls=BestEffortEncoder)}'
-                self.outdent(2);
-                yield "));"
+                    yield f'{"" if self.legacy_args else "args: "}' \
+                          f'{json.dumps(args, cls=BestEffortEncoder)}{"," if query else ""}'
+                if query:
+                    yield f'{"" if self.legacy_args else "query: "}' \
+                          f'{json.dumps(query, cls=BestEffortEncoder)}'
+                self.outdent(2)
+                yield f'{"" if self.legacy_args else "}"}));'
                 if self.catch:
                     self.outdent()
                     yield '} catch (error) {}'
@@ -819,6 +1609,7 @@ class URLJavascriptMixin:
             qname,
             kwargs=None,
             args=None,
+            query=None,
             js_generator=None,
             url_path=GLOBAL_STATIC_DIR / 'urls.js'
     ):  # pragma: no cover
@@ -826,14 +1617,19 @@ class URLJavascriptMixin:
             kwargs = {}
         if args is None:
             args = []
+        if query is None:
+            query = {}
         if js_generator is None:
-            js_generator = URLJavascriptMixin.TestJSGenerator(self.class_mode)
+            js_generator = URLJavascriptMixin.TestJSGenerator(
+                self.class_mode,
+                legacy_args=self.legacy_args
+            )
         tmp_file_pth = GLOBAL_STATIC_DIR / f'get_{url_path.stem}.js'
 
         if USE_NODE_JS:
             shutil.copyfile(url_path, tmp_file_pth)
             with open(tmp_file_pth, 'a+') as tmp_js:
-                for line in js_generator.generate(qname, kwargs, args):
+                for line in js_generator.generate(qname, kwargs, args, query):
                     tmp_js.write(f'{line}')
             try:
                 return subprocess.check_output([
@@ -862,9 +1658,9 @@ class URLJavascriptMixin:
 
                             Importing babel.py for the first time - this can take some time. 
                             Please note that currently Javascript 6 in Js2Py is unstable and slow. 
-                            Use only for tiny scripts! Importing babel.py for the first time - this can 
-                            take some time. Please note that currently Javascript 6 in Js2Py is unstable
-                            and slow. Use only for tiny scripts!'
+                            Use only for tiny scripts! Importing babel.py for the first time - this
+                            can take some time. Please note that currently Javascript 6 in Js2Py is
+                            unstable and slow. Use only for tiny scripts!'
                         """
                         url_js = js2py.eval_js6(jf.read())
         func = url_js
@@ -880,6 +1676,7 @@ class URLJavascriptMixin:
             qname,
             kwargs=None,
             args=None,
+            query=None,
             object_hook=lambda dct: dct,
             args_hook=lambda args: args,
             url_path=GLOBAL_STATIC_DIR / 'urls.js'
@@ -888,8 +1685,10 @@ class URLJavascriptMixin:
             kwargs = {}
         if args is None:
             args = []
+        if query is None or not self.class_mode:
+            query = {}
 
-        tst_pth = self.get_url_from_js(qname, kwargs, args, url_path=url_path)
+        tst_pth = self.get_url_from_js(qname, kwargs, args, query, url_path=url_path)
         resp = self.client.get(tst_pth)
 
         resp = resp.json(object_hook=object_hook)
@@ -897,7 +1696,8 @@ class URLJavascriptMixin:
         self.assertEqual({
                 'request': reverse(qname, kwargs=kwargs, args=args),
                 'args': args,
-                'kwargs': kwargs
+                'kwargs': kwargs,
+                'query': query
             },
             resp
         )
@@ -912,6 +1712,12 @@ class URLJavascriptMixin:
     def convert_to_int(dct, key):
         if key in dct:
             dct[key] = int(dct[key])
+        return dct
+
+    @staticmethod
+    def convert_to_int_list(dct, key):
+        if key in dct:
+            dct[key] = [int(val) for val in dct[key]]
         return dct
 
     @staticmethod
@@ -989,6 +1795,29 @@ class URLSToJavascriptTest(URLJavascriptMixin, BaseTestCase):
             'OPTIONS': {
                 'loaders': [
                     ('render_static.loaders.StaticLocMemLoader', {
+                        'urls.js': '{% urls_to_js visitor="render_static.ClassURLWriter" %}'
+                    })
+                ],
+                'builtins': ['render_static.templatetags.render_static']
+            },
+        }],
+    })
+    def test_full_url_dump_class_es6_legacy_args(self):
+        """
+        Test class code with legacy arguments specified individually - may be deprecated in 2.0
+        """
+        self.class_mode = ClassURLWriter.class_name_
+        self.legacy_args = True
+        self.test_full_url_dump(es5=False)
+        self.class_mode = None
+        self.legacy_args = False
+
+    @override_settings(STATIC_TEMPLATES={
+        'ENGINES': [{
+            'BACKEND': 'render_static.backends.StaticDjangoTemplates',
+            'OPTIONS': {
+                'loaders': [
+                    ('render_static.loaders.StaticLocMemLoader', {
                         'urls.js': 'var urls = {\n'
                                    '{% urls_to_js include=include %}'
                                    '\n};'
@@ -1005,7 +1834,7 @@ class URLSToJavascriptTest(URLJavascriptMixin, BaseTestCase):
         """
         Admin urls should work out-of-box - just check that it doesnt raise
         """
-        call_command('render_static', 'urls.js')
+        call_command('renderstatic', 'urls.js')
         self.assertTrue(True)
 
     @override_settings(STATIC_TEMPLATES={
@@ -1036,6 +1865,30 @@ class URLSToJavascriptTest(URLJavascriptMixin, BaseTestCase):
             'OPTIONS': {
                 'loaders': [
                     ('render_static.loaders.StaticLocMemLoader', {
+                        'urls.js': '{% urls_to_js visitor="render_static.ClassURLWriter" es5=True%}'
+                    })
+                ],
+                'builtins': ['render_static.templatetags.render_static']
+            },
+        }],
+    })
+    def test_full_url_dump_class_legacy_args(self):
+        """
+        This ES6 test is horrendously slow when not using node for reasons mentioned by the Js2Py
+        warning
+        """
+        self.class_mode = ClassURLWriter.class_name_
+        self.legacy_args = True
+        self.test_full_url_dump(es5=True)
+        self.class_mode = None
+        self.legacy_args = False
+
+    @override_settings(STATIC_TEMPLATES={
+        'ENGINES': [{
+            'BACKEND': 'render_static.backends.StaticDjangoTemplates',
+            'OPTIONS': {
+                'loaders': [
+                    ('render_static.loaders.StaticLocMemLoader', {
                         'urls.js': 'var urls = {\n{% urls_to_js %}};'
                     })
                 ],
@@ -1050,17 +1903,48 @@ class URLSToJavascriptTest(URLJavascriptMixin, BaseTestCase):
         """
         self.test_full_url_dump(es5=False)
 
+    @override_settings(STATIC_TEMPLATES={
+        'ENGINES': [{
+            'BACKEND': 'render_static.backends.StaticDjangoTemplates',
+            'OPTIONS': {
+                'loaders': [
+                    ('render_static.loaders.StaticLocMemLoader', {
+                        'urls.js': 'var urls = {\n{% urls_to_js %}};'
+                    })
+                ],
+                'builtins': ['render_static.templatetags.render_static']
+            },
+        }],
+    })
+    def test_full_url_dump_es6_legacy_args(self):
+        """
+        Test legacy argument signature - args specified individually on url() calls in javascript.
+        """
+        self.legacy_args = True
+        self.test_full_url_dump(es5=False)
+        self.legacy_args = False
+
+    def test_full_url_dump_legacy_args(self, es5=True):
+        self.legacy_args = True
+        self.test_full_url_dump(es5=False)
+        self.legacy_args = False
+
     def test_full_url_dump(self, es5=True):
         self.es5_mode = es5
         self.url_js = None
 
-        call_command('render_static', 'urls.js')
+        call_command('renderstatic', 'urls.js')
 
         #################################################################
         # root urls
         qname = 'path_tst'
         self.compare(qname)
-        self.compare(qname, {'arg1': 1})
+        self.compare(
+            qname,
+            {'arg1': 1},
+            query={'intq1': 0, 'str': 'aadf'} if not self.legacy_args else {},
+            object_hook=lambda dct: self.convert_to_int(dct, 'intq1')
+        )
         self.compare(qname, {'arg1': 12, 'arg2': 'xo'})
         #################################################################
 
@@ -1069,13 +1953,18 @@ class URLSToJavascriptTest(URLJavascriptMixin, BaseTestCase):
         qname = 'sub1:app1_pth'
         self.compare(qname)
         self.compare(qname, {'arg1': 143})  # emma
-        self.compare(qname, {'arg1': 5678, 'arg2': 'xo'})
+        self.compare(
+            qname,
+            {'arg1': 5678, 'arg2': 'xo'},
+            query={'intq1': '0', 'intq2': '2'} if not self.legacy_args else {},
+        )
         self.compare('sub1:app1_detail', {'id': uuid.uuid1()}, object_hook=self.convert_to_id)
         self.compare('sub1:custom_tst', {'year': 2021})
         self.compare('sub1:unreg_conv_tst', {'name': 'name2'})
         self.compare(
             'sub1:re_path_unnamed',
             args=['af', 5678],
+            query={'intq1': '0', 'intq2': '2'} if not self.legacy_args else {},
             args_hook=lambda arr: self.convert_idx_to_type(arr, 1, int)
         )
         #################################################################
@@ -1148,11 +2037,17 @@ class URLSToJavascriptTest(URLJavascriptMixin, BaseTestCase):
         #################################################################
         # re_paths
 
-        self.compare('re_path_tst')
+        self.compare(
+            're_path_tst',
+            query={'pre': 'A', 'list1': ['0', '3', '4'], 'post': 'B'} if not self.legacy_args else {}
+        )
         self.compare('re_path_tst', {'strarg': 'DEMOPLY'})
         self.compare(
             're_path_tst',
             {'strarg': 'is', 'intarg': 1337},
+            query={
+                'pre': 'A', 'list1': ['0', '3', '4'], 'intarg': 237
+            } if not self.legacy_args else {},
             object_hook=lambda dct: self.convert_to_int(dct, 'intarg')
         )
 
@@ -1172,7 +2067,14 @@ class URLSToJavascriptTest(URLJavascriptMixin, BaseTestCase):
         #################################################################
         # app3 urls - these should be included into the null namespace
         self.compare('app3_idx')
-        self.compare('app3_arg', {'arg1': 1})
+        self.compare(
+            'app3_arg',
+            {'arg1': 1},
+            query={
+                'list1': ['0', '3', '4'], 'intarg': [0, 2, 5], 'post': 'A'
+            } if not self.legacy_args else {},
+            object_hook=lambda dct: self.convert_to_int_list(dct, 'intarg')
+        )
         self.compare('unreg_conv_tst', {'name': 'name1'})
         #################################################################
 
@@ -1215,7 +2117,7 @@ class URLSToJavascriptTest(URLJavascriptMixin, BaseTestCase):
         self.es5_mode = True
         self.url_js = None
 
-        call_command('render_static', 'urls.js')
+        call_command('renderstatic', 'urls.js')
 
         self.assertFalse(self.exists('admin:index'))
 
@@ -1304,7 +2206,7 @@ class URLSToJavascriptTest(URLJavascriptMixin, BaseTestCase):
         self.es5_mode = True
         self.url_js = None
 
-        call_command('render_static', 'urls.js')
+        call_command('renderstatic', 'urls.js')
 
         self.assertFalse(self.exists('admin:index'))
 
@@ -1395,7 +2297,7 @@ class URLSToJavascriptTest(URLJavascriptMixin, BaseTestCase):
         self.es6_mode = True
         self.url_js = None
 
-        call_command('render_static', 'urls.js')
+        call_command('renderstatic', 'urls.js')
 
         self.assertFalse(self.exists('admin:index'))
 
@@ -1480,7 +2382,7 @@ class URLSToJavascriptTest(URLJavascriptMixin, BaseTestCase):
         self.es6_mode = True
         self.url_js = None
 
-        call_command('render_static', 'urls.js')
+        call_command('renderstatic', 'urls.js')
 
         self.assertFalse(self.exists('admin:index'))
 
@@ -1536,17 +2438,13 @@ class URLSToJavascriptTest(URLJavascriptMixin, BaseTestCase):
         self.assertFalse(self.exists('re_path_unnamed_solo', args=['daf', 7120]))
 
     # uncomment to not delete generated js
-    def tearDown(self):
-        pass
+    # def tearDown(self):
+    #    pass
 
 
-@override_settings(ROOT_URLCONF='render_static.tests.urls2')
-class CornerCaseTest(URLJavascriptMixin, BaseTestCase):
-
-    def setUp(self):
-        self.clear_placeholder_registries()
-
-    @override_settings(STATIC_TEMPLATES={
+@override_settings(
+    ROOT_URLCONF='render_static.tests.urls2',
+    STATIC_TEMPLATES={
         'ENGINES': [{
             'BACKEND': 'render_static.backends.StaticDjangoTemplates',
             'OPTIONS': {
@@ -1562,7 +2460,13 @@ class CornerCaseTest(URLJavascriptMixin, BaseTestCase):
             },
         }],
         'templates': {'urls.js': {'context': {'include': ['default']}}}
-    })
+    }
+)
+class CornerCaseTest(URLJavascriptMixin, BaseTestCase):
+
+    def setUp(self):
+        self.clear_placeholder_registries()
+
     def test_no_default_registered(self):
         """
         Tests: https://github.com/bckohan/django-render-static/issues/8
@@ -1572,7 +2476,25 @@ class CornerCaseTest(URLJavascriptMixin, BaseTestCase):
         self.url_js = None
         self.class_mode = ClassURLWriter.class_name_
 
-        call_command('render_static', 'urls.js')
+        call_command('renderstatic', 'urls.js')
+        self.compare('default', kwargs={'def': 'named'})
+        self.compare('default', args=['unnamed'])
+
+    def test_command_deprecation(self):
+        """
+        Tests: https://github.com/bckohan/django-render-static/issues/8
+        :return:
+        """
+        import warnings
+        self.es6_mode = True
+        self.url_js = None
+        self.class_mode = ClassURLWriter.class_name_
+
+        with warnings.catch_warnings(record=True) as w:
+            warnings.simplefilter("always")
+            call_command('render_static', 'urls.js')
+            self.assertTrue(issubclass(w[-1].category, DeprecationWarning))
+
         self.compare('default', kwargs={'def': 'named'})
         self.compare('default', args=['unnamed'])
 
@@ -1605,7 +2527,7 @@ class CornerCaseTest(URLJavascriptMixin, BaseTestCase):
         self.class_mode = ClassURLWriter.class_name_
 
         placeholders.register_unnamed_placeholders('no_capture', ['0000'])
-        call_command('render_static', 'urls.js')
+        call_command('renderstatic', 'urls.js')
         self.compare('no_capture', args=['5555'])
 
     @override_settings(STATIC_TEMPLATES={
@@ -1633,14 +2555,14 @@ class CornerCaseTest(URLJavascriptMixin, BaseTestCase):
         self.url_js = None
         self.class_mode = ClassURLWriter.class_name_
 
-        self.assertRaises(CommandError, lambda: call_command('render_static', 'urls.js'))
+        self.assertRaises(CommandError, lambda: call_command('renderstatic', 'urls.js'))
 
         placeholders.register_variable_placeholder('choice', 'first')
         placeholders.register_variable_placeholder('choice1', 'second')
-        self.assertRaises(CommandError, lambda: call_command('render_static', 'urls.js'))
+        self.assertRaises(CommandError, lambda: call_command('renderstatic', 'urls.js'))
         placeholders.register_unnamed_placeholders('special', ['third'])
 
-        call_command('render_static', 'urls.js')
+        call_command('renderstatic', 'urls.js')
         self.compare('special', {'choice': 'second'})
         self.compare('special', {'choice': 'second', 'choice1': 'first'})
         self.compare('special', args=['third'])
@@ -1674,14 +2596,14 @@ class CornerCaseTest(URLJavascriptMixin, BaseTestCase):
         self.url_js = None
         self.class_mode = ClassURLWriter.class_name_
 
-        self.assertRaises(CommandError, lambda: call_command('render_static', 'urls.js'))
+        self.assertRaises(CommandError, lambda: call_command('renderstatic', 'urls.js'))
 
         placeholders.register_variable_placeholder('choice', 'first')
         placeholders.register_variable_placeholder('choice1', 'second')
-        self.assertRaises(CommandError, lambda: call_command('render_static', 'urls.js'))
+        self.assertRaises(CommandError, lambda: call_command('renderstatic', 'urls.js'))
         placeholders.register_unnamed_placeholders('special', ['third'])
 
-        call_command('render_static', 'urls.js')
+        call_command('renderstatic', 'urls.js')
         self.compare('special', {'choice': 'second'})
         self.compare('special', {'choice': 'second', 'choice1': 'first'})
         self.compare('special', args=['third'])
@@ -1717,7 +2639,7 @@ class CornerCaseTest(URLJavascriptMixin, BaseTestCase):
 
         placeholders.register_variable_placeholder('choice', 'first')
         placeholders.register_unnamed_placeholders('special', ['first'])
-        call_command('render_static', 'urls.js')
+        call_command('renderstatic', 'urls.js')
 
         with open(GLOBAL_STATIC_DIR / 'urls.js', 'r') as urls:
             if 'reverse matched unexpected pattern' not in urls.read():
@@ -1754,7 +2676,7 @@ class CornerCaseTest(URLJavascriptMixin, BaseTestCase):
 
         placeholders.register_variable_placeholder('named', '1111')
         placeholders.register_unnamed_placeholders('bad_mix', ['unnamed'])
-        call_command('render_static', 'urls.js')
+        call_command('renderstatic', 'urls.js')
 
         with open(GLOBAL_STATIC_DIR / 'urls.js', 'r') as urls:
             self.assertTrue('this path may not be reversible' in urls.read())
@@ -1795,7 +2717,7 @@ class CornerCaseTest(URLJavascriptMixin, BaseTestCase):
 
         placeholders.register_variable_placeholder('named', '1111')
         placeholders.register_unnamed_placeholders('bad_mix2', ['unnamed'])
-        self.assertRaises(CommandError, lambda: call_command('render_static', 'urls.js'))
+        self.assertRaises(CommandError, lambda: call_command('renderstatic', 'urls.js'))
 
     @override_settings(STATIC_TEMPLATES={
         'ENGINES': [{
@@ -1829,7 +2751,7 @@ class CornerCaseTest(URLJavascriptMixin, BaseTestCase):
         t1 = perf_counter()
         tb_str = ''
         try:
-            call_command('render_static', 'urls.js')
+            call_command('renderstatic', 'urls.js')
         except Exception as complexity_error:
             tb_str = traceback.format_exc()
             t2 = perf_counter()
@@ -1849,7 +2771,7 @@ class CornerCaseTest(URLJavascriptMixin, BaseTestCase):
         placeholders.register_variable_placeholder('seven', '666')
         placeholders.register_variable_placeholder('eight', '666')
 
-        call_command('render_static', 'urls.js')
+        call_command('renderstatic', 'urls.js')
 
         self.compare(
             'complex',
@@ -1866,8 +2788,8 @@ class CornerCaseTest(URLJavascriptMixin, BaseTestCase):
         )
 
     # uncomment to not delete generated js
-    def tearDown(self):
-        pass
+    # def tearDown(self):
+    #    pass
 
 
 class URLSToJavascriptOffNominalTest(URLJavascriptMixin, BaseTestCase):
@@ -1902,12 +2824,12 @@ class URLSToJavascriptOffNominalTest(URLJavascriptMixin, BaseTestCase):
 
         # this works even though its registered against a different app
         # all placeholders that match at least one criteria are tried
-        self.assertRaises(CommandError, lambda: call_command('render_static', 'urls.js'))
+        self.assertRaises(CommandError, lambda: call_command('renderstatic', 'urls.js'))
         placeholders.register_variable_placeholder('name', 'does_not_match', app_name='app1')
-        self.assertRaises(CommandError, lambda: call_command('render_static', 'urls.js'))
+        self.assertRaises(CommandError, lambda: call_command('renderstatic', 'urls.js'))
         placeholders.register_variable_placeholder('name', 'name1', app_name='app1')
         placeholders.register_variable_placeholder('name', 'name1', app_name='app1')
-        call_command('render_static', 'urls.js')
+        call_command('renderstatic', 'urls.js')
         self.compare('unreg_conv_tst', {'name': 'name1'})
 
     @override_settings(STATIC_TEMPLATES={
@@ -1932,10 +2854,10 @@ class URLSToJavascriptOffNominalTest(URLJavascriptMixin, BaseTestCase):
     })
     def test_no_unnamed_placeholders(self):
 
-        self.assertRaises(CommandError, lambda: call_command('render_static', 'urls.js'))
+        self.assertRaises(CommandError, lambda: call_command('renderstatic', 'urls.js'))
         placeholders.register_unnamed_placeholders('re_path_unnamed', [143, 'adf'])  # shouldnt work
         placeholders.register_unnamed_placeholders('re_path_unnamed', ['adf', 143])  # but this will
-        call_command('render_static', 'urls.js')
+        call_command('renderstatic', 'urls.js')
         self.compare(
             'sub1:re_path_unnamed',
             args=['af', 5678],
@@ -1965,7 +2887,7 @@ class URLSToJavascriptOffNominalTest(URLJavascriptMixin, BaseTestCase):
     def test_bad_only_bad_unnamed_placeholders(self):
 
         placeholders.register_unnamed_placeholders('re_path_unnamed', [])  # shouldnt work
-        self.assertRaises(CommandError, lambda: call_command('render_static', 'urls.js'))
+        self.assertRaises(CommandError, lambda: call_command('renderstatic', 'urls.js'))
 
     @override_settings(STATIC_TEMPLATES={
         'ENGINES': [{
@@ -1982,7 +2904,7 @@ class URLSToJavascriptOffNominalTest(URLJavascriptMixin, BaseTestCase):
         }]
     })
     def test_bad_visitor_type(self):
-        self.assertRaises(CommandError, lambda: call_command('render_static', 'urls.js'))
+        self.assertRaises(CommandError, lambda: call_command('renderstatic', 'urls.js'))
 
     @override_settings(STATIC_TEMPLATES={
         'ENGINES': [{
@@ -2005,7 +2927,7 @@ class URLSToJavascriptOffNominalTest(URLJavascriptMixin, BaseTestCase):
         }
     })
     def test_no_urlpatterns(self):
-        self.assertRaises(CommandError, lambda: call_command('render_static', 'urls.js'))
+        self.assertRaises(CommandError, lambda: call_command('renderstatic', 'urls.js'))
 
     @override_settings(STATIC_TEMPLATES={
         'ENGINES': [{
@@ -2028,7 +2950,7 @@ class URLSToJavascriptOffNominalTest(URLJavascriptMixin, BaseTestCase):
         }
     })
     def test_unknown_pattern(self):
-        self.assertRaises(CommandError, lambda: call_command('render_static', 'urls.js'))
+        self.assertRaises(CommandError, lambda: call_command('renderstatic', 'urls.js'))
 
     def test_register_bogus_converter(self):
         self.assertRaises(
@@ -2095,7 +3017,7 @@ class URLSToJavascriptParametersTest(URLJavascriptMixin, BaseTestCase):
 
         self.es6_mode = False
         self.class_mode = ClassURLWriter.class_name_
-        call_command('render_static')
+        call_command('renderstatic')
         js_ret = self.get_url_from_js(
             'doest_not_exist',
             js_generator=URLJavascriptMixin.TestJSGenerator(
@@ -2203,7 +3125,7 @@ class URLSToJavascriptParametersTest(URLJavascriptMixin, BaseTestCase):
 
         self.es6_mode = True
         self.class_mode = ClassURLWriter.class_name_
-        call_command('render_static')
+        call_command('renderstatic')
         js_ret = self.get_url_from_js(
             'doest_not_exist',
             js_generator=URLJavascriptMixin.TestJSGenerator(
@@ -2269,7 +3191,7 @@ class URLSToJavascriptParametersTest(URLJavascriptMixin, BaseTestCase):
 
     # uncomment to not delete generated js
     # def tearDown(self):
-    #     pass
+    #    pass
 
 
 @override_settings(
@@ -2308,5 +3230,151 @@ class DjangoJSReverseTest(URLJavascriptMixin, BaseTestCase):
         call_command('render_static', 'urls.js')
 
     # uncomment to not delete generated js
+    # def tearDown(self):
+    #    pass
+
+
+class TestContextResolution(BaseTestCase):
+
+    def setUp(self):
+        super().setUp()
+        with open(BAD_PICKLE, 'w') as bp:
+            bp.write('not pickle content')
+        with open(NOT_A_DICT_PICKLE, 'wb') as bp:
+            pickle.dump(['bad context'], bp)
+        with open(CONTEXT_PICKLE, 'wb') as cp:
+            pickle.dump({'context': 'pickle'}, cp)
+
+    def test_pickle_context(self):
+        self.assertEqual(
+            resolve_context(Path(__file__).parent / 'resources' / 'context.pickle'),
+            {'context': 'pickle'}
+        )
+
+    def test_json_context(self):
+        self.assertEqual(
+            resolve_context(str(Path(__file__).parent / 'resources' / 'context.json')),
+            {'context': 'json'}
+        )
+
+    def test_yaml_context(self):
+        self.assertEqual(
+            resolve_context(str(Path(__file__).parent / 'resources' / 'context.yaml')),
+            {'context': 'yaml'}
+        )
+
+    def test_python_context(self):
+        self.assertEqual(
+            resolve_context(Path(__file__).parent / 'resources' / 'context.py'),
+            {'context': 'python'}
+        )
+
+    def test_pickle_context_resource(self):
+        self.assertEqual(
+            resolve_context(resource('render_static.tests.resources', 'context.pickle')),
+            {'context': 'pickle'}
+        )
+
+    def test_json_context_resource(self):
+        self.assertEqual(
+            resolve_context(resource('render_static.tests.resources', 'context.json')),
+            {'context': 'json'}
+        )
+        from render_static.tests import resources
+        self.assertEqual(
+            resolve_context(resource(resources, 'context.json')),
+            {'context': 'json'}
+        )
+
+    def test_python_context_resource(self):
+        self.assertEqual(
+            resolve_context(resource('render_static.tests.resources', 'context.py')),
+            {'context': 'python'}
+        )
+
+    def test_python_context_embedded_import(self):
+        self.assertEqual(
+            resolve_context('render_static.tests.resources.context_embedded.context'),
+            {'context': 'embedded'}
+        )
+        self.assertEqual(
+            resolve_context('render_static.tests.resources.context_embedded.get_context'),
+            {'context': 'embedded_callable'}
+        )
+
+    def test_bad_contexts(self):
+        self.assertRaises(
+            InvalidContext,
+            lambda: resolve_context('render_static.tests.resources.context_embedded.not_a_dict')
+        )
+        self.assertRaises(
+            InvalidContext,
+            lambda: resolve_context(resource('render_static.tests.resources', 'bad.pickle'))
+        )
+        self.assertRaises(
+            InvalidContext,
+            lambda: resolve_context(resource('render_static.tests.resources', 'not_a_dict.pickle'))
+        )
+        self.assertRaises(
+            InvalidContext,
+            lambda: resolve_context(resource('render_static.tests.resources', 'bad_code.py'))
+        )
+        self.assertRaises(
+            InvalidContext,
+            lambda: resolve_context(str(Path(__file__).parent / 'resources' / 'bad.yaml')),
+        )
+        self.assertRaises(
+            InvalidContext,
+            lambda: resolve_context(str(Path(__file__).parent / 'resources' / 'bad.json')),
+        )
+        self.assertRaises(
+            InvalidContext,
+            lambda: resolve_context(resource('render_static.tests.resources', 'dne'))
+        )
+
+        self.assertRaises(
+            InvalidContext,
+            lambda: resolve_context(resource('render_static.tests.dne', 'dne'))
+        )
+
+    def tearDown(self):
+        super().tearDown()
+        os.remove(BAD_PICKLE)
+        os.remove(NOT_A_DICT_PICKLE)
+        os.remove(CONTEXT_PICKLE)
+
+
+"""
+@override_settings(
+    ROOT_URLCONF='render_static.tests.ex_urls',
+    STATIC_TEMPLATES={
+        'ENGINES': [{
+            'BACKEND': 'render_static.backends.StaticDjangoTemplates',
+            'OPTIONS': {
+                'loaders': [
+                    ('render_static.loaders.StaticLocMemLoader', {
+                        'urls_simple.js': 'var urls = {\n{% urls_to_js exclude="admin"|split %}};'
+                    }),
+                    ('render_static.loaders.StaticLocMemLoader', {
+                        'urls_class.js': '{% urls_to_js visitor="render_static.ClassURLWriter" '
+                                         'exclude="admin"|split%}'
+                    })
+                ],
+                'builtins': ['render_static.templatetags.render_static']
+            },
+        }],
+        'templates': {
+            'urls_simple.js': {},
+            'urls_class.js': {}
+        }
+    }
+)
+class GenerateExampleCode(BaseTestCase):
+
+    def test_generate_examples(self):
+        call_command('renderstatic')
+
+    # uncomment to not delete generated js
     def tearDown(self):
         pass
+"""

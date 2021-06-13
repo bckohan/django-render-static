@@ -17,9 +17,9 @@ settings:
                 'app_dir': 'static_templates',  # search this directory in apps for templates
                 'loaders': [
                     # search apps for templates
-                    'render_static.loaders.StaticAppDirectoriesLoader',
+                    'render_static.loaders.StaticAppDirectoriesBatchLoader',
                     # search DIRS for templates
-                    'render_static.loaders.StaticFilesystemLoader'
+                    'render_static.loaders.StaticFilesystemBatchLoader'
                  ],
                 'builtins': ['render_static.templatetags.render_static']
             },
@@ -41,12 +41,14 @@ The ``STATIC_TEMPLATES`` setting closely mirrors the ``TEMPLATES`` setting by de
 template backends should be used. It extends the standard setting with a few options needed by the
 static engine including a global context available to all static templates and a set of template
 specific configuration parameters. It's advisable to first read about Django's ``TEMPLATES``
-setting.
+setting. The main difference with ``STATIC_TEMPLATES`` is that it supports batch rendering.
+Glob-like patterns can be used to select multiple templates for rendering. See :ref:`loaders` for
+more details.
 
 Minimal Configuration
 ---------------------
 
-To run render_static, ``STATIC_TEMPLATES`` must be defined in settings. If it's an empty
+To run `renderstatic`, ``STATIC_TEMPLATES`` must be defined in settings. If it's an empty
 dictionary (or None):
 
 .. code-block:: python
@@ -59,14 +61,13 @@ then the default engine and loaders will be used which is equivalent to:
 .. code-block:: python
 
     STATIC_TEMPALTES = {
-        'ENGINES': [
+        'ENGINES': [{
             'BACKEND': 'render_static.backends.StaticDjangoTemplates',
-            'DIRS': [],
             'OPTIONS': {
-                'loaders': ['render_static.loaders.StaticAppDirectoriesLoader'],
+                'loaders': ['render_static.loaders.StaticAppDirectoriesBatchLoader'],
                 'builtins': ['render_static.templatetags.render_static']
             },
-        ]
+        }]
     }
 
 
@@ -100,6 +101,8 @@ A list of configuration parameters to pass to the backend during initialization.
 parameters are inherited from the standard Django template backends. One additional parameter
 ``app_dir`` can be used to change the default search path for static templates within apps.
 
+.. _loaders:
+
 ``loaders``
 ***********
 
@@ -107,11 +110,33 @@ Works the same way as the ``loaders`` parameter on ``TEMPLATES``. Except when us
 template backend the loaders have been extended and static specific loaders should be used instead:
 
 - ``render_static.backends.StaticDjangoTemplates``
-    - ``render_static.loaders.StaticAppDirectoriesLoader``
-    - ``render_static.loaders.StaticFilesystemLoader``
-    - ``render_static.loaders.StaticLocMemLoader``
+    - ``render_static.loaders.django.StaticAppDirectoriesBatchLoader`` **default**
+    - ``render_static.loaders.django.StaticFilesystemBatchLoader``
+    - ``render_static.loaders.django.StaticAppDirectoriesLoader``
+    - ``render_static.loaders.django.StaticFilesystemLoader``
+    - ``render_static.loaders.django.StaticLocMemLoader``
 
-The normal Jinja2 loaders are used for the ``StaticJinja2Templates`` backend.
+- ``render_static.backends.StaticJinja2Templates``
+    - ``render_static.loaders.jinja2.StaticFileSystemBatchLoader`` **default**
+    - ``render_static.loaders.jinja2.StaticFileSystemLoader``
+    - ``render_static.loaders.jinja2.StaticPackageLoader``
+    - ``render_static.loaders.jinja2.StaticPrefixLoader``
+    - ``render_static.loaders.jinja2.StaticFunctionLoader``
+    - ``render_static.loaders.jinja2.StaticDictLoader``
+    - ``render_static.loaders.jinja2.StaticChoiceLoader``
+    - ``render_static.loaders.jinja2.StaticModuleLoader``
+
+.. note::
+    The static template engine supports batch rendering. All loaders that have ``Batch`` in the name
+    support wild cards and glob-like patterns when loading templates. By default, if no loaders are
+    specified these loaders are used. For instance, if I wanted to render every .js file in a
+    directory called static_templates/js I could configure templates like so:
+
+.. code-block:: python
+
+    'templates': {
+        'js/*.js': {}
+    }
 
 ``context``
 -----------
@@ -126,31 +151,58 @@ there is no request object to build context off of. Dynamic templates are also o
 contextual data built from the database but static templates are only rendered at deployment time,
 so stuffing dynamic database information in static template contexts is not advisable.
 
+Context configuration parameters may be any of the following:
+
+    - **dictionary**: Simply specify context dictionary inline
+    - **callable**: That returns a dictionary. This allows lazy context initialization to take
+      place after Django bootstrapping
+    - **json**: A path to a JSON file
+    - **yaml**: A path to a YAML file (yaml supports comments!)
+    - **pickle**: A path to a python pickled dictionary
+    - **python**: A path to a python file. The locals defined in the file will
+      comprise the context.
+    - **a packaged resource**: Any of the above files imported as a packaged resource via
+      :ref:`resource` to any of the above files.
+    - **import string**: to any of the above.
+
+For example:
+
+.. code-block:: python
+
+      from render_static import resource
+      STATIC_TEMPLATES = {
+        'context': resource('package.module', 'context.yaml')
+      }
+
+
 ``templates``
 -------------
 
-The ``templates`` dictionary lists all templates that should be generated when `render_static` is
+The ``templates`` dictionary lists all templates that should be generated when `renderstatic` is
 run with no arguments. If specific configuration directives including rendered path and context are
 needed for a template they must be specified here.
 
 .. note::
 
-    `render_static` will be able to generate templates not listed in ``templates``, but only if
-    supplied by name on the command line. Only the default context will be available to them.
+    `renderstatic` will be able to generate templates not listed in ``templates``, but only if
+    supplied by name on the command line. Contexts may also be augmented/overridden via the command
+    line.
 
 ``dest``
 ~~~~~~~~
 
 Override the default destination where a template will be rendered. Templates loaded from ``DIRS``
-instead of apps do not have a default destination and must be provided one here. The ``dest``
-parameter must contain the full path where the template will be rendered including the file name.
-
+instead of apps do not have a default destination and must be provided one here. When rendering a
+single template, if the ``dest`` parameter is not an existing directory, it will be assumed to be
+the full path including the file name where the template will be rendered. When rendering in batch
+mode, ``dest`` will be treated as a directory and created if it does not exist.
 
 ``context``
 ~~~~~~~~~~~
 
 Provide additional parameters for each template in the ``context`` dictionary. Any context variables
-specified here that clash with global context variables will override them.
+specified here that clash with global context variables will override them. May be specified using
+any of the same context specifiers that work for the global context.
 
 
 ``RENDER_STATIC_REVERSAL_LIMIT``

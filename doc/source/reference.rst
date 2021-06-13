@@ -24,16 +24,44 @@ backends
    .. autoclass:: StaticJinja2Templates
 
 
-.. _loaders:
+.. _django_loaders:
 
-loaders
+loaders.django
 ---------------------------------
 
-.. automodule:: render_static.loaders
+.. automodule:: render_static.loaders.django
 
    .. autoclass:: StaticAppDirectoriesLoader
    .. autoclass:: StaticFilesystemLoader
+   .. autoclass:: StaticAppDirectoriesBatchLoader
+   .. autoclass:: StaticFilesystemBatchLoader
    .. autoclass:: StaticLocMemLoader
+
+.. _jinja2_loaders:
+
+loaders.jinja2
+---------------------------------
+
+.. automodule:: render_static.loaders.jinja2
+
+   .. autoclass:: StaticFileSystemLoader
+   .. autoclass:: StaticFileSystemBatchLoader
+   .. autoclass:: StaticPackageLoader
+   .. autoclass:: StaticPrefixLoader
+   .. autoclass:: StaticFunctionLoader
+   .. autoclass:: StaticDictLoader
+   .. autoclass:: StaticChoiceLoader
+   .. autoclass:: StaticModuleLoader
+
+
+.. _loader_mixins:
+
+loaders.mixins
+---------------------------------
+
+.. automodule:: render_static.loaders.mixins
+
+   .. autoclass:: BatchLoaderMixin
 
 .. _origin:
 
@@ -51,21 +79,21 @@ templatetags.django\_static\_templates
 
 .. automodule:: render_static.templatetags.render_static
 
-   .. autofunction:: split
-   .. autofunction:: to_js
-   .. autofunction:: classes_to_js
-   .. autofunction:: modules_to_js
-   .. autofunction:: urls_to_js
+    .. autofunction:: split
+    .. autofunction:: to_js
+    .. autofunction:: classes_to_js
+    .. autofunction:: modules_to_js
+    .. autofunction:: urls_to_js
 
-.. exceptions:
+.. _exceptions:
 
 exceptions
 ----------------------------------------------------------------
 
 .. automodule:: render_static.exceptions
 
-   .. autoclass:: URLGenerationFailed
-   .. autoclass:: ReversalLimitHit
+    .. autoclass:: URLGenerationFailed
+    .. autoclass:: ReversalLimitHit
 
 
 .. _placeholders:
@@ -105,3 +133,24 @@ url_tree
    .. autoclass:: Substitute
    .. autofunction:: normalize_ns
    .. autofunction:: build_tree
+
+
+.. _context:
+
+context
+----------------------------------------------------------------
+
+.. automodule:: render_static.context
+
+   .. autofunction:: resolve_context
+
+
+.. _resource:
+
+resource
+----------------------------------------------------------------
+
+.. automodule:: render_static.resource
+
+   .. autofunction:: resource
+

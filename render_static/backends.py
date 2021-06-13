@@ -9,8 +9,12 @@ from typing import Dict, List, Tuple
 
 from django.apps import apps
 from django.apps.config import AppConfig
-from django.template.backends.django import DjangoTemplates
+from django.template.backends.django import (
+    DjangoTemplates,
+    TemplateDoesNotExist,
+)
 from django.template.backends.jinja2 import Jinja2, Template
+from render_static.loaders.jinja2 import StaticFileSystemBatchLoader
 from render_static.origin import AppOrigin
 
 __all__ = ['StaticDjangoTemplates', 'StaticJinja2Templates']
@@ -47,6 +51,48 @@ class StaticDjangoTemplates(DjangoTemplates):
         super().__init__(params)
         self.engine.app_dirname = self.app_dirname
 
+    def select_templates(
+            self,
+            selector: str,
+            first_loader: bool = False,
+            first_preference: bool = False
+    ) -> List[str]:
+        """
+        Resolves a template selector into a list of template names from the loaders configured on
+        this backend engine.
+
+        :param selector: The template selector
+        :param first_loader: If True, return only the set of template names from the first loader
+            that matches any part of the selector. By default (False) any template name that matches
+            the selector from any loader will be returned.
+        :param first_preference: If true, return only the templates that match the first preference
+            for each loader. When combined with first_loader will return only the first
+            preference(s) of the first loader. Preferences are loader specific and documented on the
+            loader.
+        :return: The list of resolved template names
+        """
+        template_names = set()
+        for loader in self.engine.template_loaders:
+            try:
+                if callable(getattr(loader, 'select_templates', None)):
+                    for templates in loader.select_templates(selector):
+                        for tmpl in templates:
+                            template_names.add(tmpl)
+                        if templates and first_preference:
+                            break
+                else:
+                    loader.get_template(selector)
+                    template_names.add(selector)
+                if first_loader and template_names:
+                    return list(template_names)
+            except TemplateDoesNotExist:
+                continue
+        if template_names:
+            return list(template_names)
+        raise TemplateDoesNotExist(
+            f'Template selector {selector} did not resolve to any template names.'
+        )
+
 
 class StaticJinja2Templates(Jinja2):
     """
@@ -66,8 +112,14 @@ class StaticJinja2Templates(Jinja2):
 
     def __init__(self, params: Dict) -> None:
         params = params.copy()
+        self.dirs = list(params.get('DIRS', []))
+        self.app_dirs = params.get('APP_DIRS', False)
         options = params.pop('OPTIONS').copy()
         self.app_dirname = options.pop('app_dir', self.app_dirname)
+
+        if 'loader' not in options:
+            options['loader'] = StaticFileSystemBatchLoader(self.template_dirs)
+
         params['OPTIONS'] = options
 
         self.app_directories = [
@@ -96,3 +148,41 @@ class StaticJinja2Templates(Jinja2):
                 )
                 break
         return template
+
+    def select_templates(
+            self,
+            selector: str,
+            first_loader: bool = False,
+            first_preference: bool = False
+    ) -> List[str]:
+        """
+        Resolves a template selector into a list of template names from the loader configured on
+        this backend engine.
+
+        :param selector: The template selector
+        :param first_loader: This is ignored for the Jinja2 engine. The Jinja2 engine only has one
+            loader.
+        :param first_preference: If true, return only the templates that match the first preference
+            for the loader. Preferences are loader specific and documented on the loader.
+        :return: The list of resolved template names
+        """
+
+        template_names = set()
+        if callable(getattr(self.env.loader, 'select_templates', None)):
+            for templates in self.env.loader.select_templates(selector):
+                if templates:
+                    for tmpl in templates:
+                        template_names.add(tmpl)
+                    if first_preference:
+                        break
+        else:
+            self.get_template(selector)
+            template_names.add(selector)
+        if first_loader and template_names:
+            return list(template_names)
+
+        if template_names:
+            return list(template_names)
+        raise TemplateDoesNotExist(
+            f'Template selector {selector} did not resolve to any template names.'
+        )

@@ -35,8 +35,10 @@ defines, or enum like structures in server side Python code that are simply repl
 side JavaScript. Single-sourcing these structures by generating client side code from the server
 side code keeps the stack bone DRY.
 
-Have you ever wished you could replicate Django's ``reverse`` function in a JavaScript library for
-your site? Now you can with the ``urls_to_js`` template tag included with `django-render-static`.
+`django-render-static` includes builtins for:
+    - Replicating Django's `reverse` function in JavaScript (`urls_to_js`)
+    - Auto-translating basic Python class and module structures into JavaScript
+      (`modules_to_js`, `classes_to_js`)
 
 You can report bugs and discuss features on the
 `issues page <https://github.com/bckohan/django-render-static/issues>`_.
@@ -77,11 +79,11 @@ Installation
         }
 
 
-4. Run ``render_static`` preceding every run of ``collectstatic`` :
+4. Run ``renderstatic`` preceding every run of ``collectstatic`` :
 
 .. code:: bash
 
-        $> manage.py render_static
+        $> manage.py renderstatic
         $> manage.py collectstatic
 
 
@@ -151,11 +153,11 @@ class their settings file might look like this:
     }
 
 
-And then of course they would call `render_static` before `collectstatic`:
+And then of course they would call `renderstatic` before `collectstatic`:
 
 .. code:: bash
 
-    $> ./manage.py render_static
+    $> ./manage.py renderstatic
     $> ./manage.py collectstatic
 
 
@@ -229,9 +231,9 @@ Your settings file might look like:
     }
 
 
-Then call `render_static` before `collectstatic`::
+Then call `renderstatic` before `collectstatic`::
 
-    $> ./manage.py render_static
+    $> ./manage.py renderstatic
     $> ./manage.py collectstatic
 
 If your root urls.py looks like this:
@@ -301,6 +303,19 @@ So you can now fetch paths like this:
     // /different/143/emma
     const urls = new URLResolver();
     urls.reverse('different', {'arg1': 143, 'arg2': 'emma'});
+
+    // reverse also supports query parameters
+    // /different/143/emma?intarg=0&listarg=A&listarg=B&listarg=C
+    url.reverse(
+        'different',
+        {
+            kwargs: {arg1: 143, arg2: 'emma'},
+            query: {
+                intarg: 0,
+                listarg: ['A', 'B', 'C']
+            }
+        }
+    );
     
     
 URLGenerationFailed Exceptions & Placeholders
