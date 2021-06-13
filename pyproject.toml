@@ -39,8 +39,8 @@ packages = [
 ]
 exclude = ["render_static/tests"]
 
-[tool.poetry.scripts]
-django-renderstatic = 'render_static.console:main'
+# [tool.poetry.scripts]
+# django-renderstatic = 'render_static.console:main'
 
 [tool.poetry.dependencies]
 python = "^3.6"
