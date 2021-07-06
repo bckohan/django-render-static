@@ -104,7 +104,9 @@ class Command(BaseCommand):
             selectors = list(engine.templates.keys())
 
         if not selectors:
-            self.stdout.write(self.style.WARNING('No templates selected for generation.'))
+            self.stdout.write(
+                self.style.WARNING('No templates selected for generation.')  # pylint: disable=E1101
+            )
             return
 
         try:
@@ -117,7 +119,7 @@ class Command(BaseCommand):
                     first_preference=options.get('first_preference', False)
             ):
                 self.stdout.write(
-                    self.style.SUCCESS(f'Rendered {render}.')
+                    self.style.SUCCESS(f'Rendered {render}.')  # pylint: disable=E1101
                 )
         except Exception as exp:
             raise CommandError(f'Error rendering template to disk: {exp}') from exp
