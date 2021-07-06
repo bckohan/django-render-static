@@ -68,12 +68,12 @@ class _Resource(str):  # noqa: WPS600
         try:
             ref = files(package) / filename
         except ModuleNotFoundError:
-            rsrc = super().__new__(cls, f'{package}: {filename}')  # type: ignore
+            rsrc = super().__new__(cls, f'{package}: {filename}')
             rsrc.module_not_found = True
             return rsrc
 
         file_manager = contextlib.ExitStack()
-        rsrc = super().__new__(  # type: ignore
+        rsrc = super().__new__(
             cls,
             file_manager.enter_context(as_file(ref)),
         )
