@@ -8,19 +8,19 @@ Convenience function for accessing packaged resource like so:
 import contextlib
 import types
 from typing import Optional, Union
+import sys
+from functools import singledispatch
 
 __all__ = ['resource']
 
-
-try:
-    from importlib.resources import as_file, files  # type: ignore
-except ImportError:  # pragma: no cover
-    # Use backport to PY<3.9 `importlib_resources`.
-    # importlib_resources is included in python stdlib starting at 3.7 but
-    # the files function is not available until python 3.9
-    try:
+# Distinguishing between different versions of Python:
+if sys.version_info >= (3, 9):
+    from importlib.resources import as_file, files  # pragma: no cover
+else:
+    try:  # pragma: no cover
         from importlib_resources import as_file, files
     except ImportError:  # pragma: no cover
+        @singledispatch
         def need_install(*args, **kwargs):
             """
             On platforms <3.9, the importlib_resources backport needs to be available to use
