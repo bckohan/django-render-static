@@ -52,7 +52,7 @@ PyYAML = { version = "^5.1", optional = true }
 [tool.poetry.dev-dependencies]
 pytest = "^5.2"
 pytest-django = "^4.1.0"
-Sphinx = "^3.3.1"
+Sphinx = "^4.0.3"
 sphinx-rtd-theme = "^0.5.0"
 mypy = "^0.790"
 isort = "^5.6.4"
