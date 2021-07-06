@@ -54,7 +54,7 @@ pytest = "^6.2"
 pytest-django = "^4.1.0"
 Sphinx = "^4.0.3"
 sphinx-rtd-theme = "^0.5.0"
-mypy = "^0.790"
+mypy = "^0.910"
 isort = "^5.6.4"
 doc8 = "^0.8.1"
 darglint = "^1.5.7"
@@ -66,6 +66,7 @@ deepdiff = "^5.2.3"
 safety = "^1.10.3"
 readme-renderer = "^29.0"
 pygount = "^1.2.4"
+types-PyYAML = "^5.1"
 
 [build-system]
 requires = ["poetry-core>=1.0.0"]

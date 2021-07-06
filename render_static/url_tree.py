@@ -355,7 +355,7 @@ class URLTreeVisitor(JavaScriptGenerator):
                 if non_capturing > 0:
                     # handle the corner case where there might be some non-capturing groups
                     # driving up the number of expected args
-                    resolved_placeholders = itertools.chain(
+                    resolved_placeholders = itertools.chain(  # type: ignore
                         resolved_placeholders,
                         *resolve_unnamed_placeholders(
                             url_name=endpoint.name,
