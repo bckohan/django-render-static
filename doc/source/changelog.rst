@@ -2,6 +2,12 @@
 Change Log
 ==========
 
+v1.1.1
+====================
+
+* Support for Jinja2 3.0
+* Improved importlib.resources inclusion logic
+
 v1.1.0
 ====================
 
