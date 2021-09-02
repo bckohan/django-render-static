@@ -71,7 +71,7 @@ def _from_json(file_path: str, throw: bool = True) -> Optional[Dict]:
     :return: A dictionary or None if the context was not a json file.
     """
     try:
-        with open(file_path, 'r') as ctx_f:
+        with open(file_path, 'rb') as ctx_f:
             return json.load(ctx_f)
     except Exception as err:  # pylint: disable=W0703
         if throw:
@@ -87,7 +87,7 @@ def _from_yaml(file_path: str, throw: bool = True) -> Optional[Dict]:
     :return: A dictionary or None if the context was not a yaml file.
     """
     try:
-        with open(file_path, 'r') as ctx_f:
+        with open(file_path, 'rb') as ctx_f:
             return yaml_load(ctx_f, Loader=FullLoader)
     except Exception as err:  # pylint: disable=W0703
         if throw:

@@ -522,7 +522,7 @@ class StaticTemplateEngine:
             ctx = render.config.context.copy()
             if context is not None:
                 ctx.update(context)
-            with open(str(render.destination), 'w') as temp_out:
+            with open(str(render.destination), 'w', encoding='UTF-8') as temp_out:
                 temp_out.write(
                     render.template.render({
                         **self.context,
