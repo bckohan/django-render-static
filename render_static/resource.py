@@ -6,16 +6,19 @@ Convenience function for accessing packaged resource like so:
         resource('package.module', 'resource.file')
 """
 import contextlib
-import types
-from typing import Optional, Union
 import sys
+import types
 from functools import singledispatch
+from typing import Optional, Union
 
 __all__ = ['resource']
 
 # Distinguishing between different versions of Python:
 if sys.version_info >= (3, 9):
-    from importlib.resources import as_file, files  # pragma: no cover, pylint: disable=E0611
+    from importlib.resources import (  # pragma: no cover, pylint: disable=E0611
+        as_file,
+        files,
+    )
 else:
     try:  # pragma: no cover
         from importlib_resources import as_file, files

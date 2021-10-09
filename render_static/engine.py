@@ -8,14 +8,20 @@ from typing import Callable, Dict, Generator, List, Optional, Union
 from django.conf import settings
 from django.core.exceptions import ImproperlyConfigured
 from django.template.backends.django import Template as DjangoTemplate
-from django.template.backends.jinja2 import Template as Jinja2Template
 from django.template.exceptions import TemplateDoesNotExist
 from django.template.utils import InvalidTemplateEngineError
 from django.utils.functional import cached_property
 from django.utils.module_loading import import_string
+from render_static import Jinja2DependencyNeeded
 from render_static.backends import StaticDjangoTemplates, StaticJinja2Templates
 from render_static.context import resolve_context
 from render_static.exceptions import InvalidContext
+
+try:
+    # pylint: disable=C0412
+    from django.template.backends.jinja2 import Template as Jinja2Template
+except ImportError:  # pragma: no cover
+    Jinja2Template = Jinja2DependencyNeeded
 
 __all__ = ['StaticTemplateEngine', 'Render']
 

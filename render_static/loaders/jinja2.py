@@ -6,6 +6,7 @@ with renderstatic that will be transparent to users.
 
 https://jinja.palletsprojects.com/en/3.0.x/api/#loaders
 """
+from render_static import Jinja2DependencyNeeded
 from render_static.loaders.mixins import BatchLoaderMixin
 
 try:
@@ -19,15 +20,6 @@ try:
         PrefixLoader,
     )
 except ImportError:  # pragma: no cover
-    class Jinja2DependencyNeeded:  # pylint: disable=R0903
-        """
-        Jinja2 is an optional dependency - lazy fail if its use is attempted without it being
-        present on the python path.
-        """
-        def __init__(self, *args, **kwargs):
-            raise ImportError(
-                'To use the Jinja2 backend you must install the Jinja2 python package.'
-            )
     ChoiceLoader = Jinja2DependencyNeeded  # type: ignore
     DictLoader = Jinja2DependencyNeeded  # type: ignore
     FileSystemLoader = Jinja2DependencyNeeded  # type: ignore
@@ -48,7 +40,7 @@ __all__ = [
 ]
 
 
-class StaticFileSystemLoader(FileSystemLoader):
+class StaticFileSystemLoader(FileSystemLoader):  # pylint: disable=R0903
     """
     https://jinja.palletsprojects.com/en/3.0.x/api/#jinja2.FileSystemLoader
     """
@@ -67,37 +59,37 @@ class StaticFileSystemBatchLoader(FileSystemLoader, BatchLoaderMixin):
         return self.searchpath
 
 
-class StaticPackageLoader(PackageLoader):
+class StaticPackageLoader(PackageLoader):  # pylint: disable=R0903
     """
     https://jinja.palletsprojects.com/en/3.0.x/api/#jinja2.PackageLoader
     """
 
 
-class StaticPrefixLoader(PrefixLoader):
+class StaticPrefixLoader(PrefixLoader):  # pylint: disable=R0903
     """
     https://jinja.palletsprojects.com/en/3.0.x/api/#jinja2.PrefixLoader
     """
 
 
-class StaticFunctionLoader(FunctionLoader):
+class StaticFunctionLoader(FunctionLoader):  # pylint: disable=R0903
     """
     https://jinja.palletsprojects.com/en/3.0.x/api/#jinja2.FunctionLoader
     """
 
 
-class StaticDictLoader(DictLoader):
+class StaticDictLoader(DictLoader):  # pylint: disable=R0903
     """
     https://jinja.palletsprojects.com/en/3.0.x/api/#jinja2.DictLoader
     """
 
 
-class StaticChoiceLoader(ChoiceLoader):
+class StaticChoiceLoader(ChoiceLoader):  # pylint: disable=R0903
     """
     https://jinja.palletsprojects.com/en/3.0.x/api/#jinja2.ChoiceLoader
     """
 
 
-class StaticModuleLoader(ModuleLoader):
+class StaticModuleLoader(ModuleLoader):  # pylint: disable=R0903
     """
     https://jinja.palletsprojects.com/en/3.0.x/api/#jinja2.ModuleLoader
     """
