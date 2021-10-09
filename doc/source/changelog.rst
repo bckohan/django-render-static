@@ -2,6 +2,11 @@
 Change Log
 ==========
 
+v1.1.2
+====================
+
+* Fixed `Jinja2 include breaks Jinja2 as optional dependency <https://github.com/bckohan/django-render-static/issues/34>`_
+
 v1.1.1
 ====================
 
