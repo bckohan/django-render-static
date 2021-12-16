@@ -64,7 +64,7 @@ sphinx-argparse = "^0.3.0"
 Js2Py = "^0.71"
 deepdiff = "^5.2.3"
 safety = "^1.10.3"
-readme-renderer = "^30.0"
+readme-renderer = "^32.0"
 pygount = "^1.2.4"
 types-PyYAML = "^6.0"
 
