@@ -2,6 +2,11 @@
 Change Log
 ==========
 
+v1.1.3
+====================
+
+* Fixed `Django4.0 Support <https://github.com/bckohan/django-render-static/issues/45>`_
+
 v1.1.2
 ====================
 
