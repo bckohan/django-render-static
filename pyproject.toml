@@ -18,6 +18,7 @@ classifiers = [
     "Framework :: Django :: 3.0",
     "Framework :: Django :: 3.1",
     "Framework :: Django :: 3.2",
+    "Framework :: Django :: 4.0",
     "Intended Audience :: Developers",
     "License :: OSI Approved :: MIT License",
     "Natural Language :: English",
@@ -26,6 +27,7 @@ classifiers = [
     "Programming Language :: Python :: 3.7",
     "Programming Language :: Python :: 3.8",
     "Programming Language :: Python :: 3.9",
+    "Programming Language :: Python :: 3.10",
     "Topic :: Internet :: WWW/HTTP",
     "Topic :: Internet :: WWW/HTTP :: Site Management",
     "Topic :: Software Development :: Libraries",
@@ -71,6 +73,7 @@ safety = "^1.10.3"
 readme-renderer = "^32.0"
 pygount = "^1.2.4"
 types-PyYAML = "^6.0"
+coverage = "^6.2"
 
 [build-system]
 requires = ["poetry-core>=1.0.0"]
