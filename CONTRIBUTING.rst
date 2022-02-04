@@ -7,6 +7,7 @@
 .. _Sphinx: https://www.sphinx-doc.org/en/master/
 .. _readthedocs: https://readthedocs.org/
 .. _me: https://github.com/bckohan
+.. _npm: https://docs.npmjs.com/downloading-and-installing-node-js-and-npm
 
 Contributing
 ############
@@ -26,7 +27,12 @@ greatly simplifies environment bootstrapping. Once it's installed.
 
 .. code-block::
 
-    poetry install
+    poetry install -E all
+
+External Dependencies
+~~~~~~~~~~~~~~~~~~~~~
+
+Some of the tests require npm_ to be installed.
 
 Documentation
 -------------
