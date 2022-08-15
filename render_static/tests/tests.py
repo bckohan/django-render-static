@@ -38,6 +38,7 @@ GLOBAL_STATIC_DIR = settings.STATIC_ROOT  # this dir does not exist and must be 
 STATIC_TEMP_DIR = Path(__file__).parent / 'static_templates'
 STATIC_TEMP_DIR2 = Path(__file__).parent / 'static_templates2'
 EXPECTED_DIR = Path(__file__).parent / 'expected'
+ENUM_DIR = Path(__file__).parent / 'enum'
 
 # create pickle files each time, in case python pickle format changes between python versions
 BAD_PICKLE = Path(__file__).parent / 'resources' / 'bad.pickle'
@@ -3441,3 +3442,43 @@ class Bug65TestCase(URLJavascriptMixin, BaseTestCase):
                 reverse('bug65', kwargs=kwargs),
                 self.get_url_from_js('bug65', kwargs)
             )
+
+
+class TestEnums(BaseTestCase):
+
+    def setUp(self):
+        """
+        from django.core.management import call_command
+        files = Path(ENUM_DIR / 'migrations').glob('*.py')
+        for file in files:
+            if str(file).endswith('__init__.py'):
+                continue
+            os.remove(file)
+        call_command('makemigrations', 'render_static_tests_enum')
+        call_command('migrate')
+        """
+
+    def test_enum_base_fields(self):
+        """
+        Test that the Enum metaclass picks the correct database field type for each enum.
+        """
+        from render_static.tests.enum.models import EnumTester
+        tester = EnumTester.objects.create()
+        from django.db.models import (
+            SmallIntegerField,
+            PositiveSmallIntegerField,
+            PositiveIntegerField,
+            PositiveBigIntegerField,
+            IntegerField,
+            BigIntegerField,
+            FloatField,
+            CharField,
+            DurationField,
+            DateField,
+            DateTimeField,
+            TimeField,
+            DecimalField
+        )
+        self.assertIsInstance(tester._meta.get_field('small_int'), SmallIntegerField)
+        self.assertIsInstance(tester._meta.get_field('small_pos_int'), PositiveSmallIntegerField)
+
