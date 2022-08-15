@@ -42,6 +42,7 @@ MIDDLEWARE = (
 )
 
 INSTALLED_APPS = (
+    'render_static.tests.enum',
     'render_static.tests.app1',
     'render_static.tests.app2',
     'render_static.tests.app3',
