@@ -20,8 +20,10 @@ jobs:
             django-version: 'Django~=4.0.0'
           - python-version: '3.7'
             django-version: 'Django~=4.0.0'
-          - python-version: '3.7'
+          - python-version: '3.6'
             django-version: 'Django~=4.1.0'
+          - python-version: '3.7'
+            django-version: 'Django~=4.0.0'
 
     steps:
     - uses: actions/checkout@v2
