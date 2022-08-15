@@ -1,7 +1,7 @@
 """
-Extensions of the standard Django template backends that add a few more configuration
-parameters and functionality necessary for the static engine. These backends should be
-used instead of the standard backends!
+Extensions of the standard Django template backends that add a few more
+configuration parameters and functionality necessary for the static engine.
+These backends should be used instead of the standard backends!
 """
 from os.path import normpath
 from pathlib import Path
@@ -22,15 +22,15 @@ __all__ = ['StaticDjangoTemplates', 'StaticJinja2Templates']
 
 class StaticDjangoTemplates(DjangoTemplates):
     """
-    Extend the standard ``django.template.backends.django.DjangoTemplates`` backend to add options
-    and change the default loaders.
+    Extend the standard ``django.template.backends.django.DjangoTemplates``
+    backend to add options and change the default loaders.
 
-    By default this backend will search for templates in application directories named
-    ``static_templates``. The ``app_dir`` option is added to the standard options to allow users to
-    override this location.
+    By default this backend will search for templates in application
+    directories named ``static_templates``. The ``app_dir`` option is added to
+    the standard options to allow users to override this location.
 
-    :param params: The parameters as passed into the ``STATIC_TEMPLATES`` configuration for this
-        backend.
+    :param params: The parameters as passed into the ``STATIC_TEMPLATES``
+        configuration for this backend.
     """
 
     app_dirname = 'static_templates'
@@ -44,7 +44,7 @@ class StaticDjangoTemplates(DjangoTemplates):
             loaders = ['render_static.loaders.StaticFilesystemLoader']
             if params.get('APP_DIRS', False):
                 loaders += ['render_static.loaders.StaticAppDirectoriesLoader']
-                # base class with throw if this isn't present - and it must be false
+                # base class with throw if this isn't present, it must be false
                 params['APP_DIRS'] = False
             options['loaders'] = loaders
         params['OPTIONS'] = options
@@ -58,16 +58,18 @@ class StaticDjangoTemplates(DjangoTemplates):
             first_preference: bool = False
     ) -> List[str]:
         """
-        Resolves a template selector into a list of template names from the loaders configured on
-        this backend engine.
+        Resolves a template selector into a list of template names from the
+        loaders configured on this backend engine.
 
         :param selector: The template selector
-        :param first_loader: If True, return only the set of template names from the first loader
-            that matches any part of the selector. By default (False) any template name that matches
-            the selector from any loader will be returned.
-        :param first_preference: If true, return only the templates that match the first preference
-            for each loader. When combined with first_loader will return only the first
-            preference(s) of the first loader. Preferences are loader specific and documented on the
+        :param first_loader: If True, return only the set of template names
+            from the first loader that matches any part of the selector. By
+            default (False) any template name that matches the selector from
+            any loader will be returned.
+        :param first_preference: If true, return only the templates that match
+            the first preference for each loader. When combined with
+            first_loader will return only the first preference(s) of the first
+            loader. Preferences are loader specific and documented on the
             loader.
         :return: The list of resolved template names
         """
@@ -90,7 +92,8 @@ class StaticDjangoTemplates(DjangoTemplates):
         if template_names:
             return list(template_names)
         raise TemplateDoesNotExist(
-            f'Template selector {selector} did not resolve to any template names.'
+            f'Template selector {selector} did not resolve to any template '
+            f'names.'
         )
 
 
@@ -102,15 +105,16 @@ try:
 
     class StaticJinja2Templates(Jinja2):
         """
-        Extend the standard ``django.template.backends.jinja2.Jinja2`` backend to add options.
-        Unlike with the standard backend, the loaders used for this backend remain unchanged.
+        Extend the standard ``django.template.backends.jinja2.Jinja2`` backend
+        to add options. Unlike with the standard backend, the loaders used for
+        this backend remain unchanged.
 
-        By default this backend will search for templates in application directories named
-        ``static_jinja2``. The ``app_dir`` option is added to the standard option to allow
-        users to override this location.
+        By default this backend will search for templates in application
+        directories named ``static_jinja2``. The ``app_dir`` option is added to
+        the standard option to allow users to override this location.
 
-        :param params: The parameters as passed into the ``STATIC_TEMPLATES`` configuration
-            for this backend.
+        :param params: The parameters as passed into the ``STATIC_TEMPLATES``
+            configuration for this backend.
         """
 
         app_dirname = 'static_jinja2'
@@ -124,25 +128,30 @@ try:
             self.app_dirname = options.pop('app_dir', self.app_dirname)
 
             if 'loader' not in options:
-                options['loader'] = StaticFileSystemBatchLoader(self.template_dirs)
+                options['loader'] = StaticFileSystemBatchLoader(
+                    self.template_dirs
+                )
 
             params['OPTIONS'] = options
 
             self.app_directories = [
                 (Path(app_config.path) / self.app_dirname, app_config)
                 for app_config in apps.get_app_configs()
-                if app_config.path and (Path(app_config.path) / self.app_dirname).is_dir()
+                if app_config.path and (
+                        Path(app_config.path) / self.app_dirname
+                ).is_dir()
             ]
 
             super().__init__(params)
 
         def get_template(self, template_name: str) -> Template:
             """
-            We override the Jinja2 get_template method so we can monkey patch in the AppConfig of
-            the origin if this template was from an app directory. This information is used later
-            down the line when deciding where to write rendered templates. For the django template
-            backend we modified the loaders but modifying the Jinja2 loaders would be much more
-            invasive.
+            We override the Jinja2 get_template method so we can monkey patch
+            in the AppConfig of the origin if this template was from an app
+            directory. This information is used later down the line when
+            deciding where to write rendered templates. For the django template
+            backend we modified the loaders but modifying the Jinja2 loaders
+            would be much more invasive.
             """
             template = super().get_template(template_name)
 
@@ -163,15 +172,15 @@ try:
                 first_preference: bool = False
         ) -> List[str]:
             """
-            Resolves a template selector into a list of template names from the loader configured on
-            this backend engine.
+            Resolves a template selector into a list of template names from
+            the loader configured on this backend engine.
 
             :param selector: The template selector
-            :param first_loader: This is ignored for the Jinja2 engine. The Jinja2 engine only has
-                one loader.
-            :param first_preference: If true, return only the templates that match the first
-                preference for the loader. Preferences are loader specific and documented on the
-                loader.
+            :param first_loader: This is ignored for the Jinja2 engine. The
+                Jinja2 engine only has one loader.
+            :param first_preference: If true, return only the templates that
+                match the first preference for the loader. Preferences are
+                loader specific and documented on the loader.
             :return: The list of resolved template names
             """
 
@@ -192,7 +201,8 @@ try:
             if template_names:
                 return list(template_names)
             raise TemplateDoesNotExist(
-                f'Template selector {selector} did not resolve to any template names.'
+                f'Template selector {selector} did not resolve to any '
+                f'template names.'
             )
 except ImportError:  # pragma: no cover
     StaticJinja2Templates = Jinja2DependencyNeeded  # type: ignore

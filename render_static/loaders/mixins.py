@@ -13,22 +13,26 @@ __all__ = ['BatchLoaderMixin']
 
 class BatchLoaderMixin:
     """
-    A mixin for Jinja2 loaders that enables glob pattern selectors to load batches of templates
-    from the file system.
+    A mixin for Jinja2 loaders that enables glob pattern selectors to load
+    batches of templates from the file system.
 
-    Yields batches of template names in order of preference, where preference is defined by the
-    order directories are listed in.
+    Yields batches of template names in order of preference, where preference
+    is defined by the order directories are listed in.
     """
 
     def get_dirs(self) -> List[str]:
         """
-        Return a priority ordered list of directories on the search path of this loader.
+        Return a priority ordered list of directories on the search path of
+        this loader.
         """
         raise NotImplementedError(
             f'{self.__class__.__name__} must implement get_dirs!'
         )  # pragma: no cover
 
-    def select_templates(self, selector: str) -> Generator[List[str], None, None]:
+    def select_templates(
+            self,
+            selector: str
+    ) -> Generator[List[str], None, None]:
         """
         Yields template names matching the selector pattern.
 
@@ -42,4 +46,7 @@ class BatchLoaderMixin:
                 # (it might be inside another one, so this isn't fatal).
                 continue
 
-            yield [relpath(file, template_dir) for file in glob(pattern, recursive=True)]
+            yield [
+                relpath(file, template_dir)
+                for file in glob(pattern, recursive=True)
+            ]

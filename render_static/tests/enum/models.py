@@ -1,13 +1,6 @@
 from django.db import models
-from django_enum import (
-    EnumField,
-    IntegerChoices,
-    TextChoices
-)
-from enum_properties import (
-    s,
-    p
-)
+from django_enum import EnumField, IntegerChoices, TextChoices
+from enum_properties import p, s
 
 
 class EnumTester(models.Model):
@@ -43,8 +36,8 @@ class EnumTester(models.Model):
         def uri(self):
             return f'mapbox://styles/mapbox/{self.slug}-v{self.version}'
 
-        def __str__(self):
-            return self.uri
+        #def __str__(self):
+        #    return self.uri
 
     class AddressRoute(TextChoices, s('alt', case_fold=True)):
 

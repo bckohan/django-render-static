@@ -19,8 +19,8 @@ __all__ = ['split', 'classes_to_js', 'modules_to_js', 'urls_to_js']
 @register.filter(name='split')
 def split(to_split: str, sep: Optional[str] = None) -> Iterable[str]:
     """
-    Django template for python's standard split function. Splits a string into a list of strings
-    around a separator.
+    Django template for python's standard split function. Splits a string into
+    a list of strings around a separator.
 
     :param to_split: The string to split
     :param sep: The separator characters to use as split markers.
@@ -35,9 +35,10 @@ def to_js(classes: dict, indent: str = '\t'):
     """
     Convert python class defines to javascript.
 
-    :param classes: A dictionary of class types mapped to a list of members that should be
-        translated into javascript
-    :param indent: An indent sequence that will be prepended to all lines, default: \t
+    :param classes: A dictionary of class types mapped to a list of members
+        that should be translated into javascript
+    :param indent: An indent sequence that will be prepended to all lines,
+        default: \t
     :return: The classes represented in javascript
     """
     j_script = ''
@@ -55,7 +56,8 @@ def to_js(classes: dict, indent: str = '\t'):
             idx = 1
             for key, val in defines.items():
                 j_script += f"{indent}     {key}: " \
-                            f"{json.dumps(val)}{',' if idx < len(defines) else ''}\n"
+                            f"{json.dumps(val)}" \
+                            f"{',' if idx < len(defines) else ''}\n"
                 idx += 1
 
             j_script += f'{indent}}},\n\n'
@@ -64,17 +66,22 @@ def to_js(classes: dict, indent: str = '\t'):
 
 
 @register.filter(name='classes_to_js')
-def classes_to_js(classes: Iterable[Union[Type, str]], indent: str = '\t') -> str:
+def classes_to_js(
+        classes: Iterable[Union[Type, str]],
+        indent: str = '\t'
+) -> str:
     """
-    Convert a list of classes to javascript. Only upper case, non-callable members will be
-    translated.
+    Convert a list of classes to javascript. Only upper case, non-callable
+    members will be translated.
 
     .. code-block::
 
         {{ classes|classes_to_js:"  " }}
 
-    :param classes: An iterable of class types, or class string paths to convert
-    :param indent: A sequence that will be prepended to all output lines, default: \t
+    :param classes: An iterable of class types, or class string paths to
+        convert
+    :param indent: A sequence that will be prepended to all output lines,
+        default: \t
     :return: The translated javascript
     """
     clss = {}
@@ -89,17 +96,23 @@ def classes_to_js(classes: Iterable[Union[Type, str]], indent: str = '\t') -> st
 
 
 @register.filter(name='modules_to_js')
-def modules_to_js(modules: Iterable[Union[ModuleType, str]], indent: str = '\t') -> str:
+def modules_to_js(
+        modules: Iterable[Union[ModuleType, str]],
+        indent: str = '\t'
+) -> str:
     """
-    Convert a list of python modules to javascript. Only upper case, non-callable class members will
-    be translated. If a class has no qualifying members it will not be included.
+    Convert a list of python modules to javascript. Only upper case,
+    non-callable class members will be translated. If a class has no
+    qualifying members it will not be included.
 
     .. code-block::
 
         {{ modules|modules_to_js:"  " }}
 
-    :param modules: An iterable of python modules or string paths of modules to convert
-    :param indent: A sequence that will be prepended to all output lines, default: \t
+    :param modules: An iterable of python modules or string paths of modules
+        to convert
+    :param indent: A sequence that will be prepended to all output lines,
+        default: \t
     :return: The translated javascript
     """
     classes = {}
@@ -109,7 +122,9 @@ def modules_to_js(modules: Iterable[Union[ModuleType, str]], indent: str = '\t')
         for key in dir(module):
             cls = getattr(module, key)
             if inspect.isclass(cls):
-                classes[cls] = {n: getattr(cls, n) for n in dir(cls) if n.isupper()}
+                classes[cls] = {
+                    n: getattr(cls, n) for n in dir(cls) if n.isupper()
+                }
 
     return to_js(classes, indent)
 
@@ -126,10 +141,11 @@ def urls_to_js(  # pylint: disable=R0913,R0915
         **kwargs
 ) -> str:
     """
-    Dump reversible URLs to javascript. The javascript generated provides functions for each fully
-    qualified URL name that perform the same service as Django's URL `reverse` function. The
-    javascript output by this tag isn't standalone. It is up to the caller to embed it in another
-    object. For instance, given the following urls.py:
+    Dump reversible URLs to javascript. The javascript generated provides
+    functions for each fully qualified URL name that perform the same service
+    as Django's URL `reverse` function. The javascript output by this tag
+    isn't standalone. It is up to the caller to embed it in another object.
+    For instance, given the following urls.py:
 
     .. code-block::
 
@@ -174,7 +190,8 @@ def urls_to_js(  # pylint: disable=R0913,R0915
                 )
                     return `/url/with/arg/${kwargs["arg1"]}`;
                 throw new TypeError(
-                    "No reversal available for parameters at path: other:detail"
+                    "No reversal available for parameters at path: "
+                    "other:detail"
                 );
             },
             "other": {
@@ -184,7 +201,8 @@ def urls_to_js(  # pylint: disable=R0913,R0915
                     )
                         return `/sub/detail/${kwargs["id"]}`;
                     throw new TypeError(
-                        "No reversal available for parameters at path: other:detail"
+                        "No reversal available for parameters at path: "
+                        "other:detail"
                     );
                 },
             },
@@ -198,49 +216,64 @@ def urls_to_js(  # pylint: disable=R0913,R0915
         console.log(urls.my_url({'arg1': 143}));
 
         # /sub/detail/aaaaaaaa-aaaa-aaaa-aaaa-aaaaaaaaaaaa
-        console.log(urls.other.detail({'id': 'aaaaaaaa-aaaa-aaaa-aaaa-aaaaaaaaaaaa'}));
+        console.log(urls.other.detail(
+            {'id': 'aaaaaaaa-aaaa-aaaa-aaaa-aaaaaaaaaaaa'})
+        );
 
 
     .. note::
-        Care has been taken to harden this process to changes to the Django url resolution
-        source and to ensure that it just works with minimal intervention.
+        Care has been taken to harden this process to changes to the Django url
+        resolution source and to ensure that it just works with minimal
+        intervention.
 
-        The general strategy of this process is two staged. First a tree structure is generated
-        by walking the urlpatterns structure that contains the url patterns and resolves all their
-        fully qualified names including all parent namespaces. URLs and namespaces are included
-        and excluded at this stage based on the include/exclude parameters. The branches of the tree
-        are namespaces and the leaves are fully qualified URL names containing lists of
-        corresponding URLPatterns.
+        The general strategy of this process is two staged. First a tree
+        structure is generated by walking the urlpatterns structure that
+        contains the url patterns and resolves all their fully qualified names
+        including all parent namespaces. URLs and namespaces are included and
+        excluded at this stage based on the include/exclude parameters. The
+        branches of the tree are namespaces and the leaves are fully qualified
+        URL names containing lists of corresponding URLPatterns.
 
-        The second stage recursively walks the tree, writing javascript as it enters namespaces and
-        encounters URLPatterns. Multiple URLs may be registered against the same fully qualified
-        name, but may be distinguished by the named parameters they accept. One javascript function
-        is generated for each fully qualified URL name, that will select the correct URL reversal
-        based on the names of the parameters passed in and map those parameter values to the correct
-        placeholders in the URL. To ensure the outputs of the javascript match Django's `reverse`
-        the strategy is to use the results of the `reverse` call for the fully qualified name.
-        Placeholder values are passed into `reverse` and then overwritten with javascript
-        substitution code based on the regex grouping information. This strategy avoids as much
-        error prone regex/string processing as possible. The concession here is that placeholder
-        values must be supplied by the user wherever we cant infer them. When using path instead of
-        re_path we can use default placeholders for all the known converters. When using re_path
-        or custom path converters users must register placeholders by parameter name, converter
-        type, or app_name. Libraries exist for generating string patterns that match regex's but
-        none seem reliable or stable enough to include as a dependency.
+        The second stage recursively walks the tree, writing javascript as it
+        enters namespaces and encounters URLPatterns. Multiple URLs may be
+        registered against the same fully qualified name, but may be
+        distinguished by the named parameters they accept. One javascript
+        function is generated for each fully qualified URL name, that will
+        select the correct URL reversal based on the names of the parameters
+        passed in and map those parameter values to the correct
+        placeholders in the URL. To ensure the outputs of the javascript match
+        Django's `reverse` the strategy is to use the results of the `reverse`
+        call for the fully qualified name. Placeholder values are passed into
+        `reverse` and then overwritten with javascript substitution code based
+        on the regex grouping information. This strategy avoids as much error
+        prone regex/string processing as possible. The concession here is that
+        placeholder values must be supplied by the user wherever we cant infer
+        them. When using path instead of re_path we can use default
+        placeholders for all the known converters. When using re_path or custom
+        path converters users must register placeholders by parameter name,
+        converter type, or app_name. Libraries exist for generating string
+        patterns that match regex's but none seem reliable or stable enough to
+        include as a dependency.
 
-    :param visitor: The visitor class that will generate the JavaScript, as either a class or an
-        import string. May be one of the built-ins or a user defined visitor.
-    :param url_conf: The root url module to dump urls from, default: settings.ROOT_URLCONF
+    :param visitor: The visitor class that will generate the JavaScript, as
+        either a class or an import string. May be one of the built-ins or a
+        user defined visitor.
+    :param url_conf: The root url module to dump urls from,
+        default: settings.ROOT_URLCONF
     :param indent: string to use for indentation in javascript, default: '  '
     :param depth: the starting indentation depth, default: 0
-    :param include: A list of path names to include, namespaces without path names will be treated
-        as every path under the namespace. Default: include everything
-    :param exclude: A list of path names to exclude, namespaces without path names will be treated
-        as every path under the namespace. Default: exclude nothing
-    :param es5: if True, dump es5 valid javascript, if False javascript will be es6
-    :param kwargs: Extra kwargs that will be passed to the visitor class on construction. All
-        visitors are passed indent, depth, and es5.
-    :return: A javascript object containing functions that generate urls with and without parameters
+    :param include: A list of path names to include, namespaces without path
+        names will be treated as every path under the namespace.
+        Default: include everything
+    :param exclude: A list of path names to exclude, namespaces without path
+        names will be treated as every path under the namespace.
+        Default: exclude nothing
+    :param es5: if True, dump es5 valid javascript, if False javascript will
+        be es6
+    :param kwargs: Extra kwargs that will be passed to the visitor class on
+        construction. All visitors are passed indent, depth, and es5.
+    :return: A javascript object containing functions that generate urls with
+        and without parameters
     """
 
     kwargs['depth'] = depth
@@ -248,11 +281,14 @@ def urls_to_js(  # pylint: disable=R0913,R0915
     kwargs['es5'] = es5
 
     if isinstance(visitor, str):
-        # mypy doesnt pick up this switch from str to class, import_string probably untyped
+        # mypy doesnt pick up this switch from str to class, import_string
+        # probably untyped
         visitor = import_string(visitor)
 
     if not issubclass(visitor, URLTreeVisitor):  # type: ignore
-        raise ValueError(f'{visitor.__class__.__name__} must be of type `URLTreeVisitor`!')
+        raise ValueError(
+            f'{visitor.__class__.__name__} must be of type `URLTreeVisitor`!'
+        )
 
     return SafeString(
         visitor(**kwargs).generate(  # type: ignore

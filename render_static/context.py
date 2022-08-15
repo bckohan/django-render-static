@@ -1,7 +1,7 @@
 """
-Utilities for loading contexts from multiple types of sources including json files, python files,
-pickle files either as files on disk, or as packaged resources contained within installed python
-packages.
+Utilities for loading contexts from multiple types of sources including json
+files, python files, pickle files either as files on disk, or as packaged
+resources contained within installed python packages.
 """
 
 import json
@@ -19,8 +19,8 @@ try:
 except ImportError:  # pragma: no cover
     def yaml_load(*args, **kwargs):  # type: ignore
         """
-        YAML is an optional dependency - lazy fail if its use is attempted without it being
-        present on the python path.
+        YAML is an optional dependency - lazy fail if its use is attempted
+        without it being present on the python path.
         """
         raise ImportError('Install PyYAML to load contexts from YAML files.')
     FullLoader = None  # type: ignore
@@ -30,19 +30,24 @@ __all__ = ['resolve_context']
 _import_regex = re.compile(r'^[\w]+([.][\w]+)*$')
 
 
-def resolve_context(context: Optional[Union[Dict, str, Path, Callable]]) -> Dict:
+def resolve_context(
+        context: Optional[Union[Dict, str, Path, Callable]]
+) -> Dict:
     """
-    Resolve the context specifier into a context dictionary. Context specifier may be a packaged
-    resource, a path-like object or a string path to a json file, a pickled dictionary or a python
-    file on disk. The context specifier may itself be a dictionary context.
+    Resolve the context specifier into a context dictionary. Context specifier
+    may be a packaged resource, a path-like object or a string path to a json
+    file, a pickled dictionary or a python file on disk. The context specifier
+    may itself be a dictionary context.
 
     .. note::
-        Render static should never be part of operational execution flows, so its ok if it takes a
-        little extra time to resolve things for convenience.
+        Render static should never be part of operational execution flows, so
+        its ok if it takes a little extra time to resolve things for
+        convenience.
 
     :param context: The context specifier
     :return: The dictionary context the specifier resolved to
-    :raises InvalidContext: if there is a failure to produce a dictionary from the context specifier
+    :raises InvalidContext: if there is a failure to produce a dictionary from
+        the context specifier
     """
     if context is None:
         return {}
@@ -59,8 +64,12 @@ def resolve_context(context: Optional[Union[Dict, str, Path, Callable]]) -> Dict
             if ctx:
                 return ctx
         except Exception as err:
-            raise InvalidContext(f'Unable to load context from {context}!') from err
-    raise InvalidContext(f"Unable to resolve context '{context}' to a dictionary type.")
+            raise InvalidContext(
+                f'Unable to load context from {context}!'
+            ) from err
+    raise InvalidContext(
+        f"Unable to resolve context '{context}' to a dictionary type."
+    )
 
 
 def _from_json(file_path: str, throw: bool = True) -> Optional[Dict]:
@@ -162,15 +171,18 @@ loaders = [
 ]
 
 
-def _loader_try_order(ctx: str) -> Sequence[Tuple[Callable[[str, bool], Optional[Dict]], bool]]:
+def _loader_try_order(
+        ctx: str
+) -> Sequence[Tuple[Callable[[str, bool], Optional[Dict]], bool]]:
     """
-    Prioritize the loaders in order of most likely to succeed first based on the context
-    string.
+    Prioritize the loaders in order of most likely to succeed first based on
+    the context string.
 
     :param ctx: string context, could be file path or import
-    :return: List of loaders to try in order, each element of the list is a 2-tuple where the first
-        element is the loader and the second is a boolean set to true if this loader was flagged as
-        a priority, or false if it is a backup
+    :return: List of loaders to try in order, each element of the list is a
+        2-tuple where the first element is the loader and the second is a
+        boolean set to true if this loader was flagged as a priority, or false
+        if it is a backup
     """
     priority = []
     backup = []
