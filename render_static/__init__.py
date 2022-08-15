@@ -24,11 +24,12 @@ default_app_config = 'render_static.apps.RenderStaticConfig'  # pylint: disable=
 
 class Jinja2DependencyNeeded:  # pylint: disable=R0903
     """
-    Jinja2 is an optional dependency - lazy fail if its use is attempted without it being
-    present on the python path.
+    Jinja2 is an optional dependency - lazy fail if its use is attempted
+    without it being present on the python path.
     """
 
     def __init__(self, *args, **kwargs):
         raise ImportError(  # pragma: no cover
-            'To use the Jinja2 backend you must install the Jinja2 python package.'
+            'To use the Jinja2 backend you must install the Jinja2 python '
+            'package.'
         )
