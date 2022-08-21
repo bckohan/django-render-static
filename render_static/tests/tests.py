@@ -2488,24 +2488,6 @@ class CornerCaseTest(URLJavascriptMixin, BaseTestCase):
         self.compare('default', kwargs={'def': 'named'})
         self.compare('default', args=['unnamed'])
 
-    def test_command_deprecation(self):
-        """
-        Tests: https://github.com/bckohan/django-render-static/issues/8
-        :return:
-        """
-        import warnings
-        self.es6_mode = True
-        self.url_js = None
-        self.class_mode = ClassURLWriter.class_name_
-
-        with warnings.catch_warnings(record=True) as w:
-            warnings.simplefilter("always")
-            call_command('render_static', 'urls.js')
-            self.assertTrue(issubclass(w[-1].category, DeprecationWarning))
-
-        self.compare('default', kwargs={'def': 'named'})
-        self.compare('default', args=['unnamed'])
-
     @override_settings(STATIC_TEMPLATES={
         'ENGINES': [{
             'BACKEND': 'render_static.backends.StaticDjangoTemplates',
@@ -3235,7 +3217,7 @@ class DjangoJSReverseTest(URLJavascriptMixin, BaseTestCase):
         self.url_js = None
         self.class_mode = ClassURLWriter.class_name_
 
-        call_command('render_static', 'urls.js')
+        call_command('renderstatic', 'urls.js')
 
     # uncomment to not delete generated js
     # def tearDown(self):
