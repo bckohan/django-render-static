@@ -2,6 +2,11 @@
 Change Log
 ==========
 
+v1.1.4
+====================
+
+* Fixed `urls_to_js output is incorrect when default kwargs specified in path() <https://github.com/bckohan/django-render-static/issues/65>`_
+
 v1.1.3
 ====================
 
