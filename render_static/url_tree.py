@@ -411,11 +411,28 @@ class URLTreeVisitor(JavaScriptGenerator):
                         # patterns where the only difference is between the use of kwargs and args
                         # we leave a comment breadcrumb in this event so as not to fail the larger
                         # URL reversal but to leave an indication as to what is wrong with the URLs
-                        yield (
-                            '/* Django reverse matched unexpected pattern for '
-                            f'args={unnamed} */' if unnamed else f'kwargs={params} */'
-                        )  # pragma: no cover
-                        return  # pragma: no cover
+                        unexpected_default_args = set(
+                            endpoint.default_args
+                        ).difference(set(params.keys()))
+                        if unexpected_default_args:
+                            yield '/**'
+                            yield " * Default kwargs, " \
+                                f"{unexpected_default_args}, are not named " \
+                                f"parameters on pattern {endpoint.pattern}."
+                            yield f" * This can cause unexpected behavior " \
+                                  f"and is not currently supported for " \
+                                  f"reversal."
+                            yield '**/'
+                        else:
+                            yield (
+                                '/* Django reverse matched unexpected pattern '
+                                'for ' +
+                                (
+                                    f'args={unnamed} */' if unnamed
+                                    else f'kwargs={list(params.keys())} */'
+                                )
+                            )  # pragma: no cover
+                        return
 
                     # there might be group matches that aren't part of our kwargs, we go
                     # through this extra work to make sure we aren't subbing spans that

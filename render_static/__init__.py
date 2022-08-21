@@ -10,7 +10,7 @@ from .context import resolve_context
 from .resource import resource
 from .url_tree import ClassURLWriter, SimpleURLWriter, URLTreeVisitor
 
-VERSION = (1, 1, 3)
+VERSION = (1, 1, 4)
 
 __title__ = 'Django Render Static'
 __version__ = '.'.join(str(i) for i in VERSION)
