@@ -416,12 +416,12 @@ class URLTreeVisitor(JavaScriptGenerator):
                         ).difference(set(params.keys()))
                         if unexpected_default_args:
                             yield '/**'
-                            yield " * Default kwargs, " \
-                                f"{unexpected_default_args}, are not named " \
-                                f"parameters on pattern {endpoint.pattern}."
-                            yield f" * This can cause unexpected behavior " \
-                                  f"and is not currently supported for " \
-                                  f"reversal."
+                            yield ' * Default kwargs, ' \
+                                f'{unexpected_default_args}, are not named ' \
+                                f'parameters on pattern {endpoint.pattern}.'
+                            yield ' * This can cause unexpected behavior ' \
+                                  'and is not currently supported for ' \
+                                  'reversal.'
                             yield '**/'
                         else:
                             yield (
