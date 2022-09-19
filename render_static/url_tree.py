@@ -805,6 +805,10 @@ class ClassURLWriter(URLTreeVisitor):
         * *raise_on_not_found*
             Raise a TypeError if no reversal for a url pattern is found,
             default: True
+        * *export_class*
+            The generated JavaScript file will include an export statement
+            for the generated class.
+            default: False
 
     :param kwargs: Set of configuration parameters, see also `URLTreeVisitor` params
     """
