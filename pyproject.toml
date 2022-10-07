@@ -71,6 +71,10 @@ readme-renderer = "^34.0"
 pygount = "^1.2.4"
 types-PyYAML = "^6.0"
 coverage = "^6.2"
+importlib-metadata = [
+    { version = "<5.0", markers = "python_version <= '3.7'" },
+    { version = ">=5.0", markers = "python_version > '3.7'" },
+]
 
 [build-system]
 requires = ["poetry-core>=1.0.0"]
