@@ -11,4 +11,8 @@ security: # configuration for the `safety check` command
         45185:
             reason: dev dependency, remedy will require dropping support for python 3.6
             #expires: '2022-10-21' # datetime string - date this ignore will expire, best practice to use this variable
+        49733:
+            reason: Django dependency version is up to end users.
+        50454:
+            reason: Django dependency version is up to end users.
     continue-on-vulnerability-error: False # Suppress non-zero exit codes when vulnerabilities are found. Enable this in pipelines and CI/CD processes if you want to pass builds that have vulnerabilities. We recommend you set this to False.
