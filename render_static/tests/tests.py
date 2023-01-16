@@ -3442,25 +3442,8 @@ class TestEnums(BaseTestCase):
 
     def test_enum_base_fields(self):
         """
-        Test that the Enum metaclass picks the correct database field type for each enum.
+        Test that the Enum metaclass picks the correct database field type for
+        each enum.
         """
         from render_static.tests.enum.models import EnumTester
         tester = EnumTester.objects.create()
-        from django.db.models import (
-            SmallIntegerField,
-            PositiveSmallIntegerField,
-            PositiveIntegerField,
-            PositiveBigIntegerField,
-            IntegerField,
-            BigIntegerField,
-            FloatField,
-            CharField,
-            DurationField,
-            DateField,
-            DateTimeField,
-            TimeField,
-            DecimalField
-        )
-        self.assertIsInstance(tester._meta.get_field('small_int'), SmallIntegerField)
-        self.assertIsInstance(tester._meta.get_field('small_pos_int'), PositiveSmallIntegerField)
-

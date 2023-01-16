@@ -138,7 +138,9 @@ class StaticTemplateEngine:
     DEFAULT_ENGINE_CONFIG = [{
         'BACKEND': 'render_static.backends.StaticDjangoTemplates',
         'OPTIONS': {
-            'loaders': ['render_static.loaders.StaticAppDirectoriesBatchLoader'],
+            'loaders': [
+                'render_static.loaders.StaticAppDirectoriesBatchLoader'
+            ],
             'builtins': ['render_static.templatetags.render_static']
         },
     }]
@@ -155,7 +157,8 @@ class StaticTemplateEngine:
             loader
         :param context: A specific dictionary context to use for this template,
             may also be an import string to a callable or a callable that
-            generates a dictionary. This may override global context parameters.
+            generates a dictionary. This may override global context
+            parameters.
         :raises ImproperlyConfigured: If there are any unexpected or
             misconfigured parameters
         """
@@ -547,7 +550,8 @@ class StaticTemplateEngine:
                                 template_name,
                                 engine.get_template(template_name)
                             )
-                        except TemplateDoesNotExist as tdne:  # pragma: no cover
+                        except TemplateDoesNotExist as \
+                                tdne:  # pragma: no cover
                             # this should be impossible w/o a loader bug!
                             if len(templates):
                                 raise RuntimeError(

@@ -1,6 +1,7 @@
-from render_static.javascript import JavaScriptGenerator
-from typing import Generator, Optional
 from enum import Enum
+from typing import Generator, Optional
+
+from render_static.javascript import JavaScriptGenerator
 
 
 class EnumVisitor(JavaScriptGenerator):
@@ -54,11 +55,11 @@ class EnumVisitor(JavaScriptGenerator):
         yield None  # type: ignore
 
     def visit_enum(self, enum: Enum) -> Generator[str, None, None]:
-        for value in enum:
+        for value in enum:  # type: ignore
             yield from self.visit_value(value)
 
-    def visit_value(self, enum_value):
-        
+    def visit_value(self, enum_value) -> Generator[str, None, None]:
+        yield ''
 
 
 class EnumClassWriter(EnumVisitor):
