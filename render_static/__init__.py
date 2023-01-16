@@ -10,13 +10,13 @@ from .context import resolve_context
 from .resource import resource
 from .url_tree import ClassURLWriter, SimpleURLWriter, URLTreeVisitor
 
-VERSION = (1, 1, 4)
+VERSION = (1, 1, 5)
 
 __title__ = 'Django Render Static'
 __version__ = '.'.join(str(i) for i in VERSION)
 __author__ = 'Brian Kohan'
 __license__ = 'MIT'
-__copyright__ = 'Copyright 2020-2022 Brian Kohan'
+__copyright__ = 'Copyright 2020-2023 Brian Kohan'
 
 
 default_app_config = 'render_static.apps.RenderStaticConfig'  # pylint: disable=C0103

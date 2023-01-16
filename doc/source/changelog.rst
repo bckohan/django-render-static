@@ -2,6 +2,13 @@
 Change Log
 ==========
 
+v1.1.5
+====================
+
+* Fixed `Support python 3.11 <https://github.com/bckohan/django-render-static/issues/77>`_
+* Fixed `Drop support for python 3.6 <https://github.com/bckohan/django-render-static/issues/70>`_
+* Fixed `Upgrade build tooling to poetry 1.2 <https://github.com/bckohan/django-render-static/issues/69>`_
+
 v1.1.4
 ====================
 
