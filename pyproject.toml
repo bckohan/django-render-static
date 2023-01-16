@@ -1,6 +1,6 @@
 [tool.poetry]
 name = "django-render-static"
-version = "1.1.5"
+version = "1.1.4"
 description = "Use Django's template engine to render static files at deployment time. Extend Django's url reverse mechanism to JavaScript."
 authors = ["Brian Kohan <bckohan@gmail.com>"]
 license = "MIT"
@@ -61,8 +61,8 @@ doc8 = "^0.11.0"
 darglint = "^1.5.7"
 pytest-cov = "^3.0.0"
 pylint = [
-    { version = "<2.14.0", markers = "python_version < '3.7.2'" },
-    { version = ">=2.14.0", markers = "python_version >= '3.7.2'" },
+    { version = "<2.14", python = "<3.7.2" },
+    { version = "^2.14", python = ">=3.7.2" }
 ]
 sphinx-argparse = "^0.3.0"
 Js2Py = "^0.74"
@@ -73,8 +73,8 @@ pygount = "^1.2.4"
 types-PyYAML = "^6.0"
 coverage = "^6.2"
 importlib-metadata = [
-    { version = "<5.0", markers = "python_version <= '3.7'" },
-    { version = ">=5.0", markers = "python_version > '3.7'" },
+    { version = "<5.0", python = "<=3.7" },
+    { version = ">=5.0", python = ">3.7" },
 ]
 
 [build-system]
