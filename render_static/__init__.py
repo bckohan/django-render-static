@@ -19,9 +19,6 @@ __license__ = 'MIT'
 __copyright__ = 'Copyright 2020-2023 Brian Kohan'
 
 
-default_app_config = 'render_static.apps.RenderStaticConfig'  # pylint: disable=C0103
-
-
 class Jinja2DependencyNeeded:  # pylint: disable=R0903
     """
     Jinja2 is an optional dependency - lazy fail if its use is attempted

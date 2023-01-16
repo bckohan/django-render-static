@@ -156,7 +156,9 @@ try:
             template = super().get_template(template_name)
 
             for app_dir, app in self.app_directories:
-                if normpath(template.origin.name).startswith(normpath(app_dir)):
+                if normpath(template.origin.name).startswith(
+                        normpath(app_dir)
+                ):
                     template.origin = AppOrigin(
                         name=template.origin.name,
                         template_name=template.origin.template_name,
