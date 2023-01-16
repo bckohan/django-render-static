@@ -1,9 +1,9 @@
 """
 Reproduce: https://github.com/bckohan/django-render-static/issues/65
 """
-from .views import TestView
 from django.urls import path
 
+from .views import TestView
 
 urlpatterns = [
     path(

@@ -262,7 +262,6 @@ class URLTreeVisitor(JavaScriptGenerator):
 
         :yield: JavaScript, if any, that should be placed at at the very start
         """
-        ...  # pragma: no cover - abstract
 
     @abstractmethod
     def end_visitation(self) -> Generator[str, None, None]:
@@ -272,7 +271,6 @@ class URLTreeVisitor(JavaScriptGenerator):
 
         :yield: JavaScript, if any, that should be placed at the very end
         """
-        ...  # pragma: no cover - abstract
 
     @abstractmethod
     def enter_namespace(self, namespace) -> Generator[str, None, None]:
@@ -283,7 +281,6 @@ class URLTreeVisitor(JavaScriptGenerator):
         :param namespace: namespace string
         :yield: JavaScript, if any, that should be placed at namespace visitation start
         """
-        ...  # pragma: no cover - abstract
 
     @abstractmethod
     def exit_namespace(self, namespace) -> Generator[str, None, None]:
@@ -293,7 +290,6 @@ class URLTreeVisitor(JavaScriptGenerator):
         :param namespace: namespace string
         :yield: JavaScript, if any, that should be placed at namespace visitation exit
         """
-        ...  # pragma: no cover - abstract
 
     def visit_pattern(  # pylint: disable=R0914, R0915, R0912
             self,
@@ -500,7 +496,6 @@ class URLTreeVisitor(JavaScriptGenerator):
         :param qname: The fully qualified name of the path group
         :yield: JavaScript that should placed at the start of each path group.
         """
-        ...  # pragma: no cover - abstract
 
     @abstractmethod
     def exit_path_group(self, qname: str) -> Generator[str, None, None]:
@@ -511,7 +506,6 @@ class URLTreeVisitor(JavaScriptGenerator):
         :param qname: The fully qualified name of the path group
         :yield: JavaScript that should placed at the end of each path group.
         """
-        ...  # pragma: no cover - abstract
 
     @abstractmethod
     def visit_path(
@@ -530,7 +524,6 @@ class URLTreeVisitor(JavaScriptGenerator):
         :param kwargs: The list of named arguments present in the path, if any
         :yield: JavaScript that should handle the realized path.
         """
-        ...  # pragma: no cover - abstract
 
     def visit_path_group(
         self,

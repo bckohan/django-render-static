@@ -66,7 +66,6 @@ class JavaScriptGenerator(metaclass=ABCMeta):
         :param kwargs: Any named args - used by deriving classes
         :return: The rendered JavaScript string
         """
-        ...  # pragma: no cover
 
     def write_line(self, line: str) -> None:
         """
