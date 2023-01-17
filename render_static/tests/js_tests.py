@@ -6,7 +6,6 @@ import re
 import traceback
 import uuid
 import inspect
-import js2py
 from deepdiff import DeepDiff
 import pytest
 from render_static.tests.tests import (
@@ -65,6 +64,22 @@ class BestEffortEncoder(json.JSONEncoder):
             return str(obj)
 
 
+def run_js_file(file_path):
+    try:
+        return subprocess.check_output(
+            ['node', file_path],
+            stderr=subprocess.STDOUT
+        ).decode('UTF-8').strip()
+    except subprocess.CalledProcessError as cp_err:
+        if cp_err.stderr:
+            return cp_err.stderr.decode('UTF-8').strip()
+        elif cp_err.output:
+            return cp_err.output.decode('UTF-8').strip()
+        elif cp_err.stdout:
+            return cp_err.stdout.decode('UTF-8').strip()
+        return ''
+
+
 @override_settings(STATIC_TEMPLATES={
     'ENGINES': [{
         'BACKEND': 'render_static.backends.StaticDjangoTemplates',
@@ -72,9 +87,18 @@ class BestEffortEncoder(json.JSONEncoder):
             'app_dir': 'custom_templates',
             'loaders': [
                 ('render_static.loaders.StaticLocMemLoader', {
-                    'defines1.js': 'var defines = {\n{{ classes|classes_to_js:"  " }}};',
-                    'defines2.js': 'var defines = {\n{{ modules|modules_to_js }}};',
-                    'defines_error.js': 'var defines = {\n{{ classes|classes_to_js }}};'
+                    'defines1.js':
+                        'var defines = '
+                        '{\n{{ classes|classes_to_js:"  " }}};'
+                        '\nconsole.log(JSON.stringify(defines));',
+                    'defines2.js':
+                        'var defines = '
+                        '{\n{{ modules|modules_to_js }}};'
+                        '\nconsole.log(JSON.stringify(defines));',
+                    'defines_error.js':
+                        'var defines = '
+                        '{\n{{ classes|classes_to_js }}};'
+                        '\nconsole.log(JSON.stringify(defines));'
                 })
             ],
             'builtins': ['render_static.templatetags.render_static']
@@ -84,7 +108,10 @@ class BestEffortEncoder(json.JSONEncoder):
         'defines1.js': {
             'dest': GLOBAL_STATIC_DIR / 'defines1.js',
             'context': {
-                'classes': [defines.MoreDefines, 'render_static.tests.defines.ExtendedDefines']
+                'classes': [
+                    defines.MoreDefines,
+                    'render_static.tests.defines.ExtendedDefines'
+                ]
             }
         },
         'defines2.js': {
@@ -103,45 +130,6 @@ class BestEffortEncoder(json.JSONEncoder):
 })
 class DefinesToJavascriptTest(BaseTestCase):
 
-    class TestJSGenerator(JavaScriptGenerator):
-
-        def generate(self, qname, kwargs=None, args=None, query=None):
-
-            def do_gen():
-                yield 'try {' if self.catch else ''
-                self.indent()
-                if self.class_mode:
-                    yield f'const urls = new {self.class_mode}();'
-                    yield 'console.log('
-                    self.indent()
-                    yield f'urls.reverse('
-                    self.indent()
-                    yield f'"{qname}",{"" if self.legacy_args else " {"}'
-                else:
-                    accessor_str = ''.join([f'["{comp}"]' for comp in qname.split(':')])
-                    yield 'console.log('
-                    self.indent()
-                    yield f'urls{accessor_str}({"" if self.legacy_args else "{"}'
-                    self.indent()
-                yield f'{"" if self.legacy_args else "kwargs: "}' \
-                      f'{json.dumps(kwargs, cls=BestEffortEncoder)}{"," if args or query else ""}'
-                if args:
-                    yield f'{"" if self.legacy_args else "args: "}' \
-                          f'{json.dumps(args, cls=BestEffortEncoder)}{"," if query else ""}'
-                if query:
-                    yield f'{"" if self.legacy_args else "query: "}' \
-                          f'{json.dumps(query, cls=BestEffortEncoder)}'
-                self.outdent(2)
-                yield f'{"" if self.legacy_args else "}"}));'
-                if self.catch:
-                    self.outdent()
-                    yield '} catch (error) {}'
-
-            for line in do_gen():
-                self.write_line(line)
-
-            return self.rendered_
-
     def diff_modules(self, js_file, py_modules):
         py_classes = []
         for module in py_modules:
@@ -154,27 +142,36 @@ class DefinesToJavascriptTest(BaseTestCase):
 
         return self.diff_classes(js_file, py_classes)
 
+    def get_js_structure(self, js_file):  # pragma: no cover
+        json_structure = run_js_file(js_file)
+        if json_structure:
+            return json.loads(json_structure)
+        return None
+
     def diff_classes(self, js_file, py_classes):
         """
-        Given a javascript file and a list of classes, evaluate the javascript code into a python
-        dictionary and determine if that dictionary matches the upper case parameters on the defines
-        class.
+        Given a javascript file and a list of classes, evaluate the javascript
+        code into a python dictionary and determine if that dictionary matches
+        the upper case parameters on the defines class.
         """
         members = {}
         with open(js_file, 'r') as js:
-            js_dict = js2py.eval_js(js.read()).to_dict()
+            js_dict = self.get_js_structure(js_file)
             for cls in py_classes:
                 if isinstance(cls, str):
                     cls = import_string(cls)
                 for mcls in reversed(cls.__mro__):
-                    new_mems = {n: getattr(mcls, n) for n in dir(mcls) if n.isupper()}
+                    new_mems = {
+                        n: getattr(mcls, n) for n in dir(mcls) if n.isupper()
+                    }
                     if len(new_mems) > 0:
                         members.setdefault(cls.__name__, {}).update(new_mems)
 
         return DeepDiff(
             members,
             js_dict,
-            ignore_type_in_groups=[(tuple, list)]  # treat tuples and lists the same
+            # treat tuples and lists the same
+            ignore_type_in_groups=[(tuple, list)]
         )
 
     def test_classes_to_js(self):
@@ -210,7 +207,10 @@ class DefinesToJavascriptTest(BaseTestCase):
             self.assertFalse(jf.readline().startswith(' '))
 
     def test_classes_to_js_error(self):
-        self.assertRaises(CommandError, lambda: call_command('renderstatic', 'defines_error.js'))
+        self.assertRaises(
+            CommandError,
+            lambda: call_command('renderstatic', 'defines_error.js')
+        )
 
     @override_settings(STATIC_TEMPLATES={
         'ENGINES': [{
@@ -218,17 +218,19 @@ class DefinesToJavascriptTest(BaseTestCase):
             'OPTIONS': {
                 'loaders': [
                     ('render_static.loaders.StaticLocMemLoader', {
-                        'defines1.js': ('var defines = '
-                                        '{\n{{ '
-                                        '"render_static.tests.defines.MoreDefines,'
-                                        'render_static.tests.defines.ExtendedDefines"|split:","'
-                                        '|classes_to_js:"  " }}};'
+                        'defines1.js': (
+                            'var defines = {\n{{ '
+                            '"render_static.tests.defines.MoreDefines,'
+                            'render_static.tests.defines.ExtendedDefines"'
+                            '|split:","|classes_to_js:"  " }}};'
+                            '\nconsole.log(JSON.stringify(defines));'
                         ),
-                        'defines2.js': ('var defines = '
-                                        '{\n{{ '
-                                        '"render_static.tests.defines '
-                                        'render_static.tests.defines2"|split'
-                                        '|modules_to_js:"  " }}};'
+                        'defines2.js': (
+                            'var defines = {\n{{ '
+                            '"render_static.tests.defines '
+                            'render_static.tests.defines2"|split'
+                            '|modules_to_js:"  " }}};'
+                            '\nconsole.log(JSON.stringify(defines));'
                         )
                     })
                 ],
@@ -252,7 +254,10 @@ class DefinesToJavascriptTest(BaseTestCase):
         self.assertEqual(
             self.diff_modules(
                 js_file=GLOBAL_STATIC_DIR / 'defines2.js',
-                py_modules=['render_static.tests.defines', 'render_static.tests.defines2']
+                py_modules=[
+                    'render_static.tests.defines',
+                    'render_static.tests.defines2'
+                ]
             ),
             {}
         )
@@ -349,19 +354,8 @@ class URLJavascriptMixin:
         with open(tmp_file_pth, 'a+') as tmp_js:
             for line in js_generator.generate(qname, kwargs, args, query):
                 tmp_js.write(f'{line}')
-        try:
-            return subprocess.check_output([
-                'node',
-                tmp_file_pth
-            ], stderr=subprocess.STDOUT).decode('UTF-8').strip()
-        except subprocess.CalledProcessError as cp_err:
-            if cp_err.stderr:
-                return cp_err.stderr.decode('UTF-8').strip()
-            elif cp_err.output:
-                return cp_err.output.decode('UTF-8').strip()
-            elif cp_err.stdout:
-                return cp_err.stdout.decode('UTF-8').strip()
-            return ''
+
+        return run_js_file(tmp_file_pth)
 
     def compare(
             self,
@@ -475,8 +469,7 @@ class URLSToJavascriptTest(URLJavascriptMixin, BaseTestCase):
     })
     def test_full_url_dump_class_es6(self):
         """
-        This ES6 test is horrendously slow when not using node for reasons mentioned by the Js2Py
-        warning
+        Test es6 url class.
         """
         self.class_mode = ClassURLWriter.class_name_
         self.test_full_url_dump(es5=False)
@@ -545,8 +538,7 @@ class URLSToJavascriptTest(URLJavascriptMixin, BaseTestCase):
     })
     def test_full_url_dump_class(self):
         """
-        This ES6 test is horrendously slow when not using node for reasons mentioned by the Js2Py
-        warning
+        Test ES5 classes.
         """
         self.class_mode = ClassURLWriter.class_name_
         self.test_full_url_dump(es5=True)
@@ -567,8 +559,7 @@ class URLSToJavascriptTest(URLJavascriptMixin, BaseTestCase):
     })
     def test_full_url_dump_class_legacy_args(self):
         """
-        This ES6 test is horrendously slow when not using node for reasons mentioned by the Js2Py
-        warning
+        This ES5 classes
         """
         self.class_mode = ClassURLWriter.class_name_
         self.legacy_args = True
@@ -591,8 +582,7 @@ class URLSToJavascriptTest(URLJavascriptMixin, BaseTestCase):
     })
     def test_full_url_dump_es6(self):
         """
-        This ES6 test is horrendously slow when not using node for reasons mentioned by the Js2Py
-        warning
+        Test ES6 classes.
         """
         self.test_full_url_dump(es5=False)
 
