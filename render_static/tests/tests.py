@@ -21,6 +21,7 @@ STATIC_TEMP_DIR = Path(__file__).parent / 'static_templates'
 STATIC_TEMP_DIR2 = Path(__file__).parent / 'static_templates2'
 EXPECTED_DIR = Path(__file__).parent / 'expected'
 ENUM_DIR = Path(__file__).parent / 'enum'
+LOCAL_STATIC_DIR = Path(__file__).parent / 'local_static'
 
 # create pickle files each time, in case python pickle format changes between python versions
 BAD_PICKLE = Path(__file__).parent / 'resources' / 'bad.pickle'
@@ -70,6 +71,7 @@ class BaseTestCase(TestCase):
     to_remove = [
         APP1_STATIC_DIR,
         GLOBAL_STATIC_DIR,
+        LOCAL_STATIC_DIR,
         APP2_STATIC_DIR / 'app1',
         APP2_STATIC_DIR / 'app2',
         APP2_STATIC_DIR / 'exclusive'

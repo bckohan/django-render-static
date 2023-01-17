@@ -29,6 +29,7 @@ encouraged! Especially additional template tags and filters!
    installation
    tldr
    configuration
+   runtimes
    templatetags
    commands
    reference
