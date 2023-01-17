@@ -22,6 +22,7 @@
 .. |Test Status| image:: https://github.com/bckohan/django-render-static/workflows/test/badge.svg
    :target: https://github.com/bckohan/django-render-static/actions
 
+
 django-render-static
 #######################
 
