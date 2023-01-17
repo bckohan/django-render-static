@@ -43,7 +43,9 @@ Your defines/model classes might look like this::
 
         define_field = models.CharField(choices=Defines.DEFINES, max_length=2)
 
-And your defines.js template might look like this::
+And your defines.js template might look like this:
+
+.. code-block:: js+django
 
     var defines = {
         {{ "my_app.defines.Defines"|split|classes_to_js }}
@@ -51,7 +53,9 @@ And your defines.js template might look like this::
 
 
 If someone wanted to use your defines template to generate a JavaScript version of your Python
-class their settings file might look like this::
+class their settings file might look like this:
+
+.. code-block:: python
 
     STATIC_TEMPLATES = {
         'templates': {
@@ -72,7 +76,9 @@ This would create the following file::
             └── my_app
                 └── defines.js
 
-Which would look like this::
+Which would look like this:
+
+.. code-block:: javascript
 
     var defines = {
         Defines: {
@@ -93,7 +99,9 @@ URL reverse functions
 You'd like to be able to call something like `reverse` on path names from your client JavaScript
 code the same way you do from Python Django code. You don't want to expose your admin paths though.
 
-Your settings file might look like::
+Your settings file might look like:
+
+.. code-block:: python
 
     from pathlib import Path
 
@@ -133,7 +141,9 @@ Then call :ref:`renderstatic` before `collectstatic`::
     $> ./manage.py renderstatic
     $> ./manage.py collectstatic
 
-If your root urls.py looks like this::
+If your root urls.py looks like this:
+
+.. code-block:: python
 
     from django.contrib import admin
     from django.urls import include, path
@@ -147,14 +157,29 @@ If your root urls.py looks like this::
         path('different/<int:arg1>/<str:arg2>', MyView.as_view(), name='different'),
     ]
 
-Then urls.js will look like this::
+Then urls.js will look like this:
+
+.. code-block:: javascript
 
     class URLResolver {
 
+        constructor(options=null) {
+            this.options = options || {};
+            if (this.options.hasOwnProperty("namespace")) {
+                this.namespace = this.options.namespace;
+                if (!this.namespace.endsWith(":")) {
+                    this.namespace += ':';
+                }
+            } else {
+                this.namespace = "";
+            }
+        }
+
         match(kwargs, args, expected) {
             if (Array.isArray(expected)) {
-                return Object.keys(kwargs).length === expected.length &&
-                    expected.every(value => kwargs.hasOwnProperty(value));
+                return Object.keys(kwargs).length === expected.length && expected.every(
+                    value => kwargs.hasOwnProperty(value)
+                );
             } else if (expected) {
                 return args.length === expected;
             } else {
@@ -162,14 +187,35 @@ Then urls.js will look like this::
             }
         }
 
-        reverse(qname, kwargs={}, args=[]) {
+        reverse(qname, options={}, args=[], query={}) {
+            if (this.namespace) {
+                qname = `${this.namespace}${qname.replace(this.namespace+":", "")}`;
+            }
+            const kwargs = ((options.kwargs || null) || options) || {};
+            args = ((options.args || null) || args) || [];
+            query = ((options.query || null) || query) || {};
             let url = this.urls;
             for (const ns of qname.split(':')) {
                 if (ns && url) { url = url.hasOwnProperty(ns) ? url[ns] : null; }
             }
             if (url) {
                 let pth = url(kwargs, args);
-                if (typeof pth === "string") { return pth; }
+                if (typeof pth === "string") {
+                    if (Object.keys(query).length !== 0) {
+                        const params = new URLSearchParams();
+                        for (const [key, value] of Object.entries(query)) {
+                            if (value === null || value === '')
+                                continue;
+                            if (Array.isArray(value))
+                                value.forEach(element => params.append(key, element));
+                            else
+                                params.append(key, value);
+                        }
+                        const qryStr = params.toString();
+                        if (qryStr) return `${pth.replace(/\/+$/, '')}?${qryStr}`;
+                    }
+                    return pth;
+                }
             }
             throw new TypeError(`No reversal available for parameters at path: ${qname}`);
         }
@@ -187,7 +233,9 @@ Then urls.js will look like this::
         }
     };
 
-So you can now fetch paths like this::
+So you can now fetch paths like this:
+
+.. code-block:: javascript
 
     // /different/143/emma
     const urls = new URLResolver();

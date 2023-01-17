@@ -892,7 +892,25 @@ class ClassURLWriter(URLTreeVisitor):
         :yield: JavaScript LoC for the reversal class
         """
         if self.es5_:
-            yield f'{self.class_name_} = function() {{}};'
+            yield f'{self.class_name_} = function(options=null) {{'
+            self.indent()
+            yield 'this.options = options || {};'
+            yield 'if (this.options.hasOwnProperty("namespace")) {'
+            self.indent()
+            yield 'this.namespace = this.options.namespace;'
+            yield 'if (!this.namespace.endsWith(":")) {'
+            self.indent()
+            yield 'this.namespace += ":";'
+            self.outdent()
+            yield '}'
+            self.outdent()
+            yield '} else {'
+            self.indent()
+            yield 'this.namespace = "";'
+            self.outdent()
+            yield '}'
+            self.outdent()
+            yield '};'
             yield ''
             yield f'{self.class_name_}.prototype = {{'
             self.indent()
@@ -919,6 +937,14 @@ class ClassURLWriter(URLTreeVisitor):
             yield '},'
             yield 'reverse: function(qname, options, args, query) {'
             self.indent()
+            yield 'if (this.namespace) {'
+            self.indent()
+            yield (
+                'qname = `${this.namespace}'
+                '${qname.replace(this.namespace, "")}`;'
+            )
+            self.outdent()
+            yield '}'
             yield 'const kwargs = ((options.kwargs || null) || options) || {};'
             yield 'args = ((options.args || null) || args) || [];'
             yield 'query = ((options.query || null) || query) || {};'
@@ -970,6 +996,26 @@ class ClassURLWriter(URLTreeVisitor):
             yield f'class {self.class_name_} {{'
             self.indent()
             yield ''
+            yield 'constructor(options=null) {'
+            self.indent()
+            yield 'this.options = options || {};'
+            yield 'if (this.options.hasOwnProperty("namespace")) {'
+            self.indent()
+            yield 'this.namespace = this.options.namespace;'
+            yield 'if (!this.namespace.endsWith(":")) {'
+            self.indent()
+            yield 'this.namespace += ":";'
+            self.outdent()
+            yield '}'
+            self.outdent()
+            yield '} else {'
+            self.indent()
+            yield 'this.namespace = "";'
+            self.outdent()
+            yield '}'
+            self.outdent()
+            yield '}'
+            yield ''
             yield 'match(kwargs, args, expected) {'
             self.indent()
             yield 'if (Array.isArray(expected)) {'
@@ -994,6 +1040,14 @@ class ClassURLWriter(URLTreeVisitor):
             yield ''
             yield 'reverse(qname, options={}, args=[], query={}) {'
             self.indent()
+            yield 'if (this.namespace) {'
+            self.indent()
+            yield (
+                'qname = `${this.namespace}'
+                '${qname.replace(this.namespace, "")}`;'
+            )
+            self.outdent()
+            yield '}'
             yield 'const kwargs = ((options.kwargs || null) || options) || {};'
             yield 'args = ((options.args || null) || args) || [];'
             yield 'query = ((options.query || null) || query) || {};'

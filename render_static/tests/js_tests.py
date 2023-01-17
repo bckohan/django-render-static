@@ -17,10 +17,10 @@ from django.core.management import call_command, CommandError
 from django.urls import reverse
 from django.urls.exceptions import NoReverseMatch
 from render_static import placeholders
-from render_static.tests import bad_pattern
+from render_static.tests import bad_pattern, defines
+from render_static.tests.tests import LOCAL_STATIC_DIR
 from render_static.url_tree import ClassURLWriter
 from render_static.javascript import JavaScriptGenerator
-from render_static.tests import defines
 from django.utils.module_loading import import_string
 from django.conf import settings
 
@@ -286,10 +286,11 @@ class URLJavascriptMixin:
         legacy_args = False  # generate code that uses separate arguments to js reverse calls
         catch = True
 
-        def __init__(self, class_mode=None, catch=True, legacy_args=False, **kwargs):
+        def __init__(self, class_mode=None, catch=True, legacy_args=False, default_ns=None, **kwargs):
             self.class_mode = class_mode
             self.catch = catch
             self.legacy_args = legacy_args
+            self.default_ns = default_ns
             super().__init__(**kwargs)
 
         def generate(self, qname, kwargs=None, args=None, query=None):
@@ -297,7 +298,10 @@ class URLJavascriptMixin:
                 yield 'try {' if self.catch else ''
                 self.indent()
                 if self.class_mode:
-                    yield f'const urls = new {self.class_mode}();'
+                    if self.default_ns:
+                        yield f'const urls = new {self.class_mode}({{namespace: "{self.default_ns}"}});'
+                    else:
+                        yield f'const urls = new {self.class_mode}();'
                     yield 'console.log('
                     self.indent()
                     yield f'urls.reverse('
@@ -335,7 +339,8 @@ class URLJavascriptMixin:
             args=None,
             query=None,
             js_generator=None,
-            url_path=GLOBAL_STATIC_DIR / 'urls.js'
+            url_path=GLOBAL_STATIC_DIR / 'urls.js',
+            default_ns=None
     ):  # pragma: no cover
         if kwargs is None:
             kwargs = {}
@@ -346,7 +351,8 @@ class URLJavascriptMixin:
         if js_generator is None:
             js_generator = URLJavascriptMixin.TestJSGenerator(
                 self.class_mode,
-                legacy_args=self.legacy_args
+                legacy_args=self.legacy_args,
+                default_ns=default_ns
             )
         tmp_file_pth = GLOBAL_STATIC_DIR / f'get_{url_path.stem}.js'
 
@@ -410,7 +416,6 @@ class URLJavascriptMixin:
     def convert_idx_to_type(arr, idx, typ):
         arr[idx] = typ(arr[idx])
         return arr
-
 
 
 @override_settings(STATIC_TEMPLATES={
@@ -1953,3 +1958,101 @@ class Bug65TestCase(URLJavascriptMixin, BaseTestCase):
                 reverse('bug65', kwargs=kwargs),
                 self.get_url_from_js('bug65', kwargs)
             )
+
+
+@override_settings(
+    INSTALLED_APPS=[
+        'render_static.tests.spa',
+        'render_static',
+        'django.contrib.auth',
+        'django.contrib.contenttypes',
+        'django.contrib.sessions',
+        'django.contrib.sites',
+        'django.contrib.messages',
+        'django.contrib.staticfiles',
+        'django.contrib.admin'
+    ],
+    ROOT_URLCONF='render_static.tests.spa_urls',
+    STATICFILES_DIRS=[
+        ('spa', GLOBAL_STATIC_DIR),
+    ],
+    STATIC_TEMPLATES={
+        'templates': {
+            'spa/urls.js': {
+                'context': {
+                    'include': ['spa1', 'spa2']
+                },
+                'dest': str(GLOBAL_STATIC_DIR / 'urls.js')
+            }
+        }
+    }
+)
+class TestDefaultNamespaces(URLJavascriptMixin, BaseTestCase):
+    """
+    todo - could use a multi-level test when that bug is fixed.
+    """
+
+    def do_test(self):
+        call_command('renderstatic', 'spa/urls.js')
+
+        self.assertEqual(
+            reverse('spa1:index'),
+            self.get_url_from_js('spa1:index')
+        )
+        self.assertEqual(
+            reverse('spa1:index'),
+            self.get_url_from_js('spa1:index', default_ns='spa1')
+        )
+        self.assertEqual(
+            reverse('spa1:index'),
+            self.get_url_from_js('spa1:index', default_ns='spa1:')
+        )
+        self.assertEqual(
+            reverse('spa1:index'),
+            self.get_url_from_js('index', default_ns='spa1')
+        )
+        self.assertEqual(
+            reverse('spa1:index'),
+            self.get_url_from_js('index', default_ns='spa1:')
+        )
+
+        self.assertEqual(
+            reverse('spa2:index'),
+            self.get_url_from_js('spa2:index')
+        )
+        self.assertEqual(
+            reverse('spa2:index'),
+            self.get_url_from_js('spa2:index', default_ns='spa2')
+        )
+        self.assertEqual(
+            reverse('spa2:index'),
+            self.get_url_from_js('index', default_ns='spa2')
+        )
+
+    def test_es6_default_namespace(self):
+        self.es6_mode = True
+        self.url_js = None
+        self.class_mode = ClassURLWriter.class_name_
+        self.do_test()
+
+    @override_settings(
+        STATIC_TEMPLATES={
+            'templates': {
+                'spa/urls.js': {
+                    'context': {
+                        'include': ['spa1', 'spa2'],
+                        'es5': True
+                    },
+                    'dest': str(GLOBAL_STATIC_DIR / 'urls.js')
+                }
+            }
+        }
+    )
+    def test_es5_default_namespace(self):
+        self.es5_mode = True
+        self.url_js = None
+        self.class_mode = ClassURLWriter.class_name_
+        self.do_test()
+
+    # def tearDown(self):
+    #    pass

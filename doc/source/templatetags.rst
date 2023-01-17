@@ -20,7 +20,9 @@ Filters
 This is a simple wrapper around Python's split call. A frequent use case of this library might be
 passing lists of classes/modules/includes/excludes into the other tags in this library. This allows
 users to embed those lists directly in templates without having to provide them in a template
-context. The first argument is the string to split and the second is the separator::
+context. The first argument is the string to split and the second is the separator:
+
+.. code-block:: htmldjango
 
     {{ "my_app.mod.Class, my_app.mod.OtherClass"|split:"," }}
 
@@ -39,7 +41,9 @@ Defines-style attributes are attributes that:
 
 The filter accepts two arguments the first is a list of class types or string import paths to
 classes and the second is the string to use for indentation. The indentation string defaults to
-'\t'::
+'\t':
+
+.. code-block:: js+django
 
     var defines = {
         {{ class_list|classes_to_js:"\t" }}
@@ -49,13 +53,17 @@ classes and the second is the string to use for indentation. The indentation str
     Note that the filter does not produce valid JavaScript on its own. It must be embedded in an
     object as above.
 
-For instance if the class_list context variable contained the following::
+For instance if the class_list context variable contained the following:
+
+.. code-block:: python
 
     context: {
         'class_list': ['myapp.defines.TestDefines']
     }
 
-And `myapp.defines.TestDefines` contained the following::
+And `myapp.defines.TestDefines` contained the following:
+
+.. code-block:: python
 
     class TestDefines(object):
 
@@ -73,7 +81,9 @@ And `myapp.defines.TestDefines` contained the following::
             'Numeric': 0
         }
 
-The generated source would look like::
+The generated source would look like:
+
+.. code-block:: javascript
 
     var defines = {
       TestDefines: {
@@ -96,7 +106,9 @@ The generated source would look like::
 ~~~~~~~~~~~~~~~~~
 
 This filter pulls out all the classes from a list of modules and feeds them through
-``classes_to_js``. It also takes one additional argument, the `indent` string to use::
+``classes_to_js``. It also takes one additional argument, the `indent` string to use:
+
+.. code-block:: htmldjango
 
     {{ module_list|modules_to_js:"\t" }}
 
@@ -165,7 +177,9 @@ are included (everything else is by default excluded).
     generally known its best practice to exclude them from URL generation.
 
 For instance a very common pattern would be to generate urls for every path except the admin
-paths. Given the following ROOT_URLCONF::
+paths. Given the following ROOT_URLCONF:
+
+.. code-block:: python
 
     from django.contrib import admin
     from django.urls import include, path
@@ -179,19 +193,25 @@ paths. Given the following ROOT_URLCONF::
         path('different/<int:arg1>/<str:arg2>', MyView.as_view(), name='different'),
     ]
 
-When given the context::
+When given the context:
+
+.. code-block:: python
 
     context = {
         'exclude': ['admin']
     }
 
-And passed through::
+And passed through:
+
+.. code-block:: js+django
 
     var urls = {
         {% urls_to_js indent="\t" exclude=exclude %}
     };
 
-Would generate::
+Would generate:
+
+.. code-block:: javascript
 
     var urls = {
         "simple": (options={}, args=[]) => {
@@ -218,7 +238,9 @@ Would generate::
 
 It is strongly encouraged as a best practice to use `path` instead of `re_path`. If an
 argument requires a regex that isn't supported by the existing Django `converter` set it is very
-easy to implement new ones::
+easy to implement new ones:
+
+.. code-block:: python
 
     from django.urls.converters import register_converter
 
@@ -244,12 +266,16 @@ generated JavaScript. By including the attribute on your converter you ensure th
 converter will be able to run `urls_to_js` without error. And you don't even have to
 include `django-render-static` as a dependency if you aren't using it! Alternatively if you're
 using someone else's converter and they haven't supplied a ``placeholder`` attribute, you can
-register one::
+register one:
+
+.. code-block:: python
 
     from render_static.placeholders import register_converter_placeholder
     register_converter_placeholder(YearConverter, 2000)
 
-Of if you're using `re_path` instead::
+Of if you're using `re_path` instead:
+
+.. code-block:: python
 
     from render_static.placeholders import register_variable_placeholder
 
@@ -270,13 +296,29 @@ match the path.
 
 A visitor class that produces ES5/6 JavaScript class is now included. This class is not used by
 default, but should be the preferred visitor for larger, more complex URL trees - mostly because
-it minifies better than the default `SimpleURLWriter`. To use the class writer::
+it minifies better than the default `SimpleURLWriter`. To use the class writer:
+
+.. code-block:: htmldjango
 
     {% urls_to_js visitor='render_static.ClassURLWriter' class_name='URLReverser' %}
 
-This will generate an ES6 class by default::
+This will generate an ES6 class by default:
+
+.. code-block:: javascript
 
     class URLResolver {
+
+        constructor(options=null) {
+            this.options = options || {};
+            if (this.options.hasOwnProperty("namespace")) {
+                this.namespace = this.options.namespace;
+                if (!this.namespace.endsWith(":")) {
+                    this.namespace += ':';
+                }
+            } else {
+                this.namespace = "";
+            }
+        }
 
         match(kwargs, args, expected) {
             if (Array.isArray(expected)) {
@@ -291,6 +333,9 @@ This will generate an ES6 class by default::
         }
 
         reverse(qname, options={}, args=[], query={}) {
+            if (this.namespace) {
+                qname = `${this.namespace}${qname.replace(this.namespace+":", "")}`;
+            }
             const kwargs = ((options.kwargs || null) || options) || {};
             args = ((options.args || null) || args) || [];
             query = ((options.query || null) || query) || {};
@@ -334,10 +379,12 @@ This will generate an ES6 class by default::
     };
 
 
-Which can be used as::
+Which can be used as:
+
+.. code-block:: javascript
 
     // /different/143/emma
-    const urls = new URLReverser();
+    const urls = new URLResolver();
     urls.reverse('different', {'arg1': 143, 'arg2': 'emma'});
 
 Note that the reverse function can take an options dictionary containing named parameters instead
@@ -347,7 +394,9 @@ of passing kwargs and args positionally:
     * **args** - analogous to args in Django's `reverse`
     * **query** - optional GET query parameters for the URL string
 
-For instance::
+For instance:
+
+.. code-block:: javascript
 
     // /different/143/emma?intarg=0&listarg=A&listarg=B&listarg=C
     url.reverse(
@@ -362,3 +411,14 @@ For instance::
     );
 
 The default `class_name` is URLResolver. Reverse should behave exactly as Django's `reverse`.
+
+The URLResolver accepts an optional options object. This object currently supports one parameter: `namespace` which
+is a default namespace that will be prepended if it is not already present to any reverse requests made on the resolver:
+
+.. code-block:: javascript
+
+    const urls = new URLResolver({namespace: 'ns'});
+
+    // now these calls are equivalent
+    urls.reverse('ns:name1')
+    urls.reverse('name1')
