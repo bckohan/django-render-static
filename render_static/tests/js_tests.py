@@ -425,7 +425,7 @@ class URLJavascriptMixin:
         'OPTIONS': {
             'loaders': [
                 ('render_static.loaders.StaticLocMemLoader', {
-                    'urls.js': 'var urls = {\n{% urls_to_js es5=True%}};'
+                    'urls.js': 'var urls = {\n{% urls_to_js visitor="render_static.SimpleURLWriter" es5=True%}};'
                 })
             ],
             'builtins': ['render_static.templatetags.render_static']
@@ -511,7 +511,7 @@ class URLSToJavascriptTest(URLJavascriptMixin, BaseTestCase):
                 'loaders': [
                     ('render_static.loaders.StaticLocMemLoader', {
                         'urls.js': 'var urls = {\n'
-                                   '{% urls_to_js include=include %}'
+                                   '{% urls_to_js visitor="render_static.SimpleURLWriter" include=include %}'
                                    '\n};'
                     })
                 ],
@@ -579,7 +579,7 @@ class URLSToJavascriptTest(URLJavascriptMixin, BaseTestCase):
             'OPTIONS': {
                 'loaders': [
                     ('render_static.loaders.StaticLocMemLoader', {
-                        'urls.js': 'var urls = {\n{% urls_to_js %}};'
+                        'urls.js': 'var urls = {\n{% urls_to_js visitor="render_static.SimpleURLWriter" %}};'
                     })
                 ],
                 'builtins': ['render_static.templatetags.render_static']
@@ -598,7 +598,7 @@ class URLSToJavascriptTest(URLJavascriptMixin, BaseTestCase):
             'OPTIONS': {
                 'loaders': [
                     ('render_static.loaders.StaticLocMemLoader', {
-                        'urls.js': 'var urls = {\n{% urls_to_js %}};'
+                        'urls.js': 'var urls = {\n{% urls_to_js visitor="render_static.SimpleURLWriter" %}};'
                     })
                 ],
                 'builtins': ['render_static.templatetags.render_static']
@@ -775,6 +775,7 @@ class URLSToJavascriptTest(URLJavascriptMixin, BaseTestCase):
                     ('render_static.loaders.StaticLocMemLoader', {
                         'urls.js': 'var urls = {\n'
                                    '{% urls_to_js '
+                                        'visitor="render_static.SimpleURLWriter" '
                                         'es5=True '
                                         'include=include '
                                         'exclude=exclude '
@@ -869,6 +870,7 @@ class URLSToJavascriptTest(URLJavascriptMixin, BaseTestCase):
                     ('render_static.loaders.StaticLocMemLoader', {
                         'urls.js': 'var urls = {\n'
                                    '{% urls_to_js '
+                                        'visitor="render_static.SimpleURLWriter" '
                                         'es5=True '
                                         'include=include '
                                         'exclude=exclude '
@@ -959,6 +961,7 @@ class URLSToJavascriptTest(URLJavascriptMixin, BaseTestCase):
                         'urls.js': 'var urls = {\n'
                                    '{% urls_to_js '
                                         'url_conf=url_mod '
+                                        'visitor="render_static.SimpleURLWriter" '
                                         'include=include '
                                         'exclude=exclude '
                                    '%}};'
@@ -1051,6 +1054,7 @@ class URLSToJavascriptTest(URLJavascriptMixin, BaseTestCase):
                         'urls.js': 'var urls = {\n'
                                    '{% urls_to_js '
                                         'url_conf="render_static.tests.urls" '
+                                        'visitor="render_static.SimpleURLWriter" '
                                         'include=include '
                                         'exclude=exclude '
                                    '%}};'
@@ -1474,7 +1478,7 @@ class URLSToJavascriptOffNominalTest(URLJavascriptMixin, BaseTestCase):
             'OPTIONS': {
                 'loaders': [
                     ('render_static.loaders.StaticLocMemLoader', {
-                        'urls.js': 'var urls = {\n{% urls_to_js include=include %}};'
+                        'urls.js': 'var urls = {\n{% urls_to_js visitor="render_static.SimpleURLWriter" include=include %}};'
                     })
                 ],
                 'builtins': ['render_static.templatetags.render_static']
@@ -1509,7 +1513,7 @@ class URLSToJavascriptOffNominalTest(URLJavascriptMixin, BaseTestCase):
             'OPTIONS': {
                 'loaders': [
                     ('render_static.loaders.StaticLocMemLoader', {
-                        'urls.js': 'var urls = {\n{% urls_to_js include=include %}};'
+                        'urls.js': 'var urls = {\n{% urls_to_js visitor="render_static.SimpleURLWriter" include=include %}};'
                     })
                 ],
                 'builtins': ['render_static.templatetags.render_static']
@@ -1541,7 +1545,7 @@ class URLSToJavascriptOffNominalTest(URLJavascriptMixin, BaseTestCase):
             'OPTIONS': {
                 'loaders': [
                     ('render_static.loaders.StaticLocMemLoader', {
-                        'urls.js': 'var urls = {\n{% urls_to_js include=include %}};'
+                        'urls.js': 'var urls = {\n{% urls_to_js visitor="render_static.SimpleURLWriter" include=include %}};'
                     })
                 ],
                 'builtins': ['render_static.templatetags.render_static']
@@ -1583,7 +1587,7 @@ class URLSToJavascriptOffNominalTest(URLJavascriptMixin, BaseTestCase):
             'OPTIONS': {
                 'loaders': [
                     ('render_static.loaders.StaticLocMemLoader', {
-                        'urls.js': 'var urls = {\n{% urls_to_js url_conf=url_mod %}};'
+                        'urls.js': 'var urls = {\n{% urls_to_js visitor="render_static.SimpleURLWriter" url_conf=url_mod %}};'
                     })
                 ],
                 'builtins': ['render_static.templatetags.render_static']
@@ -1606,7 +1610,7 @@ class URLSToJavascriptOffNominalTest(URLJavascriptMixin, BaseTestCase):
             'OPTIONS': {
                 'loaders': [
                     ('render_static.loaders.StaticLocMemLoader', {
-                        'urls.js': 'var urls = {\n{% urls_to_js url_conf=url_mod %}};'
+                        'urls.js': 'var urls = {\n{% urls_to_js visitor="render_static.SimpleURLWriter" url_conf=url_mod %}};'
                     })
                 ],
                 'builtins': ['render_static.templatetags.render_static']
@@ -1647,14 +1651,12 @@ class URLSToJavascriptParametersTest(URLJavascriptMixin, BaseTestCase):
                 'loaders': [
                     ('render_static.loaders.StaticLocMemLoader', {
                         'urls.js': '{% urls_to_js '
-                                   'visitor="render_static.ClassURLWriter" '
                                    'es5=True '
                                    'raise_on_not_found=False '
                                    'indent=None '
                                    'include=include '
                                    '%}',
                         'urls2.js': '{% urls_to_js '
-                                   'visitor="render_static.ClassURLWriter" '
                                    'es5=True '
                                    'raise_on_not_found=True '
                                    'indent="" '
@@ -1662,11 +1664,13 @@ class URLSToJavascriptParametersTest(URLJavascriptMixin, BaseTestCase):
                                    '%}',
                         'urls3.js': 'var urls = {\n{% urls_to_js '
                                    'es5=True '
+                                   'visitor="render_static.SimpleURLWriter" '
                                    'raise_on_not_found=False '
                                    'indent=None '
                                    'include=include '
                                    '%}}\n',
                         'urls4.js': 'var urls = {\n{% urls_to_js '
+                                    'visitor="render_static.SimpleURLWriter" '
                                     'es5=True '
                                     'raise_on_not_found=True '
                                     'indent="" '
@@ -1759,23 +1763,23 @@ class URLSToJavascriptParametersTest(URLJavascriptMixin, BaseTestCase):
                 'loaders': [
                     ('render_static.loaders.StaticLocMemLoader', {
                         'urls.js': '{% urls_to_js '
-                                   'visitor="render_static.ClassURLWriter" '
                                    'raise_on_not_found=False '
                                    'indent=None '
                                    'include=include '
                                    '%}',
                         'urls2.js': '{% urls_to_js '
-                                   'visitor="render_static.ClassURLWriter" '
                                    'raise_on_not_found=True '
                                    'indent="" '
                                    'include=include '
                                    '%}',
                         'urls3.js': 'var urls = {\n{% urls_to_js '
+                                   'visitor="render_static.SimpleURLWriter" '
                                    'raise_on_not_found=False '
                                    'indent=None '
                                    'include=include '
                                    '%}}\n',
                         'urls4.js': 'var urls = {\n{% urls_to_js '
+                                    'visitor="render_static.SimpleURLWriter" '
                                     'raise_on_not_found=True '
                                     'indent="" '
                                     'include=include '
