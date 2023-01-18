@@ -9,7 +9,7 @@ from typing import Iterable, Optional, Type, Union
 from django import template
 from django.utils.module_loading import import_string
 from django.utils.safestring import SafeString
-from render_static.url_tree import SimpleURLWriter, URLTreeVisitor, build_tree
+from render_static.url_tree import ClassURLWriter, URLTreeVisitor, build_tree
 
 register = template.Library()
 
@@ -131,7 +131,7 @@ def modules_to_js(
 
 @register.simple_tag
 def urls_to_js(  # pylint: disable=R0913,R0915
-        visitor: Union[Type, str] = SimpleURLWriter,
+        visitor: Union[Type, str] = ClassURLWriter,
         url_conf: Optional[Union[ModuleType, str]] = None,
         indent: str = '\t',
         depth: int = 0,
