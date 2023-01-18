@@ -1,15 +1,16 @@
 # pragma: no cover
-from render_static.tests.tests import (
-    BaseTestCase,
-    resolve_context,
-    APP1_STATIC_DIR,
-    EXPECTED_DIR
-)
 import filecmp
 from pathlib import Path
-from django.test import override_settings
-from django.core.management import call_command
+
 import pytest
+from django.core.management import call_command
+from django.test import override_settings
+from render_static.tests.tests import (
+    APP1_STATIC_DIR,
+    EXPECTED_DIR,
+    BaseTestCase,
+    resolve_context,
+)
 
 pytest.importorskip("yaml")
 

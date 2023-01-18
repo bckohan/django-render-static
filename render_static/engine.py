@@ -3,7 +3,7 @@
 import os
 from collections import Counter, namedtuple
 from pathlib import Path
-from typing import Callable, Dict, Generator, List, Optional, Union
+from typing import Callable, Dict, Generator, List, Optional, Tuple, Union
 
 from django.conf import settings
 from django.core.exceptions import ImproperlyConfigured
@@ -262,20 +262,34 @@ class StaticTemplateEngine:
         }
 
     @cached_property
-    def templates(self) -> dict:
+    def templates(self) -> List[Tuple[str, TemplateConfig]]:
         """
         Lazy template property Fetch the dictionary mapping template names to
-        TemplateConfig objects initializing them if necessary.
+        TemplateConfig objects initializing them if necessary. This function
+        transforms all acceptable `template` specifications into the canonical
+        type as a list of name, config pairs.
 
         :return: A dictionary mapping template names to configurations
         :raise ImproperlyConfigured: If there are any configuration issues with
             the templates
         """
         try:
-            templates = {
-                name: StaticTemplateEngine.TemplateConfig(name=name, **config)
-                for name, config in self.config.get('templates', {}).items()
-            }
+            templates = self.config.get('templates', {})
+            templates = [
+                (
+                    name,
+                    StaticTemplateEngine.TemplateConfig(name=name, **config)
+                )
+                for name, config in (
+                    templates.items()
+                    if isinstance(templates, dict)
+                    else [
+                        (entry, {}) if isinstance(entry, str) else
+                        (entry[0], entry[1] or {} if len(entry) > 1 else {})
+                        for entry in templates
+                    ]
+                )
+            ]
         except ImproperlyConfigured:
             raise
         except Exception as exp:
@@ -283,6 +297,13 @@ class StaticTemplateEngine:
                 f"Invalid 'templates' in STATIC_TEMPLATE: {exp}!"
             ) from exp
 
+        return templates
+
+    def get_templates(self, name):
+        templates = []
+        for tmpl, config in self.templates:
+            if name == tmpl:
+                templates.append(config)
         return templates
 
     @cached_property
@@ -532,65 +553,66 @@ class StaticTemplateEngine:
         # than one selector is provided
         batch = len(selectors) > 1 and dest
         for selector in selectors:
-            config = self.templates.get(
-                selector,
-                StaticTemplateEngine.TemplateConfig(name=selector)
-            )
-            templates: Dict[str, Union[DjangoTemplate, Jinja2Template]] = {}
-            chain = []
-            for engine in self.all():
-                try:
-                    for template_name in engine.select_templates(
-                            selector,
-                            first_loader=first_loader,
-                            first_preference=first_preference
-                    ):
-                        try:
-                            templates.setdefault(
-                                template_name,
-                                engine.get_template(template_name)
+            for config in (
+                self.get_templates(selector) or
+                # use a default config if no template configuration was found
+                [StaticTemplateEngine.TemplateConfig(name=selector)]
+            ):
+                templates: Dict[str, Union[DjangoTemplate, Jinja2Template]] = {}
+                chain = []
+                for engine in self.all():
+                    try:
+                        for template_name in engine.select_templates(
+                                selector,
+                                first_loader=first_loader,
+                                first_preference=first_preference
+                        ):
+                            try:
+                                templates.setdefault(
+                                    template_name,
+                                    engine.get_template(template_name)
+                                )
+                            except TemplateDoesNotExist as \
+                                    tdne:  # pragma: no cover
+                                # this should be impossible w/o a loader bug!
+                                if len(templates):
+                                    raise RuntimeError(
+                                        f'Selector resolved to template '
+                                        f'{template_name} which is not loadable: '
+                                        f'{tdne}'
+                                    ) from tdne
+                        if first_engine and templates:
+                            break
+                    except TemplateDoesNotExist as tdne:
+                        chain.append(tdne)
+                        continue
+
+                if not templates:
+                    raise TemplateDoesNotExist(selector, chain=chain)
+
+                for name, template in templates.items():  # pylint: disable=W0612
+                    renders.append(
+                        Render(
+                            selector=selector,
+                            config=config,
+                            template=template,
+                            destination=self.resolve_destination(
+                                config,
+                                template,
+                                # each selector is a batch if it resolves to
+                                # more than one template
+                                bool(batch or len(templates) > 1),
+                                dest
                             )
-                        except TemplateDoesNotExist as \
-                                tdne:  # pragma: no cover
-                            # this should be impossible w/o a loader bug!
-                            if len(templates):
-                                raise RuntimeError(
-                                    f'Selector resolved to template '
-                                    f'{template_name} which is not loadable: '
-                                    f'{tdne}'
-                                ) from tdne
-                    if first_engine and templates:
-                        break
-                except TemplateDoesNotExist as tdne:
-                    chain.append(tdne)
-                    continue
-
-            if not templates:
-                raise TemplateDoesNotExist(selector, chain=chain)
-
-            for name, template in templates.items():  # pylint: disable=W0612
-                renders.append(
-                    Render(
-                        selector=selector,
-                        config=config,
-                        template=template,
-                        destination=self.resolve_destination(
-                            config,
-                            template,
-                            # each selector is a batch if it resolves to more
-                            # than one template
-                            bool(batch or len(templates) > 1),
-                            dest
                         )
                     )
-                )
 
         for render in renders:
             ctx = render.config.context.copy()
             if context is not None:
                 ctx.update(context)
             with open(
-                    str(render.destination), 'w', encoding='UTF-8'
+                str(render.destination), 'w', encoding='UTF-8'
             ) as temp_out:
                 temp_out.write(
                     render.template.render({

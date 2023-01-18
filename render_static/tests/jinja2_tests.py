@@ -1,25 +1,28 @@
+import filecmp
+import os
+
+import pytest
+from django.core.exceptions import ImproperlyConfigured
+from django.core.management import CommandError, call_command
+from django.template.exceptions import TemplateDoesNotExist
+from django.template.utils import InvalidTemplateEngineError
+from django.test import TestCase, override_settings
+from render_static.backends import StaticDjangoTemplates, StaticJinja2Templates
+from render_static.engine import StaticTemplateEngine
+from render_static.loaders.jinja2 import StaticFileSystemLoader
 from render_static.tests.tests import (
-    BaseTestCase,
-    TemplatePreferenceFSTestCase,
     APP1_STATIC_DIR,
     APP2_STATIC_DIR,
     EXPECTED_DIR,
-    STATIC_TEMP_DIR2,
-    STATIC_TEMP_DIR,
     GLOBAL_STATIC_DIR,
-    empty_or_dne
+    STATIC_TEMP_DIR,
+    STATIC_TEMP_DIR2,
+    BaseTestCase,
+    TemplatePreferenceFSTestCase,
+    empty_or_dne,
+    generate_context1,
+    generate_context2,
 )
-from render_static.backends import StaticDjangoTemplates, StaticJinja2Templates
-from django.template.exceptions import TemplateDoesNotExist
-from django.template.utils import InvalidTemplateEngineError
-from render_static.loaders.jinja2 import StaticFileSystemLoader
-from render_static.engine import StaticTemplateEngine
-from django.core.exceptions import ImproperlyConfigured
-import os
-import filecmp
-from django.test import TestCase, override_settings
-from django.core.management import call_command, CommandError
-import pytest
 
 jinja2 = pytest.importorskip("jinja2")
 
@@ -197,6 +200,7 @@ class Jinja2CustomTestCase(BaseTestCase):
             EXPECTED_DIR / 'app2_jinja2.html',
             shallow=False
         ))
+
 
 class ConfigTestCase(TestCase):
     """
@@ -468,6 +472,155 @@ class ConfigTestCase(TestCase):
             TemplateDoesNotExist,
             lambda: engine.render_to_disk('*.css')
         )
+
+    # def tearDown(self):
+    #     pass
+
+
+@override_settings(STATIC_TEMPLATES={
+    'ENGINES': [{
+        'BACKEND': 'render_static.backends.StaticJinja2Templates',
+        'OPTIONS': {
+            'loader': StaticFileSystemLoader(STATIC_TEMP_DIR)
+        }
+    }],
+    'templates': [
+        ['multi_test.jinja2', {
+            'context': {'file': 1},
+            'dest': GLOBAL_STATIC_DIR / 'multi_1_jinja2.html'
+        }],
+        ['multi_test.jinja2', {
+            'context': {'file': 2},
+            'dest': GLOBAL_STATIC_DIR / 'multi_2_jinja2.html'
+        }],
+
+    ]
+})
+class MultipleDestinationsTestCase(BaseTestCase):
+    """
+    Jinja2 tests of one template to multiple destinations.
+    """
+    def test_generate(self):
+        """
+        Tests that a single template can be specified multiple times and
+        rendered to separate locations with separate contexts.
+        """
+        call_command('renderstatic')
+        self.assertTrue(filecmp.cmp(
+            GLOBAL_STATIC_DIR / 'multi_1_jinja2.html',
+            EXPECTED_DIR / 'multi_1_jinja2.html',
+            shallow=False
+        ))
+        self.assertTrue(filecmp.cmp(
+            GLOBAL_STATIC_DIR / 'multi_2_jinja2.html',
+            EXPECTED_DIR / 'multi_2_jinja2.html',
+            shallow=False
+        ))
+
+    @override_settings(STATIC_TEMPLATES={
+        'ENGINES': [{
+            'BACKEND': 'render_static.backends.StaticJinja2Templates',
+            'OPTIONS': {
+                'loader': StaticFileSystemLoader(STATIC_TEMP_DIR)
+            }
+        }],
+        'context': {
+            'file': 1,
+        },
+        'templates': [
+            (
+                'multi_test.jinja2', {}
+            ),
+        ]
+    })
+    def test_empty(self):
+        """
+        Tests that empty context works
+        """
+        call_command('renderstatic')
+        self.assertTrue(filecmp.cmp(
+            GLOBAL_STATIC_DIR / 'multi_test.jinja2',
+            EXPECTED_DIR / 'multi_1_jinja2.html',
+            shallow=False
+        ))
+
+    @override_settings(STATIC_TEMPLATES={
+        'ENGINES': [{
+            'BACKEND': 'render_static.backends.StaticJinja2Templates',
+            'OPTIONS': {
+                'loader': StaticFileSystemLoader(STATIC_TEMP_DIR)
+            }
+        }],
+        'context': {
+            'file': 1,
+        },
+        'templates': [
+            (
+                'multi_test.jinja2', None
+            ),
+        ]
+    })
+    def test_none(self):
+        """
+        Tests that a None context is treated as an empty context
+        """
+        self.test_empty()
+
+    @override_settings(STATIC_TEMPLATES={
+        'ENGINES': [{
+            'BACKEND': 'render_static.backends.StaticJinja2Templates',
+            'OPTIONS': {
+                'loader': StaticFileSystemLoader(STATIC_TEMP_DIR)
+            }
+        }],
+        'context': {
+            'file': 1,
+        },
+        'templates': [('multi_test.jinja2',)]
+    })
+    def test_one_tuple(self):
+        """
+        Tests that a one-length tuple works and uses the default config.
+        """
+        self.test_empty()
+
+    @override_settings(STATIC_TEMPLATES={
+        'ENGINES': [{
+            'BACKEND': 'render_static.backends.StaticJinja2Templates',
+            'OPTIONS': {
+                'loader': StaticFileSystemLoader(STATIC_TEMP_DIR)
+            }
+        }],
+        'context': {
+            'file': 2
+        },
+        'templates': [
+            'multi_test.jinja2',
+            (
+                'multi_test.jinja2',
+                {
+                    'context': {'file': 1},
+                    'dest': GLOBAL_STATIC_DIR / 'multi_1_jinja2.html'
+                }
+            )
+        ]
+    })
+    def test_mixed_list(self):
+        """
+        Test that templates definition can be a list with a mix of
+        acceptable types.
+        """
+        call_command('renderstatic')
+        self.assertTrue(filecmp.cmp(
+            GLOBAL_STATIC_DIR / 'multi_1_jinja2.html',
+            EXPECTED_DIR / 'multi_1_jinja2.html',
+            shallow=False
+        ))
+        self.assertTrue(filecmp.cmp(
+            GLOBAL_STATIC_DIR / 'multi_test.jinja2',
+            EXPECTED_DIR / 'multi_2_jinja2.html',
+            shallow=False
+        ))
 
     # def tearDown(self):
     #     pass
