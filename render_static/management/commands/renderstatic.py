@@ -112,7 +112,7 @@ class Command(BaseCommand):
 
         selectors = options.get('selectors', [])
         if not selectors:
-            selectors = list(engine.templates.keys())
+            selectors = {selector for selector, _ in engine.templates}
 
         if not selectors:
             self.stdout.write(

@@ -4,15 +4,15 @@ allow apps using urls_to_js to be included more than once and under different
 namespaces. These patterns incur a dependency on renderstatic to any
 users of the SPA apps. See Runtimes in the documentation for more details.
 """
-from django.test import LiveServerTestCase
-from selenium import webdriver
-from selenium.webdriver.common.by import By
-from django.test import override_settings
-from render_static.tests.tests import BaseTestCase, LOCAL_STATIC_DIR
-from django.core.management import call_command
-from django.urls import reverse
 import json
 import os
+
+from django.core.management import call_command
+from django.test import LiveServerTestCase, override_settings
+from django.urls import reverse
+from render_static.tests.tests import LOCAL_STATIC_DIR, BaseTestCase
+from selenium import webdriver
+from selenium.webdriver.common.by import By
 
 driver = webdriver.Chrome()
 

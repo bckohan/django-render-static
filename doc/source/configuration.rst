@@ -180,7 +180,19 @@ For example:
 
 The ``templates`` dictionary lists all templates that should be generated when `renderstatic` is
 run with no arguments. If specific configuration directives including rendered path and context are
-needed for a template they must be specified here.
+needed for a template they must be specified here. ``templates`` may also be a list containing
+template names or 2-tuples of template names and configurations. By specifying ``templates`` this
+way, a single template may be rendered multiple times using different contexts to different
+locations. For example, the following would render one template three times:
+
+.. code-block:: python
+
+        'templates' [
+            'urls.js',
+            ('urls.js', {'context': {'includes': ['namespace1']}, 'dest': 'ns1_urls.js'}),
+            ('urls.js', {'context': {'includes': ['namespace2']}, 'dest': 'ns2_urls.js'}),
+        ]
+
 
 .. note::
 

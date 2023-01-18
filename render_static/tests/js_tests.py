@@ -1,28 +1,29 @@
-import shutil
-from time import perf_counter
+import inspect
 import json
-import subprocess
 import re
+import shutil
+import subprocess
 import traceback
 import uuid
-import inspect
-from deepdiff import DeepDiff
+from time import perf_counter
+
 import pytest
-from render_static.tests.tests import (
-    BaseTestCase,
-    GLOBAL_STATIC_DIR
-)
+from deepdiff import DeepDiff
+from django.conf import settings
+from django.core.management import CommandError, call_command
 from django.test import override_settings
-from django.core.management import call_command, CommandError
 from django.urls import reverse
 from django.urls.exceptions import NoReverseMatch
-from render_static import placeholders
-from render_static.tests import bad_pattern, defines
-from render_static.tests.tests import LOCAL_STATIC_DIR
-from render_static.url_tree import ClassURLWriter
-from render_static.javascript import JavaScriptGenerator
 from django.utils.module_loading import import_string
-from django.conf import settings
+from render_static import placeholders
+from render_static.javascript import JavaScriptGenerator
+from render_static.tests import bad_pattern, defines
+from render_static.tests.tests import (
+    GLOBAL_STATIC_DIR,
+    LOCAL_STATIC_DIR,
+    BaseTestCase,
+)
+from render_static.url_tree import ClassURLWriter
 
 node_version = None
 if shutil.which('node'):

@@ -998,6 +998,128 @@ class TestContextResolution(BaseTestCase):
         os.remove(CONTEXT_PICKLE)
 
 
+@override_settings(STATIC_TEMPLATES={
+    'templates': [
+        (
+            'app1/html/hello.html',
+            {
+                'context': {'greeting': 'HELLO', 'to': 'WORLD'},
+                'dest': GLOBAL_STATIC_DIR / 'HELLO_U.html'
+            }
+        ),
+        (
+            'app1/html/hello.html',
+            {
+                'context': {'greeting': 'hello', 'to': 'world'},
+                'dest': GLOBAL_STATIC_DIR / 'hello_l.html'
+            }
+        )
+    ]
+})
+class MultipleDestinationsTestCase(BaseTestCase):
+    """
+    Tests that the same template may be configured to render to multiple
+    destinations using different contexts when `templates` is configured as a
+    list instead of a dictionary (added - v2.0.0).
+    """
+    def test_generate(self):
+        call_command('renderstatic')
+        self.assertTrue(filecmp.cmp(
+            GLOBAL_STATIC_DIR / 'HELLO_U.html',
+            EXPECTED_DIR / 'HELLO_U.html',
+            shallow=False
+        ))
+        self.assertTrue(filecmp.cmp(
+            GLOBAL_STATIC_DIR / 'hello_l.html',
+            EXPECTED_DIR / 'hello_l.html',
+            shallow=False
+        ))
+
+    @override_settings(STATIC_TEMPLATES={
+        'context': {
+            **generate_context1(),
+            **generate_context2()
+        },
+        'templates': [
+            (
+                'app1/html/hello.html', {}
+            ),
+        ]
+    })
+    def test_empty(self):
+        call_command('renderstatic')
+        self.assertTrue(filecmp.cmp(
+            APP1_STATIC_DIR / 'app1' / 'html' / 'hello.html',
+            EXPECTED_DIR / 'ctx_override.html',
+            shallow=False
+        ))
+
+    @override_settings(STATIC_TEMPLATES={
+        'context': {
+            **generate_context1(),
+            **generate_context2()
+        },
+        'templates': [
+            (
+                'app1/html/hello.html', None
+            ),
+        ]
+    })
+    def test_none(self):
+        call_command('renderstatic')
+        self.assertTrue(filecmp.cmp(
+            APP1_STATIC_DIR / 'app1' / 'html' / 'hello.html',
+            EXPECTED_DIR / 'ctx_override.html',
+            shallow=False
+        ))
+
+    @override_settings(STATIC_TEMPLATES={
+        'context': {
+            **generate_context1(),
+            **generate_context2()
+        },
+        'templates': [('app1/html/hello.html',)]
+    })
+    def test_one_tuple(self):
+        call_command('renderstatic')
+        self.assertTrue(filecmp.cmp(
+            APP1_STATIC_DIR / 'app1' / 'html' / 'hello.html',
+            EXPECTED_DIR / 'ctx_override.html',
+            shallow=False
+        ))
+
+    @override_settings(STATIC_TEMPLATES={
+        'context': {
+            **generate_context1(),
+            **generate_context2()
+        },
+        'templates': [
+            'app1/html/hello.html',
+            (
+                'app1/html/hello.html',
+                {
+                    'context': {'greeting': 'hello', 'to': 'world', 'punc': ''},
+                    'dest': GLOBAL_STATIC_DIR / 'hello_l.html'
+                }
+            )
+        ]
+    })
+    def test_mixed_list(self):
+        call_command('renderstatic')
+        self.assertTrue(filecmp.cmp(
+            APP1_STATIC_DIR / 'app1' / 'html' / 'hello.html',
+            EXPECTED_DIR / 'ctx_override.html',
+            shallow=False
+        ))
+        self.assertTrue(filecmp.cmp(
+            GLOBAL_STATIC_DIR / 'hello_l.html',
+            EXPECTED_DIR / 'hello_l.html',
+            shallow=False
+        ))
+
+    # def tearDown(self):
+    #     pass
+
 """
 @override_settings(
     ROOT_URLCONF='render_static.tests.ex_urls',
