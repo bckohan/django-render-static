@@ -299,7 +299,16 @@ class StaticTemplateEngine:
 
         return templates
 
-    def get_templates(self, name):
+    def get_templates(self, name: str) -> List[TemplateConfig]:
+        """
+        Get a list of registered template configurations that belong to the
+        given template name.
+
+        :param name: The name of the template
+        :return: A list of TemplateConfig objects that are configured in the
+            settings for rendering that correspond to a template of the given
+            name or an empty list if no configurations match the name.
+        """
         templates = []
         for tmpl, config in self.templates:
             if name == tmpl:
@@ -547,65 +556,27 @@ class StaticTemplateEngine:
         """
         if context:
             context = resolve_context(context)
-        renders = []
+
+        renders: List[Render] = []
 
         # all jobs are considered part of a batch if dest is provided and more
         # than one selector is provided
-        batch = len(selectors) > 1 and dest
+        batch = bool(len(selectors) > 1 and dest)
         for selector in selectors:
             for config in (
                 self.get_templates(selector) or
                 # use a default config if no template configuration was found
                 [StaticTemplateEngine.TemplateConfig(name=selector)]
             ):
-                templates: Dict[str, Union[DjangoTemplate, Jinja2Template]] = {}
-                chain = []
-                for engine in self.all():
-                    try:
-                        for template_name in engine.select_templates(
-                                selector,
-                                first_loader=first_loader,
-                                first_preference=first_preference
-                        ):
-                            try:
-                                templates.setdefault(
-                                    template_name,
-                                    engine.get_template(template_name)
-                                )
-                            except TemplateDoesNotExist as \
-                                    tdne:  # pragma: no cover
-                                # this should be impossible w/o a loader bug!
-                                if len(templates):
-                                    raise RuntimeError(
-                                        f'Selector resolved to template '
-                                        f'{template_name} which is not loadable: '
-                                        f'{tdne}'
-                                    ) from tdne
-                        if first_engine and templates:
-                            break
-                    except TemplateDoesNotExist as tdne:
-                        chain.append(tdne)
-                        continue
-
-                if not templates:
-                    raise TemplateDoesNotExist(selector, chain=chain)
-
-                for name, template in templates.items():  # pylint: disable=W0612
-                    renders.append(
-                        Render(
-                            selector=selector,
-                            config=config,
-                            template=template,
-                            destination=self.resolve_destination(
-                                config,
-                                template,
-                                # each selector is a batch if it resolves to
-                                # more than one template
-                                bool(batch or len(templates) > 1),
-                                dest
-                            )
-                        )
-                    )
+                renders += self.resolve_renderings(
+                    selector,
+                    config,
+                    batch,
+                    dest=dest,
+                    first_engine=first_engine,
+                    first_loader=first_loader,
+                    first_preference=first_preference
+                )
 
         for render in renders:
             ctx = render.config.context.copy()
@@ -621,3 +592,68 @@ class StaticTemplateEngine:
                     })
                 )
             yield render
+
+    def resolve_renderings(
+            self,
+            selector: str,
+            config: TemplateConfig,
+            batch: bool,
+            **kwargs
+    ) -> Generator[Render, None, None]:
+        """
+        Resolve the given parameters to a or a set of Render objects containing
+        all the information necessary to render a template to disk.
+
+        :param selector: The template selector (name string)
+        :param config: The TemplateConfig to apply to the selector.
+        :param batch: True if this is a batch rendering, false otherwise.
+        :param kwargs: Pass through parameters from render_each
+        :yield: Render objects
+        """
+        templates: Dict[
+            str, Union[DjangoTemplate, Jinja2Template]
+        ] = {}
+        chain = []
+        for engine in self.all():
+            try:
+                for template_name in engine.select_templates(
+                    selector,
+                    first_loader=kwargs.get('first_loader', False),
+                    first_preference=kwargs.get('first_preference', False)
+                ):
+                    try:
+                        templates.setdefault(
+                            template_name,
+                            engine.get_template(template_name)
+                        )
+                    except TemplateDoesNotExist as tdne:  # pragma: no cover
+                        # this should be impossible w/o a loader bug!
+                        if len(templates):
+                            raise RuntimeError(
+                                f'Selector resolved to template '
+                                f'{template_name} which is not '
+                                f'loadable: {tdne}'
+                            ) from tdne
+                if kwargs.get('first_engine', False) and templates:
+                    break
+            except TemplateDoesNotExist as tdne:
+                chain.append(tdne)
+                continue
+
+        if not templates:
+            raise TemplateDoesNotExist(selector, chain=chain)
+
+        for _, template in templates.items():
+            yield Render(
+                selector=selector,
+                config=config,
+                template=template,
+                destination=self.resolve_destination(
+                    config,
+                    template,
+                    # each selector is a batch if it resolves to
+                    # more than one template
+                    bool(batch or len(templates) > 1),
+                    kwargs.get('dest', None)
+                )
+            )

@@ -412,8 +412,9 @@ For instance:
 
 The default `class_name` is URLResolver. Reverse should behave exactly as Django's `reverse`.
 
-The URLResolver accepts an optional options object. This object currently supports one parameter: `namespace` which
-is a default namespace that will be prepended if it is not already present to any reverse requests made on the resolver:
+The URLResolver accepts an optional options object. This object currently supports one
+parameter: `namespace` which is a default namespace that will be prepended if it is
+not already present to any reverse requests made on the resolver:
 
 .. code-block:: javascript
 
