@@ -2014,17 +2014,17 @@ class URLBugsTestCases(URLJavascriptMixin, BaseTestCase):
             ('chain_re:spa_re:qry', {'top': 'a5', 'chain': 'slug'}),
             ('chain_re:spa_re:qry', {'top': 'a5', 'chain': 'str', 'arg': 100}),
             ('chain_re:spa_re:index', {'top': 'a5', 'chain': 'str'}),
-            #('noslash:spa:qry', {'top': 'a5', 'chain': 'slug'}),
-            #('noslash:spa:qry', {'top': 'a5', 'chain': 'str', 'arg': 100}),
-            #('noslash:spa:index', {'top': 'a5', 'chain': 'str'}),
+            ('noslash:spa:qry', {'top': 'a5', 'chain': 'slug'}),
+            ('noslash:spa:qry', {'top': 'a5', 'chain': 'str', 'arg': 100}),
+            ('noslash:spa:index', {'top': 'a5', 'chain': 'str'}),
         ]:
             self.assertEqual(
                 reverse(name, kwargs=kwargs),
                 self.get_url_from_js(name, kwargs)
             )
 
-    #def tearDown(self):
-    #    pass
+    # def tearDown(self):
+    #     pass
 
 
 @override_settings(
