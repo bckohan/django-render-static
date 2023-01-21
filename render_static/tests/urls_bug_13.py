@@ -11,7 +11,7 @@ urlpatterns = [
     path('spa2/', include('render_static.tests.spa.urls', namespace='spa2')),
     path('multi/<slug:top>/', include('render_static.tests.chain.urls')),
     re_path(
-        r'^multi/(?P<top>\w+)/',  # todo adding $ at the end breaks this badly
+        r'^multi/(?P<top>\w+)/',
         include('render_static.tests.chain.urls', namespace='chain_re')
     ),
     path(
