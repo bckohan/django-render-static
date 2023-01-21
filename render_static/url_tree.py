@@ -470,7 +470,7 @@ class URLTreeVisitor(JavaScriptGenerator):
 
                     replacements = []
                     composite_regex = re.compile(''.join([
-                        pattern.regex.pattern.lstrip('^') for pattern in [
+                        pattern.regex.pattern.lstrip('^').rstrip('$') for pattern in [
                             *route,
                             endpoint.pattern
                         ]
