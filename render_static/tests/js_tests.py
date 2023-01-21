@@ -1934,9 +1934,6 @@ class URLBugsTestCases(URLJavascriptMixin, BaseTestCase):
     def setUp(self):
         self.clear_placeholder_registries()
 
-    def tearDown(self):
-        pass
-
     def test_bug_65_compiles(self):
         """
         Tests: https://github.com/bckohan/django-render-static/issues/65
@@ -2014,9 +2011,12 @@ class URLBugsTestCases(URLJavascriptMixin, BaseTestCase):
             ('chain:spa:qry', {'top': 'a5', 'chain': 'slug'}),
             ('chain:spa:qry', {'top': 'a5', 'chain': 'str', 'arg': 100}),
             ('chain:spa:index', {'top': 'a5', 'chain': 'str'}),
-            ('noslash:spa:qry', {'top': 'a5', 'chain': 'slug'}),
-            ('noslash:spa:qry', {'top': 'a5', 'chain': 'str', 'arg': 100}),
-            ('noslash:spa:index', {'top': 'a5', 'chain': 'str'}),
+            ('chain_re:spa_re:qry', {'top': 'a5', 'chain': 'slug'}),
+            ('chain_re:spa_re:qry', {'top': 'a5', 'chain': 'str', 'arg': 100}),
+            ('chain_re:spa_re:index', {'top': 'a5', 'chain': 'str'}),
+            #('noslash:spa:qry', {'top': 'a5', 'chain': 'slug'}),
+            #('noslash:spa:qry', {'top': 'a5', 'chain': 'str', 'arg': 100}),
+            #('noslash:spa:index', {'top': 'a5', 'chain': 'str'}),
         ]:
             self.assertEqual(
                 reverse(name, kwargs=kwargs),
