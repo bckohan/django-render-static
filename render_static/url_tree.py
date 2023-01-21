@@ -468,53 +468,56 @@ class URLTreeVisitor(JavaScriptGenerator):
                     else:
                         placeholder_url = reverse(qname, kwargs=kwargs)
 
-                    no_match = True
                     replacements = []
+                    composite_regex = re.compile(''.join([
+                        pattern.regex.pattern.lstrip('^') for pattern in [
+                            *route,
+                            endpoint.pattern
+                        ]
+                    ]))
 
-                    for stem_pattern in [*route, endpoint.pattern]:
-                        # it must match! The URLPattern tree complicates things
-                        # by often times having ^ present at the start of each
-                        # regex snippet - no way around removing it because
-                        # we're matching against full url strings
-                        mtch = stem_pattern.regex.search(
-                            placeholder_url.lstrip('/')
-                        )
-                        if not mtch:
-                            mtch = re.search(
-                                stem_pattern.regex.pattern.lstrip('^'),
-                                placeholder_url.lstrip('/')
-                            )
+                    mtch = composite_regex.search(placeholder_url.lstrip('/'))
 
-                        if mtch:
-                            no_match = False
+                    if mtch:
+                        # there might be group matches that aren't part of
+                        # our kwargs, we go through this extra work to
+                        # make sure we aren't subbing spans that aren't
+                        # kwargs
+                        grp_mp = {
+                            idx: var for var, idx in
+                            composite_regex.groupindex.items()
+                        }
 
-                            # there might be group matches that aren't part of
-                            # our kwargs, we go through this extra work to
-                            # make sure we aren't subbing spans that aren't
-                            # kwargs
-                            grp_mp = {
-                                idx: var for var, idx in
-                                stem_pattern.regex.groupindex.items()
-                            }
+                        for idx, value in enumerate(  # pylint: disable=W0612
+                            mtch.groups(),
+                            start=1
+                        ):
+                            if unnamed:
+                                replacements.append(
+                                    (mtch.span(idx), Substitute(idx-1))
+                                )
+                            else:
+                                # if the regex has non-capturing groups we
+                                # need to filter those out
+                                if idx in grp_mp:
+                                    replacements.append((
+                                        mtch.span(idx),
+                                        Substitute(grp_mp[idx])
+                                    ))
 
-                            for idx, value in enumerate(  # pylint: disable=W0612
-                                mtch.groups(),
-                                start=1
-                            ):
-                                if unnamed:
-                                    replacements.append(
-                                        (mtch.span(idx), Substitute(idx-1))
-                                    )
-                                else:
-                                    # if the regex has non-capturing groups we
-                                    # need to filter those out
-                                    if idx in grp_mp:
-                                        replacements.append((
-                                            mtch.span(idx),
-                                            Substitute(grp_mp[idx])
-                                        ))
+                        url_idx = 0
+                        path = []
+                        for rpl in replacements:
+                            while url_idx <= rpl[0][0]:
+                                path.append(placeholder_url[url_idx])
+                                url_idx += 1
+                            path.append(rpl[1])
+                            url_idx += (rpl[0][1] - rpl[0][0])
+                        if url_idx < len(placeholder_url):
+                            path.append(placeholder_url[url_idx:])
+                        yield from self.visit_path(path, list(kwargs.keys()))
 
-                    if no_match:
+                    else:
                         # seems to be a bug in django where reverse cannot
                         # distinguish between patterns where the only
                         # difference is between the use of kwargs and args we
@@ -542,18 +545,6 @@ class URLTreeVisitor(JavaScriptGenerator):
                                     else f'kwargs={list(params.keys())} */'
                                 )
                             )  # pragma: no cover
-                    else:
-                        url_idx = 0
-                        path = []
-                        for rpl in replacements:
-                            while url_idx <= rpl[0][0]:
-                                path.append(placeholder_url[url_idx])
-                                url_idx += 1
-                            path.append(rpl[1])
-                            url_idx += (rpl[0][1] - rpl[0][0])
-                        if url_idx < len(placeholder_url):
-                            path.append(placeholder_url[url_idx:])
-                        yield from self.visit_path(path, list(kwargs.keys()))
                     return
 
                 except NoReverseMatch:
