@@ -1929,7 +1929,7 @@ class DjangoJSReverseTest(URLJavascriptMixin, BaseTestCase):
         'templates': {'urls.js': {'context': {}}}
     }
 )
-class Bug65TestCase(URLJavascriptMixin, BaseTestCase):
+class URLBugsTestCases(URLJavascriptMixin, BaseTestCase):
 
     def setUp(self):
         self.clear_placeholder_registries()
@@ -1963,6 +1963,68 @@ class Bug65TestCase(URLJavascriptMixin, BaseTestCase):
                 reverse('bug65', kwargs=kwargs),
                 self.get_url_from_js('bug65', kwargs)
             )
+
+    @override_settings(
+        INSTALLED_APPS=[
+            'render_static.tests.chain',
+            'render_static.tests.spa',
+            'render_static',
+            'django.contrib.auth',
+            'django.contrib.contenttypes',
+            'django.contrib.sessions',
+            'django.contrib.sites',
+            'django.contrib.messages',
+            'django.contrib.staticfiles',
+            'django.contrib.admin'
+        ],
+        ROOT_URLCONF='render_static.tests.urls_bug_13',
+        STATIC_TEMPLATES={
+            'ENGINES': [{
+                'BACKEND': 'render_static.backends.StaticDjangoTemplates',
+                'OPTIONS': {
+                    'loaders': [
+                        ('render_static.loaders.StaticLocMemLoader', {
+                            'urls.js': (
+                                    '{% urls_to_js '
+                                    'visitor="render_static.ClassURLWriter" %}'
+                            )
+                        })
+                    ],
+                    'builtins': ['render_static.templatetags.render_static']
+                },
+            }],
+            'templates': {'urls.js': {'context': {}}}
+        }
+    )
+    def test_bug_13_multilevel_args(self):
+        """
+        Tests: https://github.com/bckohan/django-render-static/issues/13
+        Tests that nested url inclusions with arguments on the stems work.
+        """
+        self.es6_mode = True
+        self.url_js = None
+        self.class_mode = ClassURLWriter.class_name_
+
+        call_command('renderstatic', 'urls.js')
+        for name, kwargs in [
+            ('spa1:qry', {'toparg': 1, 'arg': 3}),
+            ('spa1:qry', {'toparg': 2}),
+            ('spa2:qry', {'arg': 2}),
+            ('spa2:qry', {}),
+            ('chain:spa:qry', {'top': 'a5', 'chain': 'slug'}),
+            ('chain:spa:qry', {'top': 'a5', 'chain': 'str', 'arg': 100}),
+            ('chain:spa:index', {'top': 'a5', 'chain': 'str'}),
+            ('noslash:spa:qry', {'top': 'a5', 'chain': 'slug'}),
+            ('noslash:spa:qry', {'top': 'a5', 'chain': 'str', 'arg': 100}),
+            ('noslash:spa:index', {'top': 'a5', 'chain': 'str'}),
+        ]:
+            self.assertEqual(
+                reverse(name, kwargs=kwargs),
+                self.get_url_from_js(name, kwargs)
+            )
+
+    #def tearDown(self):
+    #    pass
 
 
 @override_settings(

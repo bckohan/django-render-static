@@ -624,3 +624,29 @@ class MultipleDestinationsTestCase(BaseTestCase):
 
     # def tearDown(self):
     #     pass
+
+"""
+class TestTemplateTagsAndFilters(BaseTestCase):
+
+    @override_settings(STATIC_TEMPLATES={
+        'ENGINES': [{
+            'BACKEND': 'render_static.backends.StaticJinja2Templates',
+            'OPTIONS': {
+                'loader': Sta
+            }
+        }],
+        'templates': [
+            ['multi_test.jinja2', {
+                'context': {'file': 1},
+                'dest': GLOBAL_STATIC_DIR / 'multi_1_jinja2.html'
+            }],
+            ['multi_test.jinja2', {
+                'context': {'file': 2},
+                'dest': GLOBAL_STATIC_DIR / 'multi_2_jinja2.html'
+            }],
+
+        ]
+    })
+    def test_urls_to_js(self):
+        pass
+"""

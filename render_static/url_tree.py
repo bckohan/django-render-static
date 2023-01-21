@@ -46,7 +46,15 @@ def build_tree(
         url_conf: Optional[Union[ModuleType, str]] = None,
         include: Optional[Iterable[str]] = None,
         exclude: Optional[Iterable[str]] = None
-) -> Tuple[Tuple[Dict, Dict, Optional[str]], int]:
+) -> Tuple[
+    Tuple[
+        Dict,
+        Dict,
+        Optional[str],
+        Optional[Union[RegexPattern, RoutePattern]]
+    ],
+    int
+]:
     """
     Generate a tree from the url configuration where the branches are
     namespaces and the leaves are collections of URLs registered against fully
@@ -58,16 +66,17 @@ def build_tree(
 
         [
             { # first dict contains child branches
-                'namespace1': [{...}, {...}, 'incl_app_name1'],
+                'namespace1': [{...}, {...}, 'incl_app_name1', route],
                 # no app_name specified for this include
-                'namespace2': [{...}, {...}, None]
+                'namespace2': [{...}, {...}, None, route]
             },
             {
                 # URLPatterns for this qname
                 'url_name1': [URLPattern, URLPattern, ...]
                 'url_name2': [URLPattern, ...]
             },
-            None # no root app_name
+            None, # no root app_name
+            RegexPattern or RoutePattern # if one exists
         ]
 
     :param url_conf: The root url module to dump urls from,
@@ -80,7 +89,6 @@ def build_tree(
         Default: exclude nothing
     :return: A tree structure containing the configured URLs
     """
-
     if url_conf is None:
         url_conf = settings.ROOT_URLCONF
 
@@ -102,7 +110,7 @@ def build_tree(
         _build_branch(
             patterns,
             not includes or '' in includes,
-            ({}, {}, getattr(url_conf, 'app_name', None)),
+            ({}, {}, getattr(url_conf, 'app_name', None), None),
             includes,
             excludes
         )
@@ -112,13 +120,21 @@ def build_tree(
 def _build_branch(  # pylint: disable=R0913
         nodes: Iterable[URLPattern],
         included: bool,
-        branch: Tuple[Dict, Dict, Optional[str]],
+        branch: Tuple[
+            Dict,
+            Dict,
+            Optional[str],
+            Optional[Union[RegexPattern, RoutePattern]]
+        ],
         includes: Iterable[str],
         excludes: Iterable[str],
         namespace: Optional[str] = None,
         qname: str = '',
-        app_name: Optional[str] = None
-) -> Tuple[Dict, Dict, Optional[str]]:
+        app_name: Optional[str] = None,
+        route_pattern: Optional[Union[RegexPattern, RoutePattern]] = None
+) -> Tuple[
+    Dict, Dict, Optional[str], Optional[Union[RegexPattern, RoutePattern]]
+]:
     """
     Recursively walk the branch and add it's subtree to the larger tree.
 
@@ -137,9 +153,8 @@ def _build_branch(  # pylint: disable=R0913
         be normalized.
     :return:
     """
-
     if namespace:
-        branch[0].setdefault(namespace, [{}, {}, app_name])
+        branch[0].setdefault(namespace, [{}, {}, app_name, route_pattern])
         branch = branch[0][namespace]
 
     for pattern in nodes:
@@ -152,7 +167,7 @@ def _build_branch(  # pylint: disable=R0913
 
             # if we aren't implicitly included we must be explicitly included
             # and not explicitly excluded - note if we were implicitly excluded
-            # we wouldnt get this far
+            # we wouldn't get this far
             if (not included and url_qname not in includes or
                     (excludes and url_qname in excludes)):
                 continue
@@ -175,15 +190,36 @@ def _build_branch(  # pylint: disable=R0913
                 excludes,
                 namespace=pattern.namespace,
                 qname=ns_qname,
-                app_name=pattern.app_name
+                app_name=pattern.app_name,
+                route_pattern=(
+                    pattern.pattern
+                    if (
+                        isinstance(pattern.pattern, RoutePattern) or
+                        isinstance(pattern.pattern, RegexPattern)
+                    )
+                    else None
+                )
             )
 
     return branch
 
 
 def _prune_tree(
-        tree: Tuple[Dict, Dict, Optional[str]]
-) -> Tuple[Tuple[Dict, Dict, Optional[str]], int]:
+        tree: Tuple[
+            Dict,
+            Dict,
+            Optional[str],
+            Optional[Union[RegexPattern, RoutePattern]]
+        ]
+) -> Tuple[
+    Tuple[
+        Dict,
+        Dict,
+        Optional[str],
+        Optional[Union[RegexPattern, RoutePattern]]
+    ],
+    int
+]:
     """
     Remove any branches that don't have any URLs under them.
     :param tree: branch to prune
@@ -312,7 +348,8 @@ class URLTreeVisitor(JavaScriptGenerator):
             self,
             endpoint: URLPattern,
             qname: str,
-            app_name: Optional[str]
+            app_name: Optional[str],
+            route: Optional[List[RoutePattern]] = None
     ) -> Generator[str, None, None]:
         """
         Visit a pattern. Translates the pattern into a path component string
@@ -329,6 +366,7 @@ class URLTreeVisitor(JavaScriptGenerator):
         :param endpoint: The URLPattern to add
         :param qname: The fully qualified name of the URL
         :param app_name: The app_name the URLs belong to, if any
+        :param route: The list of RoutePatterns above this URL
         :yield: JavaScript LoC that reverse the pattern
         :return: JavaScript comment if non-reversible
         :except URLGenerationFailed: When no successful placeholders are found
@@ -336,23 +374,32 @@ class URLTreeVisitor(JavaScriptGenerator):
         """
         # first, pull out any named or unnamed parameters that comprise this
         # pattern
-        if isinstance(endpoint.pattern, RoutePattern):
+        def get_params(pattern):
+            if isinstance(pattern, RoutePattern):
+                return {
+                    var: {
+                        'converter': converter.__class__,
+                        'app_name': app_name
+                    } for var, converter in pattern.converters.items()
+                }
+            elif isinstance(pattern, RegexPattern):
+                return {
+                    var: {
+                        'app_name': app_name
+                    } for var in pattern.regex.groupindex.keys()
+                }
+            else:
+                raise URLGenerationFailed(
+                    f'Unrecognized pattern type: {type(pattern)}'
+                )
+
+        params = get_params(endpoint.pattern)
+
+        for rt_pattern in route:
             params = {
-                var: {
-                    'converter': converter.__class__,
-                    'app_name': app_name
-                } for var, converter in endpoint.pattern.converters.items()
+                **params,
+                **get_params(rt_pattern)
             }
-        elif isinstance(endpoint.pattern, RegexPattern):
-            params = {
-                var: {
-                    'app_name': app_name
-                } for var in endpoint.pattern.regex.groupindex.keys()
-            }
-        else:
-            raise URLGenerationFailed(
-                f'Unrecognized pattern type: {type(endpoint.pattern)}'
-            )
 
         # does this url have unnamed or named params?
         unnamed = False
@@ -420,20 +467,54 @@ class URLTreeVisitor(JavaScriptGenerator):
                         placeholder_url = reverse(qname, args=placeholders)
                     else:
                         placeholder_url = reverse(qname, kwargs=kwargs)
-                    # it must match! The URLPattern tree complicates things by
-                    # often times having ^ present at the start of each regex
-                    # snippet - no way around removing it because we're
-                    # matching against full url strings
-                    mtch = endpoint.pattern.regex.search(
-                        placeholder_url.lstrip('/')
-                    )
-                    if not mtch:
-                        mtch = re.search(
-                            endpoint.pattern.regex.pattern.lstrip('^'),
+
+                    no_match = True
+                    replacements = []
+
+                    for stem_pattern in [*route, endpoint.pattern]:
+                        # it must match! The URLPattern tree complicates things
+                        # by often times having ^ present at the start of each
+                        # regex snippet - no way around removing it because
+                        # we're matching against full url strings
+                        mtch = stem_pattern.regex.search(
                             placeholder_url.lstrip('/')
                         )
+                        if not mtch:
+                            mtch = re.search(
+                                stem_pattern.regex.pattern.lstrip('^'),
+                                placeholder_url.lstrip('/')
+                            )
 
-                    if not mtch:
+                        if mtch:
+                            no_match = False
+
+                            # there might be group matches that aren't part of
+                            # our kwargs, we go through this extra work to
+                            # make sure we aren't subbing spans that aren't
+                            # kwargs
+                            grp_mp = {
+                                idx: var for var, idx in
+                                stem_pattern.regex.groupindex.items()
+                            }
+
+                            for idx, value in enumerate(  # pylint: disable=W0612
+                                mtch.groups(),
+                                start=1
+                            ):
+                                if unnamed:
+                                    replacements.append(
+                                        (mtch.span(idx), Substitute(idx-1))
+                                    )
+                                else:
+                                    # if the regex has non-capturing groups we
+                                    # need to filter those out
+                                    if idx in grp_mp:
+                                        replacements.append((
+                                            mtch.span(idx),
+                                            Substitute(grp_mp[idx])
+                                        ))
+
+                    if no_match:
                         # seems to be a bug in django where reverse cannot
                         # distinguish between patterns where the only
                         # difference is between the use of kwargs and args we
@@ -461,45 +542,18 @@ class URLTreeVisitor(JavaScriptGenerator):
                                     else f'kwargs={list(params.keys())} */'
                                 )
                             )  # pragma: no cover
-                        return
-
-                    # there might be group matches that aren't part of our
-                    # kwargs, we go through this extra work to make sure we
-                    # aren't subbing spans that aren't kwargs
-                    grp_mp = {
-                        idx: var for var, idx in
-                        endpoint.pattern.regex.groupindex.items()
-                    }
-                    replacements = []
-
-                    for idx, value in enumerate(  # pylint: disable=W0612
-                            mtch.groups(),
-                            start=1
-                    ):
-                        if unnamed:
-                            replacements.append(
-                                (mtch.span(idx), Substitute(idx-1))
-                            )
-                        else:
-                            # if the regex has non-capturing groups we need to
-                            # filter those out
-                            if idx in grp_mp:
-                                replacements.append(
-                                    (mtch.span(idx), Substitute(grp_mp[idx]))
-                                )
-
-                    url_idx = 0
-                    path = []
-                    for rpl in replacements:
-                        while url_idx <= rpl[0][0]:
-                            path.append(placeholder_url[url_idx])
-                            url_idx += 1
-                        path.append(rpl[1])
-                        url_idx += (rpl[0][1] - rpl[0][0])
-                    if url_idx < len(placeholder_url):
-                        path.append(placeholder_url[url_idx:])
-
-                    yield from self.visit_path(path, list(kwargs.keys()))
+                    else:
+                        url_idx = 0
+                        path = []
+                        for rpl in replacements:
+                            while url_idx <= rpl[0][0]:
+                                path.append(placeholder_url[url_idx])
+                                url_idx += 1
+                            path.append(rpl[1])
+                            url_idx += (rpl[0][1] - rpl[0][0])
+                        if url_idx < len(placeholder_url):
+                            path.append(placeholder_url[url_idx:])
+                        yield from self.visit_path(path, list(kwargs.keys()))
                     return
 
                 except NoReverseMatch:
@@ -571,7 +625,8 @@ class URLTreeVisitor(JavaScriptGenerator):
         self,
         nodes: Iterable[URLPattern],
         qname: str,
-        app_name: Optional[str] = None
+        app_name: Optional[str] = None,
+        route: Optional[List[RoutePattern]] = None
     ) -> Generator[str, None, None]:
         """
         Convert a list of URLPatterns all corresponding to the same qualified
@@ -580,19 +635,26 @@ class URLTreeVisitor(JavaScriptGenerator):
         :param nodes: The list of URLPattern objects
         :param qname: The fully qualified name of all the URLs
         :param app_name: The app_name the URLs belong to, if any
+        :param route: The list of RoutePatterns above this url
         :return: A javascript function that reverses the URLs based on kwarg or
             arg inputs
         """
         yield from self.enter_path_group(qname)
         for pattern in nodes:
-            yield from self.visit_pattern(pattern, qname, app_name)
+            yield from self.visit_pattern(pattern, qname, app_name, route)
         yield from self.exit_path_group(qname)
 
     def visit_branch(
         self,
-        branch: Tuple[Dict, Dict, Optional[str]],
+        branch: Tuple[
+            Dict,
+            Dict,
+            Optional[str],
+            Optional[Union[RegexPattern, RoutePattern]]
+        ],
         namespace: Optional[str] = None,
-        parent_qname: str = ''
+        parent_qname: str = '',
+        route: Optional[List[RoutePattern]] = None
     ) -> Generator[str, None, None]:
         """
         Walk the tree, writing javascript for URLs indexed by their nested
@@ -602,10 +664,11 @@ class URLTreeVisitor(JavaScriptGenerator):
         :param namespace: The namespace of this branch
         :param parent_qname: The parent qualified name of the parent of this
             branch. Can be thought of as the path in the tree.
+        :param route: The list of RoutePatterns above this branch
         :return: javascript object containing functions for URLs and objects
             for namespaces at and below this tree (branch)
         """
-
+        route = route or []
         if namespace:
             parent_qname += f"{':' if parent_qname else ''}{namespace}"
 
@@ -613,13 +676,19 @@ class URLTreeVisitor(JavaScriptGenerator):
             yield from self.visit_path_group(
                 nodes,
                 f"{f'{parent_qname}:' if parent_qname else ''}{name}",
-                branch[2]
+                branch[2],
+                route
             )
 
         if branch[0]:
             for nmsp, brch in branch[0].items():
                 yield from self.enter_namespace(nmsp)
-                yield from self.visit_branch(brch, nmsp, parent_qname)
+                yield from self.visit_branch(
+                    brch,
+                    nmsp,
+                    parent_qname,
+                    [*route, *([brch[3]] if brch[3] else [])]
+                )
                 yield from self.exit_namespace(nmsp)
 
     def generate(self, *args, **kwargs) -> str:
@@ -674,7 +743,7 @@ class SimpleURLWriter(URLTreeVisitor):
     the one you want. It accepts several additional parameters on top of the
     base parameters. To use this visitor you may call it like so:
 
-    ..code-block::
+    .. code-block::
 
         var urls = {
             {% urls_to_js raise_on_not_found=False %}'
