@@ -13,8 +13,9 @@ from django.urls import reverse
 from render_static.tests.tests import LOCAL_STATIC_DIR, BaseTestCase
 from selenium import webdriver
 from selenium.webdriver.common.by import By
+import shutil
 
-driver = webdriver.Chrome()
+driver = webdriver.Chrome(shutil.which('chromedriver'))
 
 
 @override_settings(

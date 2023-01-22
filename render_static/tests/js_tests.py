@@ -20,7 +20,6 @@ from render_static.javascript import JavaScriptGenerator
 from render_static.tests import bad_pattern, defines
 from render_static.tests.tests import (
     GLOBAL_STATIC_DIR,
-    LOCAL_STATIC_DIR,
     BaseTestCase,
 )
 from render_static.url_tree import ClassURLWriter
