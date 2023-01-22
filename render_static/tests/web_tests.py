@@ -17,6 +17,9 @@ from selenium.webdriver.chrome.options import Options
 from selenium.webdriver.chrome.service import Service
 import pytest
 import shutil
+import logging
+
+logger = logging.getLogger(__name__)
 
 
 if not shutil.which('chromedriver'):  # pragma: no cover
@@ -25,8 +28,7 @@ if not shutil.which('chromedriver'):  # pragma: no cover
         allow_module_level=True
     )
 else:
-    print(f'Using chromedriver: {shutil.which("chromedriver")}')
-    
+    logger.info('Using chromedriver: %s', shutil.which("chromedriver"))
     chrome_options = Options()
     options = [
         "--headless",
