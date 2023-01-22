@@ -13,11 +13,14 @@ from django.urls import reverse
 from render_static.tests.tests import LOCAL_STATIC_DIR, BaseTestCase
 from selenium import webdriver
 from selenium.webdriver.common.by import By
+from webdriver_manager.chrome import ChromeDriverManager
+from webdriver_manager.chrome import ChromeType
 from selenium.webdriver.chrome.options import Options
 from selenium.webdriver.chrome.service import Service
 import pytest
 import shutil
 
+"""
 chrome_options = Options()
 chrome_options.add_argument("--headless")
 
@@ -31,6 +34,25 @@ else:
         service=Service(shutil.which('chromedriver')),
         options=chrome_options
     )
+"""
+
+
+chrome_service = Service(ChromeDriverManager(chrome_type=ChromeType.CHROMIUM).install())
+
+chrome_options = Options()
+options = [
+    "--headless",
+    "--disable-gpu",
+    "--window-size=1920,1200",
+    "--ignore-certificate-errors",
+    "--disable-extensions",
+    "--no-sandbox",
+    "--disable-dev-shm-usage"
+]
+for option in options:
+    chrome_options.add_argument(option)
+
+driver = webdriver.Chrome(service=chrome_service, options=chrome_options)
 
 
 @override_settings(
