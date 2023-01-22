@@ -15,24 +15,23 @@ from selenium import webdriver
 from selenium.webdriver.common.by import By
 from selenium.webdriver.chrome.options import Options
 from selenium.webdriver.chrome.service import Service
-from webdriver_manager.chrome import ChromeDriverManager
 import pytest
 import shutil
 
 chrome_options = Options()
 chrome_options.add_argument("--headless")
 
-driver = webdriver.Chrome(service=Service(ChromeDriverManager().install()), options=chrome_options)
-
-"""
 if not shutil.which('chromedriver'):  # pragma: no cover
     pytest.skip(
         'JavaScript tests require node.js to be installed.',
         allow_module_level=True
     )
+else:
+    driver = webdriver.Chrome(
+        service=Service(shutil.which('chromedriver')),
+        options=chrome_options
+    )
 
-driver = webdriver.Chrome(shutil.which('chromedriver'), options=chrome_options)
-"""
 
 @override_settings(
     INSTALLED_APPS=[
