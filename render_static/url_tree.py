@@ -10,7 +10,7 @@ import re
 from abc import abstractmethod
 from importlib import import_module
 from types import ModuleType
-from typing import Dict, Generator, Iterable, List, Optional, Tuple, Union
+from typing import Dict, Generator, Iterable, List, Optional, Tuple, Union, Any
 
 from django.conf import settings
 from django.urls import URLPattern, URLResolver, reverse
@@ -194,8 +194,9 @@ def _build_branch(  # pylint: disable=R0913
                 route_pattern=(
                     pattern.pattern
                     if (
-                        isinstance(pattern.pattern, RoutePattern) or
-                        isinstance(pattern.pattern, RegexPattern)
+                        isinstance(
+                            pattern.pattern, (RoutePattern, RegexPattern)
+                        )
                     )
                     else None
                 )
@@ -349,7 +350,7 @@ class URLTreeVisitor(JavaScriptGenerator):
             endpoint: URLPattern,
             qname: str,
             app_name: Optional[str],
-            route: Optional[List[RoutePattern]] = None
+            route: List[RoutePattern]
     ) -> Generator[str, None, None]:
         """
         Visit a pattern. Translates the pattern into a path component string
@@ -374,7 +375,9 @@ class URLTreeVisitor(JavaScriptGenerator):
         """
         # first, pull out any named or unnamed parameters that comprise this
         # pattern
-        def get_params(pattern):
+        def get_params(pattern: Union[RoutePattern, RegexPattern]) -> Dict[
+            str, Any
+        ]:
             if isinstance(pattern, RoutePattern):
                 return {
                     var: {
@@ -382,16 +385,15 @@ class URLTreeVisitor(JavaScriptGenerator):
                         'app_name': app_name
                     } for var, converter in pattern.converters.items()
                 }
-            elif isinstance(pattern, RegexPattern):
+            if isinstance(pattern, RegexPattern):
                 return {
                     var: {
                         'app_name': app_name
                     } for var in pattern.regex.groupindex.keys()
                 }
-            else:
-                raise URLGenerationFailed(
-                    f'Unrecognized pattern type: {type(pattern)}'
-                )
+            raise URLGenerationFailed(
+                f'Unrecognized pattern type: {type(pattern)}'
+            )
 
         params = get_params(endpoint.pattern)
 
@@ -470,7 +472,8 @@ class URLTreeVisitor(JavaScriptGenerator):
 
                     replacements = []
                     composite_regex = re.compile(''.join([
-                        pattern.regex.pattern.lstrip('^').rstrip('$') for pattern in [
+                        pattern.regex.pattern.lstrip('^').rstrip('$')
+                        for pattern in [
                             *route,
                             endpoint.pattern
                         ]
@@ -632,7 +635,9 @@ class URLTreeVisitor(JavaScriptGenerator):
         """
         yield from self.enter_path_group(qname)
         for pattern in nodes:
-            yield from self.visit_pattern(pattern, qname, app_name, route)
+            yield from self.visit_pattern(
+                pattern, qname, app_name, route or []
+            )
         yield from self.exit_path_group(qname)
 
     def visit_branch(

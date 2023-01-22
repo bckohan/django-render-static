@@ -26,7 +26,7 @@ from render_static.tests.tests import (
 from render_static.url_tree import ClassURLWriter
 
 node_version = None
-if shutil.which('node'):
+if shutil.which('node'):  # pragma: no cover
     match = re.match(
         r'v(\d+).(\d+).(\d+)',
         subprocess.getoutput('node --version')
@@ -41,7 +41,7 @@ if shutil.which('node'):
         except (TypeError, ValueError):
             pass
 
-if not node_version:
+if not node_version:  # pragma: no cover
     pytest.skip(
         'JavaScript tests require node.js to be installed.',
         allow_module_level=True
@@ -65,7 +65,7 @@ class BestEffortEncoder(json.JSONEncoder):
             return str(obj)
 
 
-def run_js_file(file_path):
+def run_js_file(file_path):  # pragma: no cover
     try:
         return subprocess.check_output(
             ['node', file_path],
