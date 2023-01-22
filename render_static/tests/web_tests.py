@@ -37,7 +37,10 @@ else:
         "--ignore-certificate-errors",
         "--disable-extensions",
         "--no-sandbox",
-        "--disable-dev-shm-usage"
+        "--disable-dev-shm-usage",
+        "--start-maximized",
+        "--proxy-server='direct://'",
+        "--proxy-bypass-list=*"
     ]
     for option in options:
         chrome_options.add_argument(option)
