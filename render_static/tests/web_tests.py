@@ -14,10 +14,18 @@ from render_static.tests.tests import LOCAL_STATIC_DIR, BaseTestCase
 from selenium import webdriver
 from selenium.webdriver.common.by import By
 from selenium.webdriver.chrome.options import Options
+import pytest
 import shutil
 
 chrome_options = Options()
 chrome_options.add_argument("--headless")
+
+if not shutil.which('chromedriver'):  # pragma: no cover
+    pytest.skip(
+        'JavaScript tests require node.js to be installed.',
+        allow_module_level=True
+    )
+
 driver = webdriver.Chrome(shutil.which('chromedriver'), options=chrome_options)
 
 
