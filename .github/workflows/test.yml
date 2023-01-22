@@ -25,6 +25,8 @@ jobs:
     steps:
     - uses: actions/checkout@v2
     - uses: actions/setup-node@v2
+    - uses: browser-actions/setup-chrome@latest
+    - run: chrome --version
     - name: Set up Python ${{ matrix.python-version }}
       uses: actions/setup-python@v2
       with:
