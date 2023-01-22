@@ -2,6 +2,7 @@ from pathlib import Path
 
 SECRET_KEY = 'psst'
 SITE_ID = 1
+USE_TZ = False
 
 DATABASES = {
     'default': {
