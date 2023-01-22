@@ -13,9 +13,12 @@ from django.urls import reverse
 from render_static.tests.tests import LOCAL_STATIC_DIR, BaseTestCase
 from selenium import webdriver
 from selenium.webdriver.common.by import By
+from selenium.webdriver.chrome.options import Options
 import shutil
 
-driver = webdriver.Chrome(shutil.which('chromedriver'))
+chrome_options = Options()
+chrome_options.add_argument("--headless")
+driver = webdriver.Chrome(shutil.which('chromedriver'), options=chrome_options)
 
 
 @override_settings(
