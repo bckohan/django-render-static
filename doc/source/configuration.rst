@@ -264,7 +264,7 @@ Where our urls.js file might look like:
 
 .. code-block:: js+django
 
-    {{ "render_static.ClassURLWriter"|urls_to_js(exclude=exclude) }}
+    {{ urls_to_js(exclude=exclude) }}
 
 And our settings file might look like:
 
