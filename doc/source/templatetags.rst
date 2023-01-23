@@ -5,7 +5,8 @@ Built-in Filters & Tags
 =======================
 
 `django-render-static` includes several built-in template filters and tags. These are described
-here.
+here. All tags and filters are available on both the ``StaticDjangoTemplates`` backend and the
+``StaticJinja2Templates`` backend.
 
 .. _filters:
 
@@ -119,6 +120,22 @@ The module_list may be a list of module types or string import paths to modules.
 
 Tags
 ----
+
+Tags on the ``StaticDjangoTemplates`` backend are django template tags using the
+{% %} syntax. Using the ``StaticJinja2Templates`` backend these tags are the same
+as filters. For example, in Django templates ``urls_to_js`` might be called like so:
+
+.. code-block:: js+django
+
+    {% urls_to_js visitor="render_static.ClassURLWriter" exclude=exclude %}
+
+And the equivalent call in Jinja2 would be:
+
+.. code-block:: js+django
+
+    {{ "render_static.ClassURLWriter"|urls_to_js(exclude=exclude) }}
+
+..
 
 .. _urls_to_js:
 

@@ -18,10 +18,7 @@ from django.utils.module_loading import import_string
 from render_static import placeholders
 from render_static.javascript import JavaScriptGenerator
 from render_static.tests import bad_pattern, defines
-from render_static.tests.tests import (
-    GLOBAL_STATIC_DIR,
-    BaseTestCase,
-)
+from render_static.tests.tests import GLOBAL_STATIC_DIR, BaseTestCase
 from render_static.url_tree import ClassURLWriter
 
 node_version = None

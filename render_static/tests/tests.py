@@ -8,6 +8,7 @@ from django.apps import apps
 from django.conf import settings
 from django.core.exceptions import ImproperlyConfigured
 from django.core.management import CommandError, call_command
+from django.template.exceptions import TemplateDoesNotExist
 from django.test import TestCase, override_settings
 from render_static import resolve_context, resource
 from render_static.engine import StaticTemplateEngine
@@ -138,6 +139,230 @@ def generate_context2():
 
 def invalid_context_return():
     return ['garbage']
+
+
+class ConfigTestCase(TestCase):
+    """
+    Verifies configuration errors are reported as expected and that default loaders are created.
+    """
+    def test_default_loaders(self):
+        """
+        When no loaders specified, usage of app directories loaders is togged by APP_DIRS
+        """
+        engine = StaticTemplateEngine({
+            'ENGINES': [{
+                'BACKEND': 'render_static.backends.StaticDjangoTemplates',
+                'DIRS': [STATIC_TEMP_DIR],
+                'APP_DIRS': True,
+                'OPTIONS': {}
+            }],
+        })
+        self.assertEqual(
+            engine['StaticDjangoTemplates'].engine.loaders,
+            [
+                'render_static.loaders.StaticFilesystemLoader',
+                'render_static.loaders.StaticAppDirectoriesLoader'
+            ]
+        )
+
+        engine = StaticTemplateEngine({
+            'ENGINES': [{
+                'BACKEND': 'render_static.backends.StaticDjangoTemplates',
+                'DIRS': [STATIC_TEMP_DIR],
+                'APP_DIRS': False,
+                'OPTIONS': {}
+            }],
+        })
+        self.assertEqual(
+            engine['StaticDjangoTemplates'].engine.loaders,
+            ['render_static.loaders.StaticFilesystemLoader']
+        )
+
+    def test_app_dirs_error(self):
+        """
+        Configuring APP_DIRS and loader is an error.
+        """
+        engine = StaticTemplateEngine({
+            'ENGINES': [{
+                'BACKEND': 'render_static.backends.StaticDjangoTemplates',
+                'DIRS': [STATIC_TEMP_DIR],
+                'APP_DIRS': True,
+                'OPTIONS': {
+                    'loaders': ['render_static.loaders.StaticFilesystemLoader']
+                }
+            }]
+        })
+        self.assertRaises(ImproperlyConfigured, lambda: engine.engines)
+
+    def test_dest_error(self):
+        """
+        Dest must be an absolute path in ether string or Path form.
+        """
+        engine = StaticTemplateEngine({
+            'templates': {
+                'nominal_fs.html': {
+                    'dest': [GLOBAL_STATIC_DIR / 'nominal_fs.html']
+                }
+            }
+        })
+        self.assertRaises(ImproperlyConfigured, lambda: engine.templates)
+
+        engine = StaticTemplateEngine({
+            'templates': {
+                'nominal_fs.html': {
+                    'dest':  './nominal_fs.html'
+                }
+            }
+        })
+        self.assertRaises(ImproperlyConfigured, lambda: engine.templates)
+
+    def test_context_error(self):
+        """
+        Context must be a dictionary.
+        """
+        engine = StaticTemplateEngine({
+            'context': [0]
+        })
+        self.assertRaises(ImproperlyConfigured, lambda: engine.context)
+
+        engine = StaticTemplateEngine({
+            'templates': {
+                'nominal_fs.html': {
+                    'dest': GLOBAL_STATIC_DIR / 'nominal_fs.html',
+                    'context': [0]
+                }
+            }
+        })
+        self.assertRaises(ImproperlyConfigured, lambda: engine.templates)
+
+    def test_no_settings(self):
+        """
+        If no STATIC_TEMPLATES setting is present we should raise.
+        """
+        engine = StaticTemplateEngine()
+        self.assertRaises(ImproperlyConfigured, lambda: engine.config)
+
+    @override_settings(
+        STATIC_ROOT=None,
+        STATIC_TEMPLATES={
+            'ENGINES': [{
+                'BACKEND': 'render_static.backends.StaticDjangoTemplates',
+                'DIRS': [STATIC_TEMP_DIR],
+                'OPTIONS': {
+                    'loaders': [
+                        'render_static.loaders.StaticFilesystemBatchLoader'
+                    ]
+                },
+            }]
+        }
+    )
+    def test_no_destination(self):
+        """
+        If no  setting is present we should raise.
+        """
+        self.assertRaises(
+            CommandError,
+            lambda: call_command('renderstatic', 'nominal_fs.html')
+        )
+
+    def test_unrecognized_settings(self):
+        """
+        Unrecognized configuration keys should raise.
+        """
+        engine = StaticTemplateEngine({
+            'unknown_key': 0,
+            'bad': 'value'
+        })
+        self.assertRaises(ImproperlyConfigured, lambda: engine.config)
+
+        engine = StaticTemplateEngine({
+            'templates': {
+                'nominal_fs.html': {
+                    'dest': GLOBAL_STATIC_DIR / 'nominal_fs.html',
+                    'context': {},
+                    'unrecognized_key': 'bad'
+                }
+            }
+        })
+        self.assertRaises(ImproperlyConfigured, lambda: engine.templates)
+
+    def test_backends(self):
+        """
+        Backends must exist.
+        """
+        engine = StaticTemplateEngine({
+            'ENGINES': [{
+                'BACKEND': 0
+            }]
+        })
+        self.assertRaises(ImproperlyConfigured, lambda: engine.engines)
+
+    def test_allow_dot_modifiers(self):
+        engine = StaticTemplateEngine({
+            'ENGINES': [{
+                'BACKEND': 'render_static.backends.StaticDjangoTemplates',
+                'APP_DIRS': True,
+            }],
+            'templates': {
+                '../app1/html/nominal1.html': {}
+            }
+        })
+        self.assertRaises(
+            TemplateDoesNotExist,
+            lambda: engine.render_to_disk('../app1/html/nominal1.html')
+        )
+
+    def test_suspicious_selector_fs(self):
+        engine = StaticTemplateEngine({
+            'ENGINES': [{
+                'BACKEND': 'render_static.backends.StaticDjangoTemplates',
+                'DIRS': [STATIC_TEMP_DIR],
+                'OPTIONS': {
+                    'loaders': [
+                        'render_static.loaders.StaticFilesystemBatchLoader'
+                    ]
+                },
+            }]
+        })
+        self.assertRaises(
+            TemplateDoesNotExist,
+            lambda: engine.render_to_disk('../static_templates2/exclusive/template1.html')
+        )
+
+    def test_suspicious_selector_appdirs(self):
+        engine = StaticTemplateEngine({
+            'ENGINES': [{
+                'BACKEND': 'render_static.backends.StaticDjangoTemplates',
+                'OPTIONS': {
+                    'loaders': [
+                        'render_static.loaders.StaticAppDirectoriesBatchLoader'
+                    ]
+                },
+            }]
+        })
+        self.assertRaises(
+            TemplateDoesNotExist,
+            lambda: engine.render_to_disk('../custom_templates/nominal_fs.html')
+        )
+
+    def test_no_selector_templates_found(self):
+        engine = StaticTemplateEngine({
+            'ENGINES': [{
+                'BACKEND': 'render_static.backends.StaticDjangoTemplates',
+                'OPTIONS': {
+                    'loaders': [
+                        'render_static.loaders.StaticAppDirectoriesBatchLoader'
+                    ]
+                },
+            }]
+        })
+        self.assertRaises(
+            TemplateDoesNotExist,
+            lambda: engine.render_to_disk('*.css')
+        )
+
+    # def tearDown(self):
+    #     pass
 
 
 @override_settings(STATIC_TEMPLATES={

@@ -136,6 +136,7 @@ Your settings file might look like:
         }
     }
 
+
 Then call :ref:`renderstatic` before `collectstatic`::
 
     $> ./manage.py renderstatic

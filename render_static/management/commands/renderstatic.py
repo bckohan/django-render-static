@@ -124,12 +124,12 @@ class Command(BaseCommand):
 
         try:
             for render in engine.render_each(
-                    *selectors,
-                    dest=options.get('dest', None),
-                    context=options.get('context', None),
-                    first_engine=options.get('first_engine', False),
-                    first_loader=options.get('first_loader', False),
-                    first_preference=options.get('first_preference', False)
+                *selectors,
+                dest=options.get('dest', None),
+                context=options.get('context', None),
+                first_engine=options.get('first_engine', False),
+                first_loader=options.get('first_loader', False),
+                first_preference=options.get('first_preference', False)
             ):
                 self.stdout.write(
                     self.style.SUCCESS(  # pylint: disable=E1101

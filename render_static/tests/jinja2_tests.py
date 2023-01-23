@@ -7,9 +7,19 @@ from django.core.management import CommandError, call_command
 from django.template.exceptions import TemplateDoesNotExist
 from django.template.utils import InvalidTemplateEngineError
 from django.test import TestCase, override_settings
+from django.urls import reverse
 from render_static.backends import StaticDjangoTemplates, StaticJinja2Templates
 from render_static.engine import StaticTemplateEngine
-from render_static.loaders.jinja2 import StaticFileSystemLoader
+from render_static.loaders.jinja2 import (
+    StaticDictLoader,
+    StaticFileSystemLoader,
+)
+from render_static.tests import defines
+from render_static.tests.js_tests import (
+    ClassURLWriter,
+    DefinesToJavascriptTest,
+    URLJavascriptMixin,
+)
 from render_static.tests.tests import (
     APP1_STATIC_DIR,
     APP2_STATIC_DIR,
@@ -206,147 +216,6 @@ class ConfigTestCase(TestCase):
     """
     Verifies configuration errors are reported as expected and that default loaders are created.
     """
-    def test_default_loaders(self):
-        """
-        When no loaders specified, usage of app directories loaders is togged by APP_DIRS
-        """
-        engine = StaticTemplateEngine({
-            'ENGINES': [{
-                'BACKEND': 'render_static.backends.StaticDjangoTemplates',
-                'DIRS': [STATIC_TEMP_DIR],
-                'APP_DIRS': True,
-                'OPTIONS': {}
-            }],
-        })
-        self.assertEqual(
-            engine['StaticDjangoTemplates'].engine.loaders,
-            [
-                'render_static.loaders.StaticFilesystemLoader',
-                'render_static.loaders.StaticAppDirectoriesLoader'
-            ]
-        )
-
-        engine = StaticTemplateEngine({
-            'ENGINES': [{
-                'BACKEND': 'render_static.backends.StaticDjangoTemplates',
-                'DIRS': [STATIC_TEMP_DIR],
-                'APP_DIRS': False,
-                'OPTIONS': {}
-            }],
-        })
-        self.assertEqual(
-            engine['StaticDjangoTemplates'].engine.loaders,
-            ['render_static.loaders.StaticFilesystemLoader']
-        )
-
-    def test_app_dirs_error(self):
-        """
-        Configuring APP_DIRS and loader is an error.
-        """
-        engine = StaticTemplateEngine({
-            'ENGINES': [{
-                'BACKEND': 'render_static.backends.StaticDjangoTemplates',
-                'DIRS': [STATIC_TEMP_DIR],
-                'APP_DIRS': True,
-                'OPTIONS': {
-                    'loaders': ['render_static.loaders.StaticFilesystemLoader']
-                }
-            }]
-        })
-        self.assertRaises(ImproperlyConfigured, lambda: engine.engines)
-
-    def test_dest_error(self):
-        """
-        Dest must be an absolute path in ether string or Path form.
-        """
-        engine = StaticTemplateEngine({
-            'templates': {
-                'nominal_fs.html': {
-                    'dest': [GLOBAL_STATIC_DIR / 'nominal_fs.html']
-                }
-            }
-        })
-        self.assertRaises(ImproperlyConfigured, lambda: engine.templates)
-
-        engine = StaticTemplateEngine({
-            'templates': {
-                'nominal_fs.html': {
-                    'dest':  './nominal_fs.html'
-                }
-            }
-        })
-        self.assertRaises(ImproperlyConfigured, lambda: engine.templates)
-
-    def test_context_error(self):
-        """
-        Context must be a dictionary.
-        """
-        engine = StaticTemplateEngine({
-            'context': [0]
-        })
-        self.assertRaises(ImproperlyConfigured, lambda: engine.context)
-
-        engine = StaticTemplateEngine({
-            'templates': {
-                'nominal_fs.html': {
-                    'dest': GLOBAL_STATIC_DIR / 'nominal_fs.html',
-                    'context': [0]
-                }
-            }
-        })
-        self.assertRaises(ImproperlyConfigured, lambda: engine.templates)
-
-    def test_no_settings(self):
-        """
-        If no STATIC_TEMPLATES setting is present we should raise.
-        """
-        engine = StaticTemplateEngine()
-        self.assertRaises(ImproperlyConfigured, lambda: engine.config)
-
-    @override_settings(
-        STATIC_ROOT=None,
-        STATIC_TEMPLATES={
-            'ENGINES': [{
-                'BACKEND': 'render_static.backends.StaticDjangoTemplates',
-                'DIRS': [STATIC_TEMP_DIR],
-                'OPTIONS': {
-                    'loaders': [
-                        'render_static.loaders.StaticFilesystemBatchLoader'
-                    ]
-                },
-            }]
-        }
-    )
-    def test_no_destination(self):
-        """
-        If no  setting is present we should raise.
-        """
-        self.assertRaises(
-            CommandError,
-            lambda: call_command('renderstatic', 'nominal_fs.html')
-        )
-
-    def test_unrecognized_settings(self):
-        """
-        Unrecognized configuration keys should raise.
-        """
-        engine = StaticTemplateEngine({
-            'unknown_key': 0,
-            'bad': 'value'
-        })
-        self.assertRaises(ImproperlyConfigured, lambda: engine.config)
-
-        engine = StaticTemplateEngine({
-            'templates': {
-                'nominal_fs.html': {
-                    'dest': GLOBAL_STATIC_DIR / 'nominal_fs.html',
-                    'context': {},
-                    'unrecognized_key': 'bad'
-                }
-            }
-        })
-        self.assertRaises(ImproperlyConfigured, lambda: engine.templates)
-
     def test_engines(self):
         """
         Engines must be an iterable containing Engine dictionary configs. Aliases must be unique.
@@ -386,64 +255,6 @@ class ConfigTestCase(TestCase):
         self.assertTrue(type(engine['DIFFERENT']) is StaticJinja2Templates)
         self.assertRaises(InvalidTemplateEngineError, lambda: engine['DOESNT_EXIST'])
 
-    def test_backends(self):
-        """
-        Backends must exist.
-        """
-        engine = StaticTemplateEngine({
-            'ENGINES': [{
-                'BACKEND': 0
-            }]
-        })
-        self.assertRaises(ImproperlyConfigured, lambda: engine.engines)
-
-    def test_allow_dot_modifiers(self):
-        engine = StaticTemplateEngine({
-            'ENGINES': [{
-                'BACKEND': 'render_static.backends.StaticDjangoTemplates',
-                'APP_DIRS': True,
-            }],
-            'templates': {
-                '../app1/html/nominal1.html': {}
-            }
-        })
-        self.assertRaises(
-            TemplateDoesNotExist,
-            lambda: engine.render_to_disk('../app1/html/nominal1.html')
-        )
-
-    def test_suspicious_selector_fs(self):
-        engine = StaticTemplateEngine({
-            'ENGINES': [{
-                'BACKEND': 'render_static.backends.StaticDjangoTemplates',
-                'DIRS': [STATIC_TEMP_DIR],
-                'OPTIONS': {
-                    'loaders': [
-                        'render_static.loaders.StaticFilesystemBatchLoader'
-                    ]
-                },
-            }]
-        })
-        self.assertRaises(
-            TemplateDoesNotExist,
-            lambda: engine.render_to_disk('../static_templates2/exclusive/template1.html')
-        )
-
-    def test_suspicious_selector_appdirs(self):
-        engine = StaticTemplateEngine({
-            'ENGINES': [{
-                'BACKEND': 'render_static.backends.StaticDjangoTemplates',
-                'OPTIONS': {
-                    'loaders': [
-                        'render_static.loaders.StaticAppDirectoriesBatchLoader'
-                    ]
-                },
-            }]
-        })
-        self.assertRaises(
-            TemplateDoesNotExist,
-            lambda: engine.render_to_disk('../custom_templates/nominal_fs.html')
-        )
 
     def test_suspicious_selector_jinja2_appdirs(self):
         engine = StaticTemplateEngine({
@@ -455,22 +266,6 @@ class ConfigTestCase(TestCase):
         self.assertRaises(
             TemplateDoesNotExist,
             lambda: engine.render_to_disk('../custom_templates/nominal_fs.html')
-        )
-
-    def test_no_selector_templates_found(self):
-        engine = StaticTemplateEngine({
-            'ENGINES': [{
-                'BACKEND': 'render_static.backends.StaticDjangoTemplates',
-                'OPTIONS': {
-                    'loaders': [
-                        'render_static.loaders.StaticAppDirectoriesBatchLoader'
-                    ]
-                },
-            }]
-        })
-        self.assertRaises(
-            TemplateDoesNotExist,
-            lambda: engine.render_to_disk('*.css')
         )
 
     # def tearDown(self):
@@ -625,28 +420,233 @@ class MultipleDestinationsTestCase(BaseTestCase):
     # def tearDown(self):
     #     pass
 
-"""
-class TestTemplateTagsAndFilters(BaseTestCase):
+
+@override_settings(STATIC_TEMPLATES={
+    'ENGINES': [{
+        'BACKEND': 'render_static.backends.StaticJinja2Templates',
+        'OPTIONS': {
+            'app_dir': 'custom_templates',
+            'loader': StaticDictLoader({
+                'defines1.js':
+                    'var defines = '
+                    '{\n{{ classes|classes_to_js("  ") }}};'
+                    '\nconsole.log(JSON.stringify(defines));',
+                'defines2.js':
+                    'var defines = '
+                    '{\n{{ modules|modules_to_js }}};'
+                    '\nconsole.log(JSON.stringify(defines));',
+                'defines_error.js':
+                    'var defines = '
+                    '{\n{{ classes|classes_to_js }}};'
+                    '\nconsole.log(JSON.stringify(defines));'
+            })
+        },
+    }],
+    'templates': {
+        'defines1.js': {
+            'dest': GLOBAL_STATIC_DIR / 'defines1.js',
+            'context': {
+                'classes': [
+                    defines.MoreDefines,
+                    'render_static.tests.defines.ExtendedDefines'
+                ]
+            }
+        },
+        'defines2.js': {
+            'dest': GLOBAL_STATIC_DIR / 'defines2.js',
+            'context': {
+                'modules': [defines, 'render_static.tests.defines2']
+            }
+        },
+        'defines_error.js': {
+            'dest': GLOBAL_STATIC_DIR / 'defines_error.js',
+            'context': {
+                'classes': [0, {}]
+            }
+        }
+    }
+})
+class Jinja2DefinesToJavascriptTest(DefinesToJavascriptTest):
 
     @override_settings(STATIC_TEMPLATES={
         'ENGINES': [{
             'BACKEND': 'render_static.backends.StaticJinja2Templates',
             'OPTIONS': {
-                'loader': Sta
+                'loader': StaticDictLoader({
+                    'defines1.js': (
+                            'var defines = {\n{{ '
+                            '"render_static.tests.defines.MoreDefines,'
+                            'render_static.tests.defines.ExtendedDefines"'
+                            '|split(",")|classes_to_js("  ") }}};'
+                            '\nconsole.log(JSON.stringify(defines));'
+                    ),
+                    'defines2.js': (
+                            'var defines = {\n{{ '
+                            '"render_static.tests.defines '
+                            'render_static.tests.defines2"|split'
+                            '|modules_to_js("  ") }}};'
+                            '\nconsole.log(JSON.stringify(defines));'
+                    )
+                })
+            },
+        }],
+        'templates': {
+            'defines1.js': {'dest': GLOBAL_STATIC_DIR / 'defines1.js'},
+            'defines2.js': {'dest': GLOBAL_STATIC_DIR / 'defines2.js'}
+        }
+    })
+    def test_split(self):
+        # we have to call the super class like this or else its decorator
+        # override will override this one
+        super().test_split.__wrapped__(self)
+
+
+@override_settings(
+    INSTALLED_APPS=[
+        'render_static.tests.chain',
+        'render_static.tests.spa',
+        'render_static',
+        'django.contrib.auth',
+        'django.contrib.contenttypes',
+        'django.contrib.sessions',
+        'django.contrib.sites',
+        'django.contrib.messages',
+        'django.contrib.staticfiles',
+        'django.contrib.admin'
+    ],
+    ROOT_URLCONF='render_static.tests.urls_bug_13',
+    STATIC_TEMPLATES={
+        'ENGINES': [{
+            'BACKEND': 'render_static.backends.StaticJinja2Templates',
+            'OPTIONS': {
+                'loader': StaticDictLoader({
+                    'urls.js': (
+                        '{{ "render_static.ClassURLWriter"|urls_to_js }}'
+                    )
+                })
             }
         }],
-        'templates': [
-            ['multi_test.jinja2', {
-                'context': {'file': 1},
-                'dest': GLOBAL_STATIC_DIR / 'multi_1_jinja2.html'
-            }],
-            ['multi_test.jinja2', {
-                'context': {'file': 2},
-                'dest': GLOBAL_STATIC_DIR / 'multi_2_jinja2.html'
-            }],
+        'templates': {'urls.js': {'context': {}}}
+    }
+)
+class Jinja2URLTestCases(URLJavascriptMixin, BaseTestCase):
 
-        ]
+    def setUp(self):
+        self.clear_placeholder_registries()
+
+    def test_urls_to_js(self, es5=False):
+        self.es6_mode = not es5
+        self.url_js = None
+        self.class_mode = ClassURLWriter.class_name_
+
+        call_command('renderstatic', 'urls.js')
+        for name, kwargs in [
+            ('spa1:qry', {'toparg': 1, 'arg': 3}),
+            ('spa1:qry', {'toparg': 2}),
+            ('spa2:qry', {'arg': 2}),
+            ('spa2:qry', {}),
+            ('chain:spa:qry', {'top': 'a5', 'chain': 'slug'}),
+            ('chain:spa:qry', {'top': 'a5', 'chain': 'str', 'arg': 100}),
+            ('chain:spa:index', {'top': 'a5', 'chain': 'str'}),
+            ('chain_re:spa_re:qry', {'top': 'a5', 'chain': 'slug'}),
+            ('chain_re:spa_re:qry', {'top': 'a5', 'chain': 'str', 'arg': 100}),
+            ('chain_re:spa_re:index', {'top': 'a5', 'chain': 'str'}),
+            ('noslash:spa:qry', {'top': 'a5', 'chain': 'slug'}),
+            ('noslash:spa:qry', {'top': 'a5', 'chain': 'str', 'arg': 100}),
+            ('noslash:spa:index', {'top': 'a5', 'chain': 'str'}),
+        ]:
+            self.assertEqual(
+                reverse(name, kwargs=kwargs),
+                self.get_url_from_js(name, kwargs)
+            )
+
+    @override_settings(
+        INSTALLED_APPS=[
+            'render_static.tests.chain',
+            'render_static.tests.spa',
+            'render_static',
+            'django.contrib.auth',
+            'django.contrib.contenttypes',
+            'django.contrib.sessions',
+            'django.contrib.sites',
+            'django.contrib.messages',
+            'django.contrib.staticfiles',
+            'django.contrib.admin'
+        ],
+        ROOT_URLCONF='render_static.tests.urls_bug_13',
+        STATIC_TEMPLATES={
+            'ENGINES': [{
+                'BACKEND': 'render_static.backends.StaticJinja2Templates',
+                'OPTIONS': {
+                    'loader': StaticDictLoader({
+                        'urls.js': (
+                            '{{ "render_static.ClassURLWriter"|'
+                            'urls_to_js(es5=True) }}'
+                        )
+                    })
+                }
+            }],
+            'templates': {'urls.js': {'context': {}}}
+        }
+    )
+    def test_urls_to_js_es5(self):
+        self.test_urls_to_js(es5=True)
+
+
+@override_settings(STATIC_TEMPLATES={
+    'ENGINES': [{
+        'BACKEND': 'render_static.backends.StaticJinja2Templates',
+        'APP_DIRS': True,
+        'OPTIONS': {
+            'autoescape': False
+        }
+    }],
+    'templates': ['app1/*.js']
+})
+class Jinja2WildCardLoaderTestCase(BaseTestCase):
+    """
+    Tests that glob patterns work as template selectors.
+    """
+    def test_wildcards(self):
+        call_command('renderstatic')
+        self.assertEqual(len(os.listdir(APP2_STATIC_DIR / 'app1')), 3)
+        for source, dest in [
+            (
+                APP2_STATIC_DIR / 'app1' / 'glob1.js',
+                EXPECTED_DIR / 'wildcard_test.js'
+            ),
+            (
+                APP2_STATIC_DIR / 'app1' / 'glob2.js',
+                EXPECTED_DIR / 'wildcard_test.js'
+            ),
+            (
+                APP2_STATIC_DIR / 'app1' / 'other.js',
+                EXPECTED_DIR / 'wildcard_test.js'
+            ),
+        ]:
+            self.assertTrue(filecmp.cmp(source, dest, shallow=False))
+
+    @override_settings(STATIC_TEMPLATES={
+        'ENGINES': [{
+            'BACKEND': 'render_static.backends.StaticJinja2Templates',
+            'APP_DIRS': True,
+            'OPTIONS': {
+                'autoescape': False
+            }
+        }],
+        'templates': ['app1/glob*.js']
     })
-    def test_urls_to_js(self):
-        pass
-"""
+    def test_wildcards2(self):
+        call_command('renderstatic')
+        self.assertEqual(len(os.listdir(APP2_STATIC_DIR / 'app1')), 2)
+        for source, dest in [
+            (
+                APP2_STATIC_DIR / 'app1' / 'glob1.js',
+                EXPECTED_DIR / 'wildcard_test.js'
+            ),
+            (
+                APP2_STATIC_DIR / 'app1' / 'glob2.js',
+                EXPECTED_DIR / 'wildcard_test.js'
+            ),
+        ]:
+            self.assertTrue(filecmp.cmp(source, dest, shallow=False))

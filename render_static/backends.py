@@ -16,6 +16,7 @@ from django.template.backends.django import (
 from render_static import Jinja2DependencyNeeded
 from render_static.loaders.jinja2 import StaticFileSystemBatchLoader
 from render_static.origin import AppOrigin
+from render_static.templatetags import render_static
 
 __all__ = ['StaticDjangoTemplates', 'StaticJinja2Templates']
 
@@ -102,6 +103,23 @@ try:
         Jinja2,
         Template,
     )
+    from jinja2 import Environment
+
+    def default_env(**options):
+        """
+        The default Jinja2 backend environment. This environment adds the tags
+        and filters from render_static.
+
+        :param options:
+        :return:
+        """
+        env = Environment(**options)
+        env.filters.update(render_static.register.filters)
+        env.filters.update({
+            name: tag.__wrapped__
+            for name, tag in render_static.register.tags.items()
+        })
+        return env
 
     class StaticJinja2Templates(Jinja2):
         """
@@ -125,6 +143,10 @@ try:
             self.dirs = list(params.get('DIRS', []))
             self.app_dirs = params.get('APP_DIRS', False)
             options = params.pop('OPTIONS').copy()
+            options.setdefault(
+                'environment',
+                'render_static.backends.default_env'
+            )
             self.app_dirname = options.pop('app_dir', self.app_dirname)
 
             if 'loader' not in options:

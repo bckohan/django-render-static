@@ -10,7 +10,7 @@ import re
 from abc import abstractmethod
 from importlib import import_module
 from types import ModuleType
-from typing import Dict, Generator, Iterable, List, Optional, Tuple, Union, Any
+from typing import Any, Dict, Generator, Iterable, List, Optional, Tuple, Union
 
 from django.conf import settings
 from django.urls import URLPattern, URLResolver, reverse
