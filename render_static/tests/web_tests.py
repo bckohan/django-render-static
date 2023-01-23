@@ -5,19 +5,19 @@ namespaces. These patterns incur a dependency on renderstatic to any
 users of the SPA apps. See Runtimes in the documentation for more details.
 """
 import json
+import logging
 import os
+import shutil
 
+import pytest
 from django.core.management import call_command
 from django.test import LiveServerTestCase, override_settings
 from django.urls import reverse
 from render_static.tests.tests import LOCAL_STATIC_DIR, BaseTestCase
 from selenium import webdriver
-from selenium.webdriver.common.by import By
 from selenium.webdriver.chrome.options import Options
 from selenium.webdriver.chrome.service import Service
-import pytest
-import shutil
-import logging
+from selenium.webdriver.common.by import By
 
 logger = logging.getLogger(__name__)
 

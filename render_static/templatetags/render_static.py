@@ -67,8 +67,8 @@ def to_js(classes: dict, indent: str = '\t'):
 
 @register.filter(name='classes_to_js')
 def classes_to_js(
-        classes: Iterable[Union[Type, str]],
-        indent: str = '\t'
+    classes: Iterable[Union[Type, str]],
+    indent: str = '\t'
 ) -> str:
     """
     Convert a list of classes to javascript. Only upper case, non-callable
@@ -97,8 +97,8 @@ def classes_to_js(
 
 @register.filter(name='modules_to_js')
 def modules_to_js(
-        modules: Iterable[Union[ModuleType, str]],
-        indent: str = '\t'
+    modules: Iterable[Union[ModuleType, str]],
+    indent: str = '\t'
 ) -> str:
     """
     Convert a list of python modules to javascript. Only upper case,
@@ -131,14 +131,14 @@ def modules_to_js(
 
 @register.simple_tag
 def urls_to_js(  # pylint: disable=R0913,R0915
-        visitor: Union[Type, str] = ClassURLWriter,
-        url_conf: Optional[Union[ModuleType, str]] = None,
-        indent: str = '\t',
-        depth: int = 0,
-        include: Optional[Iterable[str]] = None,
-        exclude: Optional[Iterable[str]] = None,
-        es5: bool = False,
-        **kwargs
+    visitor: Union[Type, str] = ClassURLWriter,
+    url_conf: Optional[Union[ModuleType, str]] = None,
+    indent: str = '\t',
+    depth: int = 0,
+    include: Optional[Iterable[str]] = None,
+    exclude: Optional[Iterable[str]] = None,
+    es5: bool = False,
+    **kwargs
 ) -> str:
     """
     Dump reversible URLs to javascript. The javascript generated provides
