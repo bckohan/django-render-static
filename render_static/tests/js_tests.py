@@ -1313,7 +1313,7 @@ class CornerCaseTest(URLJavascriptMixin, BaseTestCase):
         call_command('renderstatic', 'urls.js')
 
         with open(GLOBAL_STATIC_DIR / 'urls.js', 'r') as urls:
-            if 'reverse matched unexpected pattern' not in urls.read():
+            if 'overruled' not in urls.read():
                 self.compare('special', kwargs={'choice': 'first'})  # pragma: no cover
                 self.compare('special', args=['first'])  # pragma: no cover
 
@@ -1906,6 +1906,54 @@ class DjangoJSReverseTest(URLJavascriptMixin, BaseTestCase):
 
 
 @override_settings(
+    ROOT_URLCONF='render_static.tests.urls_precedence',
+    STATIC_TEMPLATES={
+        'ENGINES': [{
+            'BACKEND': 'render_static.backends.StaticDjangoTemplates',
+            'OPTIONS': {
+                'loaders': [
+                    ('render_static.loaders.StaticLocMemLoader', {
+                        'urls.js': '{% urls_to_js '
+                                   'visitor="render_static.ClassURLWriter" '
+                                   'exclude="exclude_namespace"|split '
+                                   '%};'
+                    })
+                ],
+                'builtins': ['render_static.templatetags.render_static']
+            },
+        }]
+    }
+)
+class DjangoJSReversePrecedenceTest(URLJavascriptMixin, BaseTestCase):
+    """
+    Run additional tests pilfered from django-js-reverse for the hell of it.
+    https://github.com/ierror/django-js-reverse/blob/master/django_js_reverse/tests/test_urls.py
+    """
+
+    def setUp(self):
+        self.clear_placeholder_registries()
+
+    def test_js_reverse_urls(self, es6=True):
+        self.es5_mode = False
+        self.url_js = None
+        self.class_mode = ClassURLWriter.class_name_
+        call_command('renderstatic', 'urls.js')
+        from django.urls import reverse
+        for kwargs in [
+            {},
+            {'kwarg1': 'order_test'}
+        ]:
+            self.assertEqual(
+                reverse('order', kwargs=kwargs),
+                self.get_url_from_js('order', kwargs)
+            )
+
+    # uncomment to not delete generated js
+    # def tearDown(self):
+    #    pass
+
+
+@override_settings(
     ROOT_URLCONF='render_static.tests.urls_bug_65',
     STATIC_TEMPLATES={
         'ENGINES': [{
@@ -1946,16 +1994,33 @@ class URLBugsTestCases(URLJavascriptMixin, BaseTestCase):
         from django.urls import reverse
         for kwargs in [
             {},
-            # {'url_param': 3},
-            # {'url_param': 1, 'kwarg_param': '1'},
-            # {'url_param': 2, 'kwarg_param': '2'},
-            # {'url_param': 4, 'kwarg_param': '4'},
-            # {'url_param': 4, 'kwarg_param': 1}
+            {'kwarg_param': '2'},
+            {'kwarg_param': 4},
+            #{'url_param': 4},  django bug - throws key error
+            {'url_param': 1, 'kwarg_param': '1'},
+            {'url_param': 4, 'kwarg_param': 4},
+            {'url_param': 2, 'kwarg_param': '2'},
+            {'url_param': 4, 'kwarg_param': 1}
         ]:
             self.assertEqual(
                 reverse('bug65', kwargs=kwargs),
                 self.get_url_from_js('bug65', kwargs)
             )
+
+        self.assertEqual(
+            reverse('bug65', args=[10]),
+            self.get_url_from_js('bug65', args=[10])
+        )
+
+        bad = {'url_param': 4, 'kwarg_param': 5}
+        self.assertRaises(NoReverseMatch, lambda: reverse('bug65', kwargs=bad))
+        self.assertEqual(
+            self.get_url_from_js('bug65', bad),
+            ''
+        )
+
+    def tearDown(self):
+        pass
 
     @override_settings(
         INSTALLED_APPS=[
