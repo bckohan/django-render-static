@@ -408,8 +408,16 @@ class URLTreeVisitor(JavaScriptGenerator):
         if not params and endpoint.pattern.regex.groups > 0:
             unnamed = endpoint.pattern.regex.groups
 
+        composite_regex = re.compile(''.join([
+            pattern.regex.pattern.lstrip('^').rstrip('$')
+            for pattern in [
+                *route,
+                endpoint.pattern
+            ]
+        ]))
+
         # if we have parameters, resolve the placeholders for them
-        if params or unnamed:  # pylint: disable=R1702
+        if params or unnamed or endpoint.default_args:  # pylint: disable=R1702
             if unnamed:
                 resolved_placeholders = itertools.product(
                     *resolve_unnamed_placeholders(
@@ -468,16 +476,15 @@ class URLTreeVisitor(JavaScriptGenerator):
                     if unnamed:
                         placeholder_url = reverse(qname, args=placeholders)
                     else:
-                        placeholder_url = reverse(qname, kwargs=kwargs)
+                        placeholder_url = reverse(
+                            qname,
+                            kwargs={
+                                **kwargs,
+                                **(endpoint.default_args or {})
+                            }
+                        )
 
                     replacements = []
-                    composite_regex = re.compile(''.join([
-                        pattern.regex.pattern.lstrip('^').rstrip('$')
-                        for pattern in [
-                            *route,
-                            endpoint.pattern
-                        ]
-                    ]))
 
                     mtch = composite_regex.search(placeholder_url.lstrip('/'))
 
@@ -518,43 +525,33 @@ class URLTreeVisitor(JavaScriptGenerator):
                             url_idx += (rpl[0][1] - rpl[0][0])
                         if url_idx < len(placeholder_url):
                             path.append(placeholder_url[url_idx:])
-                        yield from self.visit_path(path, list(kwargs.keys()))
+
+                        yield from self.visit_path(
+                            path, list(kwargs.keys()),
+                            endpoint.default_args
+                        )
 
                     else:
-                        # seems to be a bug in django where reverse cannot
-                        # distinguish between patterns where the only
-                        # difference is between the use of kwargs and args we
-                        # leave a comment breadcrumb in this event so as not to
-                        # fail the larger URL reversal but to leave an
-                        # indication as to what is wrong with the URLs
-                        unexpected_default_args = set(
-                            endpoint.default_args
-                        ).difference(set(params.keys()))
-                        if unexpected_default_args:
-                            yield '/**'
-                            yield ' * Default kwargs, ' \
-                                f'{unexpected_default_args}, are not named ' \
-                                f'parameters on pattern {endpoint.pattern}.'
-                            yield ' * This can cause unexpected behavior ' \
-                                  'and is not currently supported for ' \
-                                  'reversal.'
-                            yield '**/'
-                        else:
-                            yield (
-                                '/* Django reverse matched unexpected pattern '
-                                'for ' +
-                                (
-                                    f'args={unnamed} */' if unnamed
-                                    else f'kwargs={list(params.keys())} */'
-                                )
-                            )  # pragma: no cover
+                        # if we're here it means this path was overridden
+                        # further down the tree
+                        yield (
+                            f'/* Path {composite_regex.pattern} overruled '
+                            'with: ' +
+                            (
+                                f'args={unnamed} */' if unnamed
+                                else f'kwargs={list(params.keys())} */'
+                            )
+                        )  # pragma: no cover
                     return
 
                 except NoReverseMatch:
                     continue
         else:
             # this is a simple url with no params
-            yield from self.visit_path([reverse(qname)], [])
+            if not composite_regex.search(reverse(qname).lstrip('/')):
+                yield f"/* Path '{composite_regex.pattern}' overruled */"
+            else:
+                yield from self.visit_path([reverse(qname)], [])
             return
 
         # Django is unable to reverse paths with named and unnamed arguments,
@@ -600,7 +597,8 @@ class URLTreeVisitor(JavaScriptGenerator):
     def visit_path(
             self,
             path: List[Union[Substitute, str]],
-            kwargs: List[str]
+            kwargs: List[str],
+            defaults: Optional[Dict[str, Any]] = None
     ) -> Generator[str, None, None]:
         """
         Visit a singular realization of a path into components. This is called
@@ -612,12 +610,13 @@ class URLTreeVisitor(JavaScriptGenerator):
             positional or named arguments should be swapped into the path.
             Strings and substitutions will always alternate.
         :param kwargs: The list of named arguments present in the path, if any
+        :param defaults: Any default kwargs specified on the path definition
         :yield: JavaScript that should handle the realized path.
         """
 
     def visit_path_group(
         self,
-        nodes: Iterable[URLPattern],
+        nodes: List[URLPattern],
         qname: str,
         app_name: Optional[str] = None,
         route: Optional[List[RoutePattern]] = None
@@ -634,7 +633,7 @@ class URLTreeVisitor(JavaScriptGenerator):
             arg inputs
         """
         yield from self.enter_path_group(qname)
-        for pattern in nodes:
+        for pattern in reversed(nodes):
             yield from self.visit_pattern(
                 pattern, qname, app_name, route or []
             )
@@ -668,7 +667,8 @@ class URLTreeVisitor(JavaScriptGenerator):
         if namespace:
             parent_qname += f"{':' if parent_qname else ''}{namespace}"
 
-        for name, nodes in branch[1].items():
+        for name in reversed(list(branch[1].keys())):
+            nodes = branch[1][name]
             yield from self.visit_path_group(
                 nodes,
                 f"{f'{parent_qname}:' if parent_qname else ''}{name}",
@@ -677,7 +677,8 @@ class URLTreeVisitor(JavaScriptGenerator):
             )
 
         if branch[0]:
-            for nmsp, brch in branch[0].items():
+            for nmsp in reversed(list(branch[0].keys())):
+                brch = branch[0][nmsp]
                 yield from self.enter_namespace(nmsp)
                 yield from self.visit_branch(
                     brch,
@@ -848,7 +849,8 @@ class SimpleURLWriter(URLTreeVisitor):
     def visit_path(
             self,
             path: List[Union[Substitute, str]],
-            kwargs: List[str]
+            kwargs: List[str],
+            defaults: Optional[Dict[str, Any]] = None
     ) -> Generator[str, None, None]:
         """
         Convert a list of path components into JavaScript reverse function. The
@@ -859,6 +861,7 @@ class SimpleURLWriter(URLTreeVisitor):
         :param path: An iterable of the path components, alternating strings
             and Substitute placeholders for argument substitution
         :param kwargs: The names of the named arguments, if any, for the path
+        :param defaults: Any default kwargs specified path definition
         :yield: The JavaScript lines of code
         """
         if len(path) == 1:
@@ -979,8 +982,27 @@ class ClassURLWriter(URLTreeVisitor):
             yield ''
             yield f'{self.class_name_}.prototype = {{'
             self.indent()
-            yield 'match: function(kwargs, args, expected) {'
+            yield 'match: function(kwargs, args, expected, defaults={}) {'
             self.indent()
+
+            yield 'if (defaults) {'
+            self.indent()
+            yield 'for (const [key, val] of Object.entries(defaults)) {'
+            self.indent()
+            yield 'if (kwargs.hasOwnProperty(key)) {'
+            self.indent()
+            yield 'if (kwargs[key] !== val) { return false; }'
+            yield (
+                'else if (!expected.includes(key)) '
+                '{ delete kwargs[key]; }'
+            )
+            self.outdent()
+            yield '}'
+            self.outdent()
+            yield '}'
+            self.outdent()
+            yield '}'
+
             yield 'if (Array.isArray(expected)) {'
             self.indent()
             yield ('return (Object.keys(kwargs).length === expected.length && '
@@ -1081,8 +1103,27 @@ class ClassURLWriter(URLTreeVisitor):
             self.outdent()
             yield '}'
             yield ''
-            yield 'match(kwargs, args, expected) {'
+            yield 'match(kwargs, args, expected, defaults={}) {'
             self.indent()
+
+            yield 'if (defaults) {'
+            self.indent()
+            yield 'for (const [key, val] of Object.entries(defaults)) {'
+            self.indent()
+            yield 'if (kwargs.hasOwnProperty(key)) {'
+            self.indent()
+            yield 'if (kwargs[key] !== val) { return false; }'
+            yield (
+                'else if (!expected.includes(key)) '
+                '{ delete kwargs[key]; }'
+            )
+            self.outdent()
+            yield '}'
+            self.outdent()
+            yield '}'
+            self.outdent()
+            yield '}'
+
             yield 'if (Array.isArray(expected)) {'
             self.indent()
             yield (
@@ -1149,9 +1190,10 @@ class ClassURLWriter(URLTreeVisitor):
             self.outdent()
             yield '}'
             if self.raise_on_not_found_:
-                yield ('throw new TypeError('
-                       '`No reversal available for parameters at path: '
-                       '${qname}`);'
+                yield (
+                    'throw new TypeError('
+                    '`No reversal available for parameters at path: '
+                    '${qname}`);'
                 )
             self.outdent()
             yield '}'
@@ -1220,7 +1262,8 @@ class ClassURLWriter(URLTreeVisitor):
     def visit_path(
             self,
             path: List[Union[Substitute, str]],
-            kwargs: List[str]
+            kwargs: List[str],
+            defaults: Optional[Dict[str, Any]] = None
     ) -> Generator[str, None, None]:
         """
         Convert a list of path components into JavaScript reverse function. The
@@ -1231,16 +1274,24 @@ class ClassURLWriter(URLTreeVisitor):
         :param path: An iterable of the path components, alternating strings
             and Substitute placeholders for argument substitution
         :param kwargs: The names of the named arguments, if any, for the path
+        :param defaults: Any default kwargs specified on the path definition
         :yield: The JavaScript lines of code
         """
         quote = '"' if self.es5_ else '`'
-        if len(path) == 1:
-            yield f'if (this.match(kwargs, args)) ' \
-                  f'{{ return "/{str(path[0]).lstrip("/")}"; }}'
+        if len(path) == 1:  # there are no substitutions
+            if defaults:
+                yield f'if (this.match(kwargs, args, [], {defaults})) ' \
+                      f'{{ return "/{str(path[0]).lstrip("/")}"; }}'
+            else:
+                yield f'if (this.match(kwargs, args)) ' \
+                      f'{{ return "/{str(path[0]).lstrip("/")}"; }}'
         elif len(kwargs) == 0:
             nargs = len([
                 comp for comp in path if isinstance(comp, Substitute)
             ])
+            # no need to handle defaults - there should not be any because
+            # Django reverse does not allow mixing args and kwargs in calls
+            # to reverse
             yield (
                 f'if (this.match(kwargs, args, {nargs})) {{'
                 f' return {quote}/{self.path_join(path).lstrip("/")}'
@@ -1248,8 +1299,16 @@ class ClassURLWriter(URLTreeVisitor):
             )
         else:
             opts_str = ",".join([f"'{param}'" for param in kwargs])
-            yield (
-                f'if (this.match(kwargs, args, [{opts_str}])) {{'
-                f' return {quote}/{self.path_join(path).lstrip("/")}'
-                f'{quote}; }}'
-            )
+            if defaults:
+                yield (
+                    f'if (this.match(kwargs, args, [{opts_str}], {defaults}))'
+                    f' {{'
+                    f' return {quote}/{self.path_join(path).lstrip("/")}'
+                    f'{quote}; }}'
+                )
+            else:
+                yield (
+                    f'if (this.match(kwargs, args, [{opts_str}])) {{'
+                    f' return {quote}/{self.path_join(path).lstrip("/")}'
+                    f'{quote}; }}'
+                )
