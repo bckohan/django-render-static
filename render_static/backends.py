@@ -114,8 +114,8 @@ try:
         :return:
         """
         env = Environment(**options)
-        env.filters.update(render_static.register.filters)
-        env.filters.update({
+        env.globals.update(render_static.register.filters)
+        env.globals.update({
             name: tag.__wrapped__
             for name, tag in render_static.register.tags.items()
         })

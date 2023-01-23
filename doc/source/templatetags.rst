@@ -122,8 +122,8 @@ Tags
 ----
 
 Tags on the ``StaticDjangoTemplates`` backend are django template tags using the
-{% %} syntax. Using the ``StaticJinja2Templates`` backend these tags are the same
-as filters. For example, in Django templates ``urls_to_js`` might be called like so:
+{% %} syntax. Using the ``StaticJinja2Templates`` backend these tags are global
+functions. For example, in Django templates ``urls_to_js`` might be called like so:
 
 .. code-block:: js+django
 
@@ -133,7 +133,7 @@ And the equivalent call in Jinja2 would be:
 
 .. code-block:: js+django
 
-    {{ "render_static.ClassURLWriter"|urls_to_js(exclude=exclude) }}
+    {{ urls_to_js(exclude=exclude) }}
 
 ..
 

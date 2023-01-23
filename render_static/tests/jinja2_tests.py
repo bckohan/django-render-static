@@ -429,15 +429,15 @@ class MultipleDestinationsTestCase(BaseTestCase):
             'loader': StaticDictLoader({
                 'defines1.js':
                     'var defines = '
-                    '{\n{{ classes|classes_to_js("  ") }}};'
+                    '{\n{{ classes_to_js(classes, "  ") }}};'
                     '\nconsole.log(JSON.stringify(defines));',
                 'defines2.js':
                     'var defines = '
-                    '{\n{{ modules|modules_to_js }}};'
+                    '{\n{{ modules_to_js(modules) }}};'
                     '\nconsole.log(JSON.stringify(defines));',
                 'defines_error.js':
                     'var defines = '
-                    '{\n{{ classes|classes_to_js }}};'
+                    '{\n{{ classes_to_js(classes) }}};'
                     '\nconsole.log(JSON.stringify(defines));'
             })
         },
@@ -474,17 +474,17 @@ class Jinja2DefinesToJavascriptTest(DefinesToJavascriptTest):
             'OPTIONS': {
                 'loader': StaticDictLoader({
                     'defines1.js': (
-                            'var defines = {\n{{ '
-                            '"render_static.tests.defines.MoreDefines,'
-                            'render_static.tests.defines.ExtendedDefines"'
-                            '|split(",")|classes_to_js("  ") }}};'
+                            'var defines = {\n{{'
+                            'classes_to_js(['
+                            '"render_static.tests.defines.MoreDefines",'
+                            '"render_static.tests.defines.ExtendedDefines"'
+                            '], "  ") }}};'
                             '\nconsole.log(JSON.stringify(defines));'
                     ),
                     'defines2.js': (
-                            'var defines = {\n{{ '
-                            '"render_static.tests.defines '
-                            'render_static.tests.defines2"|split'
-                            '|modules_to_js("  ") }}};'
+                            'var defines = {\n{{ modules_to_js(['
+                            '"render_static.tests.defines",'
+                            '"render_static.tests.defines2"], "  ") }}};'
                             '\nconsole.log(JSON.stringify(defines));'
                     )
                 })
@@ -521,7 +521,7 @@ class Jinja2DefinesToJavascriptTest(DefinesToJavascriptTest):
             'OPTIONS': {
                 'loader': StaticDictLoader({
                     'urls.js': (
-                        '{{ "render_static.ClassURLWriter"|urls_to_js }}'
+                        '{{ urls_to_js() }}'
                     )
                 })
             }
@@ -580,8 +580,7 @@ class Jinja2URLTestCases(URLJavascriptMixin, BaseTestCase):
                 'OPTIONS': {
                     'loader': StaticDictLoader({
                         'urls.js': (
-                            '{{ "render_static.ClassURLWriter"|'
-                            'urls_to_js(es5=True) }}'
+                            '{{ urls_to_js(es5=True) }}'
                         )
                     })
                 }
