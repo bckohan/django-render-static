@@ -12,6 +12,7 @@ from importlib import import_module
 from types import ModuleType
 from typing import Any, Dict, Generator, Iterable, List, Optional, Tuple, Union
 
+from django import VERSION as DJANGO_VERSION
 from django.conf import settings
 from django.urls import URLPattern, URLResolver, reverse
 from django.urls.exceptions import NoReverseMatch
@@ -984,16 +985,34 @@ class ClassURLWriter(URLTreeVisitor):
             self.indent()
             yield 'match: function(kwargs, args, expected, defaults={}) {'
             self.indent()
-
             yield 'if (defaults) {'
+            yield 'let kwargsCopy = {};'
+            yield 'for (const [key, val] of Object.entries(kwargs)) {'
+            self.indent()
+            yield 'kwargsCopy[key] = val;'
+            self.outdent()
+            yield '}'
+            yield 'kwargs = kwargsCopy;'
             self.indent()
             yield 'for (const [key, val] of Object.entries(defaults)) {'
             self.indent()
             yield 'if (kwargs.hasOwnProperty(key)) {'
             self.indent()
-            yield 'if (kwargs[key] !== val) { return false; }'
+            if (
+                DJANGO_VERSION[0] >= 4 and DJANGO_VERSION[1] >= 1
+            ):  # pragma: no cover
+                # see es6 code for comment
+                yield (
+                    'if (kwargs[key] !== val && '
+                    'kwargs[key].toString() !== val.toString() '
+                    '&& !expected.includes(key)) '
+                    '{ return false; }'
+                )
+            else:  # pragma: no cover
+                yield 'if (kwargs[key] !== val) { return false; }'
+
             yield (
-                'else if (!expected.includes(key)) '
+                'if (!expected.includes(key)) '
                 '{ delete kwargs[key]; }'
             )
             self.outdent()
@@ -1002,12 +1021,12 @@ class ClassURLWriter(URLTreeVisitor):
             yield '}'
             self.outdent()
             yield '}'
-
             yield 'if (Array.isArray(expected)) {'
             self.indent()
-            yield ('return (Object.keys(kwargs).length === expected.length && '
-                   'expected.every(function(value) { '
-                   'return kwargs.hasOwnProperty(value); }))'
+            yield (
+                'return (Object.keys(kwargs).length === expected.length && '
+                'expected.every(function(value) { '
+                'return kwargs.hasOwnProperty(value); }))'
             )
             self.outdent()
             yield '} else if (expected) {'
@@ -1105,16 +1124,35 @@ class ClassURLWriter(URLTreeVisitor):
             yield ''
             yield 'match(kwargs, args, expected, defaults={}) {'
             self.indent()
-
             yield 'if (defaults) {'
             self.indent()
+            yield 'kwargs = Object.assign({}, kwargs);'
             yield 'for (const [key, val] of Object.entries(defaults)) {'
             self.indent()
             yield 'if (kwargs.hasOwnProperty(key)) {'
             self.indent()
-            yield 'if (kwargs[key] !== val) { return false; }'
+            if (
+                DJANGO_VERSION[0] >= 4 and DJANGO_VERSION[1] >= 1
+            ):  # pragma: no cover
+                # there was a change in Django 4.1 that seems to coerce kwargs
+                # given to the default kwarg type of the same name if one
+                # exists for the purposes of reversal. Thus 1 will == '1'
+                # In javascript we attempt string conversion and hope for the
+                # best. In 4.1 given kwargs will also override default kwargs
+                # for kwargs the reversal is expecting. This seems to have
+                # been a byproduct of the differentiation of captured_kwargs
+                # and extra_kwargs - that this wasn't caught in Django's CI is
+                # evidence that previous behavior wasn't considered spec.
+                yield (
+                    'if (kwargs[key] !== val && '
+                    'kwargs[key].toString() !== val.toString() '
+                    '&& !expected.includes(key)) '
+                    '{ return false; }'
+                )
+            else:  # pragma: no cover
+                yield 'if (kwargs[key] !== val) { return false; }'
             yield (
-                'else if (!expected.includes(key)) '
+                'if (!expected.includes(key)) '
                 '{ delete kwargs[key]; }'
             )
             self.outdent()
@@ -1123,7 +1161,6 @@ class ClassURLWriter(URLTreeVisitor):
             yield '}'
             self.outdent()
             yield '}'
-
             yield 'if (Array.isArray(expected)) {'
             self.indent()
             yield (
