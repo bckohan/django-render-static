@@ -9,6 +9,7 @@ from time import perf_counter
 
 import pytest
 from deepdiff import DeepDiff
+from django import VERSION as DJANGO_VERSION
 from django.conf import settings
 from django.core.management import CommandError, call_command
 from django.test import override_settings
@@ -1978,30 +1979,53 @@ class URLBugsTestCases(URLJavascriptMixin, BaseTestCase):
     def setUp(self):
         self.clear_placeholder_registries()
 
-    def test_bug_65_compiles(self):
+    def test_bug_65_compiles(self, es5=False):
         """
         Tests: https://github.com/bckohan/django-render-static/issues/65
         Just test that urls_to_js spits out code that compiles now.
         This issue will be further addressed by
         https://github.com/bckohan/django-render-static/issues/66
+
+        This behavior changed from Django 4.0 -> 4.1:
+
+        <4.0 behavior:
+
+        {}: /prefix2
+        {'kwarg_param': '2'}: /prefix
+        {'kwarg_param': 4}: /prefix2
+        {'url_param': 1, 'kwarg_param': '1'}: /prefix/1/postfix/value1
+        {'url_param': 4, 'kwarg_param': 4}: /re_path/4/
+        {'url_param': 2, 'kwarg_param': '2'}: /prefix/2/postfix/value2
+        {'url_param': 4, 'kwarg_param': 1}: /prefix_int/4/postfix_int/1
+
+        >= 4.1 behavior:
+
+        {}: /prefix2
+        {'kwarg_param': '2'}: /prefix
+        {'kwarg_param': 4}: /prefix2
+        {'url_param': 1, 'kwarg_param': '1'}: /prefix_int/1/postfix_int/1
+        {'url_param': 4, 'kwarg_param': 4}: /re_path/4/
+        {'url_param': 2, 'kwarg_param': '2'}: /prefix_int/2/postfix_int/2
+        {'url_param': 4, 'kwarg_param': 1}: /prefix_int/4/postfix_int/1
         """
-        self.es6_mode = True
+        self.es6_mode = not es5
         self.url_js = None
         self.class_mode = ClassURLWriter.class_name_
 
         call_command('renderstatic', 'urls.js')
+
+        dj_gt41 = DJANGO_VERSION[0] >= 4 and DJANGO_VERSION[1] >= 1
 
         from django.urls import reverse
         for kwargs in [
             {},
             {'kwarg_param': '2'},
             {'kwarg_param': 4},
-            #{'url_param': 4},  django bug - throws key error
             {'url_param': 1, 'kwarg_param': '1'},
             {'url_param': 4, 'kwarg_param': 4},
             {'url_param': 2, 'kwarg_param': '2'},
             {'url_param': 4, 'kwarg_param': 1}
-        ]:
+        ] + ([{'url_param': 4}] if dj_gt41 else []):
             self.assertEqual(
                 reverse('bug65', kwargs=kwargs),
                 self.get_url_from_js('bug65', kwargs)
@@ -2013,11 +2037,37 @@ class URLBugsTestCases(URLJavascriptMixin, BaseTestCase):
         )
 
         bad = {'url_param': 4, 'kwarg_param': 5}
-        self.assertRaises(NoReverseMatch, lambda: reverse('bug65', kwargs=bad))
-        self.assertEqual(
-            self.get_url_from_js('bug65', bad),
-            ''
-        )
+        if dj_gt41:  # pragma: no cover
+            self.assertEqual(
+                reverse('bug65', kwargs=bad),
+                self.get_url_from_js('bug65', bad)
+            )
+        else:  # pragma: no cover
+            self.assertRaises(NoReverseMatch, lambda: reverse('bug65', kwargs=bad))
+            self.assertEqual(
+                self.get_url_from_js('bug65', bad),
+                ''
+            )
+
+    @override_settings(
+        ROOT_URLCONF='render_static.tests.urls_bug_65',
+        STATIC_TEMPLATES={
+            'ENGINES': [{
+                'BACKEND': 'render_static.backends.StaticDjangoTemplates',
+                'OPTIONS': {
+                    'loaders': [
+                        ('render_static.loaders.StaticLocMemLoader', {
+                            'urls.js': '{% urls_to_js es5=True %}'
+                        })
+                    ],
+                    'builtins': ['render_static.templatetags.render_static']
+                },
+            }],
+            'templates': {'urls.js': {'context': {}}}
+        }
+    )
+    def test_bug_65_compiles_es5(self):
+        self.test_bug_65_compiles(es5=True)
 
     def tearDown(self):
         pass

@@ -154,11 +154,11 @@ function.
 
 It accepts a number of different parameters:
 
-    - **visitor** A string import path or a class that implements `URLTreeVisitor`. The visitor
+    - **visitor** A string import path or a class that implements ``URLTreeVisitor``. The visitor
       walks the URL tree and generates the JavaScript, users may customize the JavaScript generated
       by implementing their own visitor class. Two visitors are included. The default,
-      `SimpleURLWriter`, spits out an object structure that indexes paths by their namespaces. The
-      `ClassURLWriter`, spits out ES5 or 6 classes that provide a `reverse` function directly
+      ``SimpleURLWriter``, spits out an object structure that indexes paths by their namespaces. The
+      ``ClassURLWriter``, spits out ES5 or 6 classes that provide a ``reverse`` function directly
       analogous to Django's reverse function.
     - **url_conf** The root url module to dump urls from. Can be an import string or an actual
       module type. default: settings.ROOT_URLCONF
@@ -183,7 +183,7 @@ are included (everything else is by default excluded).
 
 .. note::
 
-    When implementing custom URL visitors, any additional named arguments passed to the `urls_to_js`
+    When implementing custom URL visitors, any additional named arguments passed to the ``urls_to_js``
     tag will be passed as kwargs to the URL visitor when this tag instantiates it. These parameters
     are meant to provide configuration toggles for the generated JavaScript.
 
@@ -278,12 +278,12 @@ easy to implement new ones:
         path('fetch/<year:year>', YearView.as_view(), name='fetch_year')
     ]
 
-Note the ``placeholder`` attribute. This attribute is used by `urls_to_js` to reverse paths for the
-generated JavaScript. By including the attribute on your converter you ensure that anyone using your
-converter will be able to run `urls_to_js` without error. And you don't even have to
-include `django-render-static` as a dependency if you aren't using it! Alternatively if you're
-using someone else's converter and they haven't supplied a ``placeholder`` attribute, you can
-register one:
+Note the ``placeholder`` attribute. This attribute is used by ``urls_to_js`` to reverse paths
+for the generated JavaScript. By including the attribute on your converter you ensure that
+anyone using your converter will be able to run ``urls_to_js`` without error. And you don't
+even have to include `django-render-static` as a dependency if you aren't using it!
+Alternatively if you're using someone else's converter and they haven't supplied a
+``placeholder`` attribute, you can register one:
 
 .. code-block:: python
 
@@ -305,19 +305,23 @@ Of if you're using `re_path` instead:
 
 Paths with unnamed arguments are also supported, but be kind to yourself and don't use them.
 Any number of placeholders may be registered against any number of variable/app_name combinations.
-When `urls_to_js` is run it won't give up until its tried all placeholders that might potentially
+When ``urls_to_js`` is run it won't give up until its tried all placeholders that might potentially
 match the path.
 
-`ClassURLWriter`
-****************
+`ClassURLWriter` (default)
+**************************
 
-A visitor class that produces ES5/6 JavaScript class is now included. This class is not used by
-default, but should be the preferred visitor for larger, more complex URL trees - mostly because
-it minifies better than the default `SimpleURLWriter`. To use the class writer:
+A visitor class that produces ES5/6 JavaScript class is now included. As of version 2 This
+class is used by default. It is the preferred visitor for larger, more complex URL trees
+because it minifies better than the ``SimpleURLWriter`` and it handles default kwargs
+appropriately. **The** ``ClassURLWriter`` **is guaranteed to produce output identical to Django's
+reverse function**. If it does not please report a bug. To use the class writer:
 
 .. code-block:: htmldjango
 
-    {% urls_to_js visitor='render_static.ClassURLWriter' class_name='URLReverser' %}
+    {% urls_to_js visitor='render_static.ClassURLWriter' class_name='URLResolver' %}
+    <! the above is equivalent to the below -->
+    {% urls_to_js %}
 
 This will generate an ES6 class by default:
 

@@ -25,6 +25,12 @@ urlpatterns = [
         name='bug65'
     ),
     path(
+        'prefix/<int:url_param>/postfix/value1',
+        TestView.as_view(),
+        kwargs={'kwarg_param': 'a'},
+        name='bug65'
+    ),
+    path(
         'prefix',
         TestView.as_view(),
         kwargs={'kwarg_param': '2'},
@@ -54,4 +60,3 @@ urlpatterns = [
         name='bug65'
     ),
 ]
-
