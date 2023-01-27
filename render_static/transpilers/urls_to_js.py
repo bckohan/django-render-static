@@ -18,7 +18,7 @@ from django.urls import URLPattern, URLResolver, reverse
 from django.urls.exceptions import NoReverseMatch
 from django.urls.resolvers import RegexPattern, RoutePattern
 from render_static.exceptions import ReversalLimitHit, URLGenerationFailed
-from render_static.javascript import JavaScriptGenerator
+from render_static.transpilers import JavaScriptGenerator
 from render_static.placeholders import (
     resolve_placeholders,
     resolve_unnamed_placeholders,
@@ -44,9 +44,9 @@ def normalize_ns(namespaces: str) -> str:
 
 
 def build_tree(
-        url_conf: Optional[Union[ModuleType, str]] = None,
-        include: Optional[Iterable[str]] = None,
-        exclude: Optional[Iterable[str]] = None
+    url_conf: Optional[Union[ModuleType, str]] = None,
+    include: Optional[Iterable[str]] = None,
+    exclude: Optional[Iterable[str]] = None
 ) -> Tuple[
     Tuple[
         Dict,
@@ -689,17 +689,34 @@ class URLTreeVisitor(JavaScriptGenerator):
                 )
                 yield from self.exit_namespace(nmsp)
 
-    def generate(self, *args, **kwargs) -> str:
+    def generate(
+        self,
+        url_conf: Optional[Union[ModuleType, str]] = None,
+        include: Optional[Iterable[str]] = None,
+        exclude: Optional[Iterable[str]] = None
+    ) -> str:
         """
         Implements JavaScriptGenerator::generate. Calls the visitation entry
         point and writes all the yielded JavaScript lines to a member string
         which is returned.
 
-        :param args: The URL tree to visit/generate code for - first positional
-        :param kwargs: Optionally give tree as named parameter 'tree'
+        :param url_conf: The root url module to dump urls from,
+            default: settings.ROOT_URLCONF
+        :param include: A list of path names to include, namespaces without
+            path names will be treated as every path under the namespace.
+            Default: include everything
+        :param exclude: A list of path names to exclude, namespaces without
+            path names will be treated as every path under the namespace.
+            Default: exclude nothing
         :return: The rendered JavaScript URL reversal code.
         """
-        for line in self.visit(args[0] if args else kwargs.pop('tree')):
+        for line in self.visit(
+            build_tree(
+                url_conf,
+                include,
+                exclude
+            )[0]
+        ):
             self.write_line(line)
         return self.rendered_
 

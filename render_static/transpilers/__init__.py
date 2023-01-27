@@ -1,6 +1,23 @@
-# pylint: disable=C0114
+"""
+Base transpiler components.
+"""
 
 from abc import ABCMeta, abstractmethod
+from typing import Any, Optional, Union, Callable
+import numbers
+from django.utils.module_loading import import_string
+import json
+
+
+__all__ = ['to_js', 'JavaScriptGenerator']
+
+
+def to_js(value: Any) -> str:
+    if isinstance(value, numbers.Number):
+        return str(value)
+    if isinstance(value, str):
+        return f'"{value}"'
+    return json.dumps(value)
 
 
 class JavaScriptGenerator(metaclass=ABCMeta):
@@ -32,14 +49,25 @@ class JavaScriptGenerator(metaclass=ABCMeta):
     indent_ = '\t'
     es5_ = False
     nl_ = '\n'
+    to_javascript_ = to_js
 
-    def __init__(self, **kwargs) -> None:
-        self.level_ = kwargs.pop('depth', self.level_)
-        self.indent_ = kwargs.pop('indent', self.indent_)
-        if self.indent_ is None:
-            self.indent_ = ''
+    def __init__(
+        self,
+        level: int = level_,
+        indent: Optional[str] = indent_,
+        to_javascript: Union[str, Callable] = to_javascript_,
+        **kwargs
+    ) -> None:
+        self.level_ = level
+        self.indent_ = indent or ''
         self.es5_ = kwargs.pop('es5', self.es5_)
         self.nl_ = self.nl_ if self.indent_ else ''  # pylint: disable=C0103
+        self.to_javascript = (
+            to_javascript
+            if callable(to_javascript)
+            else import_string(to_javascript)
+        )
+        assert callable(self.to_javascript), 'To_javascript is not callable!'
 
     def indent(self, incr: int = 1) -> None:
         """
@@ -81,3 +109,6 @@ class JavaScriptGenerator(metaclass=ABCMeta):
         """
         if line is not None:
             self.rendered_ += f'{self.indent_*self.level_}{line}{self.nl_}'
+
+    def to_js(self, value: Any):
+        return self.to_javascript(value)
