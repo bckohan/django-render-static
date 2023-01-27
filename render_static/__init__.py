@@ -8,7 +8,11 @@ r"""
 """
 from .context import resolve_context
 from .resource import resource
-from .url_tree import ClassURLWriter, SimpleURLWriter, URLTreeVisitor
+from .transpilers.urls_to_js import (
+    ClassURLWriter,
+    SimpleURLWriter,
+    URLTreeVisitor
+)
 
 VERSION = (2, 0, 0)
 

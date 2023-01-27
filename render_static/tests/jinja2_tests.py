@@ -429,15 +429,15 @@ class MultipleDestinationsTestCase(BaseTestCase):
             'loader': StaticDictLoader({
                 'defines1.js':
                     'var defines = '
-                    '{\n{{ classes_to_js(classes, "  ") }}};'
+                    '{\n{{ classes_to_js(classes, "  ", level=1) }}};'
                     '\nconsole.log(JSON.stringify(defines));',
                 'defines2.js':
                     'var defines = '
-                    '{\n{{ modules_to_js(modules) }}};'
+                    '{\n{{ modules_to_js(modules, level=1) }}};'
                     '\nconsole.log(JSON.stringify(defines));',
                 'defines_error.js':
                     'var defines = '
-                    '{\n{{ classes_to_js(classes) }}};'
+                    '{\n{{ classes_to_js(classes, level=1) }}};'
                     '\nconsole.log(JSON.stringify(defines));'
             })
         },
@@ -478,13 +478,13 @@ class Jinja2DefinesToJavascriptTest(DefinesToJavascriptTest):
                             'classes_to_js(['
                             '"render_static.tests.defines.MoreDefines",'
                             '"render_static.tests.defines.ExtendedDefines"'
-                            '], "  ") }}};'
+                            '], "  ", level=1) }}};'
                             '\nconsole.log(JSON.stringify(defines));'
                     ),
                     'defines2.js': (
                             'var defines = {\n{{ modules_to_js(['
                             '"render_static.tests.defines",'
-                            '"render_static.tests.defines2"], "  ") }}};'
+                            '"render_static.tests.defines2"], "  ", level=1) }}};'
                             '\nconsole.log(JSON.stringify(defines));'
                     )
                 })

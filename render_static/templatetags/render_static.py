@@ -1,15 +1,29 @@
 # pylint: disable=C0114
 
-import inspect
-import json
-from importlib import import_module
 from types import ModuleType
 from typing import Iterable, Optional, Type, Union
+from enum import Enum
 
 from django import template
 from django.utils.module_loading import import_string
 from django.utils.safestring import SafeString
-from render_static.url_tree import ClassURLWriter, URLTreeVisitor, build_tree
+from render_static.transpilers.classes_to_js import (
+    PythonClassVisitor,
+    SimplePODWriter
+)
+from render_static.transpilers.modules_to_js import (
+    PythonModuleVisitor,
+    ModuleClassWriter
+)
+from render_static.transpilers.urls_to_js import (
+    ClassURLWriter,
+    URLTreeVisitor
+)
+from render_static.transpilers.enums_to_js import (
+    EnumVisitor,
+    EnumClassWriter
+)
+from warnings import warn
 
 register = template.Library()
 
@@ -31,43 +45,9 @@ def split(to_split: str, sep: Optional[str] = None) -> Iterable[str]:
     return to_split.split()
 
 
-def to_js(classes: dict, indent: str = '\t'):
-    """
-    Convert python class defines to javascript.
-
-    :param classes: A dictionary of class types mapped to a list of members
-        that should be translated into javascript
-    :param indent: An indent sequence that will be prepended to all lines,
-        default: \t
-    :return: The classes represented in javascript
-    """
-    j_script = ''
-    for cls, defines in classes.items():
-        if defines:
-            j_script += f"{indent}{cls.__name__}: {{ \n"
-
-            for ancestor in cls.__mro__:
-                if ancestor != cls and ancestor in classes:
-                    idx = 1
-                    for key, val in classes[ancestor].items():
-                        j_script += f'{indent}     {key}: {json.dumps(val)},\n'
-                        idx += 1
-
-            idx = 1
-            for key, val in defines.items():
-                j_script += f"{indent}     {key}: " \
-                            f"{json.dumps(val)}" \
-                            f"{',' if idx < len(defines) else ''}\n"
-                idx += 1
-
-            j_script += f'{indent}}},\n\n'
-
-    return SafeString(j_script)
-
-
 @register.filter(name='classes_to_js')
 def classes_to_js(
-    classes: Iterable[Union[Type, str]],
+    classes: Union[Iterable[Union[Type, str]], Type, str],
     indent: str = '\t'
 ) -> str:
     """
@@ -84,15 +64,30 @@ def classes_to_js(
         default: \t
     :return: The translated javascript
     """
-    clss = {}
-    for cls in classes:
-        if isinstance(cls, str):
-            cls = import_string(cls)
-        if inspect.isclass(cls):
-            clss[cls] = {n: getattr(cls, n) for n in dir(cls) if n.isupper()}
-        else:
-            raise ValueError(f'Expected class type, got {type(cls)}')
-    return to_js(clss, indent)
+    return SafeString(
+        SimplePODWriter(
+            indent=indent,
+            level=1
+        ).generate(classes)
+    )
+
+
+@register.simple_tag
+def classes_to_js(
+    classes: Union[Iterable[Union[Type, str]], Type, str],
+    indent: str = '\t',
+    transpiler: Union[Type[PythonClassVisitor], str] = SimplePODWriter,
+    **kwargs
+) -> str:
+
+    if isinstance(transpiler, str):
+        # mypy doesn't pick up this switch from str to class, import_string
+        # probably untyped
+        transpiler = import_string(transpiler)
+
+    return SafeString(
+        transpiler(indent=indent, **kwargs).generate(classes)
+    )
 
 
 @register.filter(name='modules_to_js')
@@ -115,23 +110,40 @@ def modules_to_js(
         default: \t
     :return: The translated javascript
     """
-    classes = {}
-    for module in modules:
-        if isinstance(module, str):
-            module = import_module(module)
-        for key in dir(module):
-            cls = getattr(module, key)
-            if inspect.isclass(cls):
-                classes[cls] = {
-                    n: getattr(cls, n) for n in dir(cls) if n.isupper()
-                }
+    return SafeString(
+        ModuleClassWriter(
+            indent=indent,
+            level=1
+        ).generate(modules)
+    )
 
-    return to_js(classes, indent)
+
+@register.simple_tag
+def modules_to_js(
+    modules: Union[Iterable[Union[ModuleType, str]], ModuleType, str],
+    indent: str = '\t',
+    transpiler: Union[Type[PythonModuleVisitor], str] = ModuleClassWriter,
+    class_transpiler: Union[Type[PythonClassVisitor], str] = SimplePODWriter,
+    **kwargs
+) -> str:
+
+    if isinstance(transpiler, str):
+        # mypy doesn't pick up this switch from str to class, import_string
+        # probably untyped
+        transpiler = import_string(transpiler)
+
+    return SafeString(
+        transpiler(
+            indent=indent,
+            class_transpiler=class_transpiler,
+            **kwargs
+        ).generate(modules)
+    )
 
 
 @register.simple_tag
 def urls_to_js(  # pylint: disable=R0913,R0915
-    visitor: Union[Type, str] = ClassURLWriter,
+    transpiler: Union[Type[URLTreeVisitor], str] = ClassURLWriter,
     url_conf: Optional[Union[ModuleType, str]] = None,
     indent: str = '\t',
     depth: int = 0,
@@ -255,9 +267,9 @@ def urls_to_js(  # pylint: disable=R0913,R0915
         patterns that match regex's but none seem reliable or stable enough to
         include as a dependency.
 
-    :param visitor: The visitor class that will generate the JavaScript, as
-        either a class or an import string. May be one of the built-ins or a
-        user defined visitor.
+    :param transpiler: The transpiler class that will generate the JavaScript,
+        as either a class or an import string. May be one of the built-ins or a
+        user defined transpiler.
     :param url_conf: The root url module to dump urls from,
         default: settings.ROOT_URLCONF
     :param indent: string to use for indentation in javascript, default: '  '
@@ -280,22 +292,72 @@ def urls_to_js(  # pylint: disable=R0913,R0915
     kwargs['indent'] = indent
     kwargs['es5'] = es5
 
-    if isinstance(visitor, str):
-        # mypy doesnt pick up this switch from str to class, import_string
-        # probably untyped
-        visitor = import_string(visitor)
+    if 'visitor' in kwargs:
+        warn(
+            '`visitor` argument is deprecated, change to `transpiler`.',
+            DeprecationWarning
+        )
 
-    if not issubclass(visitor, URLTreeVisitor):  # type: ignore
+    transpiler = kwargs.pop('visitor', transpiler)
+    if isinstance(transpiler, str):
+        # mypy doesn't pick up this switch from str to class, import_string
+        # probably untyped
+        transpiler = import_string(transpiler)
+
+    if not issubclass(transpiler, URLTreeVisitor):  # type: ignore
         raise ValueError(
-            f'{visitor.__class__.__name__} must be of type `URLTreeVisitor`!'
+            f'{transpiler.__class__.__name__} must be of type '
+            f'`URLTreeVisitor`!'
         )
 
     return SafeString(
-        visitor(**kwargs).generate(  # type: ignore
-            build_tree(
-                url_conf,
-                include,
-                exclude
-            )[0]
+        transpiler(**kwargs).generate(
+            url_conf,
+            include,
+            exclude
         )
     )
+
+
+@register.simple_tag
+def enum_to_js(
+    enum: Union[Type[Enum], str, Iterable[Union[Type[Enum], str]]],
+    transpiler: Union[Type[EnumClassWriter], str] = EnumClassWriter,
+    indent: str = '\t',
+    depth: int = 0,
+    **kwargs
+) -> str:
+
+    if isinstance(transpiler, str):
+        # mypy doesn't pick up this switch from str to class, import_string
+        # probably untyped
+        transpiler = import_string(transpiler)
+
+    if not issubclass(transpiler, EnumVisitor):  # type: ignore
+        raise ValueError(
+            f'{transpiler.__class__.__name__} '
+            f'must be of type `EnumClassWriter`!'
+        )
+
+    if isinstance(enum, str) or issubclass(enum, Enum):
+        enum = [enum]
+
+    enum_strings = []
+    for en in enum:
+        if isinstance(en, str):
+            en = import_string(en)
+        if not issubclass(en, Enum):
+            raise ValueError(
+                f'{en} most be of type `Enum`!'
+            )
+        enum_strings.append(
+            SafeString(
+                transpiler(
+                    indent=indent,
+                    depth=depth,
+                    **kwargs
+                ).generate(en)  # type: ignore
+            )
+        )
+
+    return '\n'.join(enum_strings)

@@ -17,10 +17,15 @@ from django.urls import reverse
 from django.urls.exceptions import NoReverseMatch
 from django.utils.module_loading import import_string
 from render_static import placeholders
-from render_static.javascript import JavaScriptGenerator
+from render_static.transpilers import JavaScriptGenerator
 from render_static.tests import bad_pattern, defines
-from render_static.tests.tests import GLOBAL_STATIC_DIR, BaseTestCase
-from render_static.url_tree import ClassURLWriter
+from render_static.tests.tests import (
+    GLOBAL_STATIC_DIR,
+    BaseTestCase,
+    ENUM_STATIC_DIR
+)
+from render_static.transpilers.urls_to_js import ClassURLWriter
+from render_static.tests.enum.models import EnumTester
 
 node_version = None
 if shutil.which('node'):  # pragma: no cover
@@ -430,6 +435,9 @@ class URLJavascriptMixin:
     }]
 })
 class URLSToJavascriptTest(URLJavascriptMixin, BaseTestCase):
+
+    def tearDown(self):
+        pass
 
     def setUp(self):
         self.clear_placeholder_registries()
@@ -2234,3 +2242,63 @@ class TestDefaultNamespaces(URLJavascriptMixin, BaseTestCase):
 
     # def tearDown(self):
     #    pass
+
+
+@override_settings(
+    INSTALLED_APPS=[
+        'render_static.tests.enum',
+        'render_static',
+        'django.contrib.auth',
+        'django.contrib.contenttypes',
+        'django.contrib.sessions',
+        'django.contrib.sites',
+        'django.contrib.messages',
+        'django.contrib.staticfiles',
+        'django.contrib.admin'
+    ],
+    ROOT_URLCONF='render_static.tests.enum.urls',
+    STATIC_TEMPLATES={
+        'templates': [
+            ('enum/enums.js', {
+                'context': {
+                    'enums': [
+                        EnumTester.MapBoxStyle,
+                        EnumTester.AddressRoute,
+                        EnumTester.Color
+                    ]
+                }
+             }),
+            ('enum/defines.js', {
+                'context': {
+                    'enums': 'render_static.tests.enum.defines.Define'
+                }
+            })
+        ]
+    }
+)
+class EnumGeneratorTest(BaseTestCase):
+
+    def enum_compare(self, js_file, enum_classes):
+        self.assertTrue(True)
+
+    def test_simple(self):
+        from render_static.tests.enum.defines import Define
+        call_command('renderstatic', 'enum/defines.js')
+        self.enum_compare(
+            js_file=ENUM_STATIC_DIR / 'enum/defines.js',
+            enum_classes=[Define]
+        )
+
+    def test_enum_properties(self):
+        call_command('renderstatic', 'enum/enums.js')
+        self.enum_compare(
+            js_file=ENUM_STATIC_DIR / 'enum/enums.js',
+            enum_classes=[
+                EnumTester.MapBoxStyle,
+                EnumTester.AddressRoute,
+                EnumTester.Color
+            ]
+        )
+
+    def tearDown(self):
+        pass

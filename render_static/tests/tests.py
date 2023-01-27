@@ -17,6 +17,7 @@ from render_static.origin import AppOrigin, Origin
 
 APP1_STATIC_DIR = Path(__file__).parent / 'app1' / 'static'  # this dir does not exist and must be cleaned up
 APP2_STATIC_DIR = Path(__file__).parent / 'app2' / 'static'  # this dir exists and is checked in
+ENUM_STATIC_DIR = Path(__file__).parent / 'enum' / 'static'  # this dir does not exist
 GLOBAL_STATIC_DIR = settings.STATIC_ROOT  # this dir does not exist and must be cleaned up
 STATIC_TEMP_DIR = Path(__file__).parent / 'static_templates'
 STATIC_TEMP_DIR2 = Path(__file__).parent / 'static_templates2'
@@ -75,7 +76,8 @@ class BaseTestCase(TestCase):
         LOCAL_STATIC_DIR,
         APP2_STATIC_DIR / 'app1',
         APP2_STATIC_DIR / 'app2',
-        APP2_STATIC_DIR / 'exclusive'
+        APP2_STATIC_DIR / 'exclusive',
+        ENUM_STATIC_DIR
     ]
 
     def setUp(self):
