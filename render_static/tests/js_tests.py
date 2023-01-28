@@ -27,6 +27,12 @@ from render_static.tests.tests import (
 from render_static.transpilers.urls_to_js import ClassURLWriter
 from render_static.tests.enum.models import EnumTester
 
+try:
+    from django.utils.decorators import classproperty
+except ImportError:
+    from django.utils.functional import classproperty
+
+
 node_version = None
 if shutil.which('node'):  # pragma: no cover
     match = re.match(
@@ -52,6 +58,11 @@ if not node_version:  # pragma: no cover
 
 class BadVisitor:
     pass
+
+
+def get_content(file):
+    with open(file, 'r') as open_file:
+        return open_file.read()
 
 
 def get_url_mod():
@@ -436,8 +447,8 @@ class URLJavascriptMixin:
 })
 class URLSToJavascriptTest(URLJavascriptMixin, BaseTestCase):
 
-    def tearDown(self):
-        pass
+    # def tearDown(self):
+    #     pass
 
     def setUp(self):
         self.clear_placeholder_registries()
@@ -2258,6 +2269,12 @@ class TestDefaultNamespaces(URLJavascriptMixin, BaseTestCase):
     ],
     ROOT_URLCONF='render_static.tests.enum.urls',
     STATIC_TEMPLATES={
+        'context': {
+            'include_properties': True,
+            'class_properties': True,
+            'properties': True,
+            'symmetric_properties': False
+        },
         'templates': [
             ('enum/enums.js', {
                 'context': {
@@ -2268,9 +2285,9 @@ class TestDefaultNamespaces(URLJavascriptMixin, BaseTestCase):
                     ]
                 }
              }),
-            ('enum/defines.js', {
+            ('enum/def.js', {
                 'context': {
-                    'enums': 'render_static.tests.enum.defines.Define'
+                    'enums': 'render_static.tests.enum.defines.Def'
                 }
             })
         ]
@@ -2278,20 +2295,97 @@ class TestDefaultNamespaces(URLJavascriptMixin, BaseTestCase):
 )
 class EnumGeneratorTest(BaseTestCase):
 
-    def enum_compare(self, js_file, enum_classes):
-        self.assertTrue(True)
+    def enums_compare(
+            self,
+            js_file,
+            enum_classes,
+            class_properties=True,
+            properties=True
+    ):
+        for enum in enum_classes:
+            self.enum_compare(
+                js_file,
+                enum,
+                class_properties=class_properties,
+                properties=properties
+            )
+
+    def enum_compare(
+            self,
+            js_file,
+            cls,
+            class_properties=True,
+            properties=True
+    ):
+        """
+        Given a javascript file and a list of classes, evaluate the javascript
+        code into a python dictionary and determine if that dictionary matches
+        the upper case parameters on the defines class.
+        """
+
+        with open(js_file, 'r') as js:
+            js_dict = self.get_js_structure(js_file)
+
+            class_properties = [
+                name for name, member in vars(cls).items()
+                if isinstance(member, classproperty)
+            ] if class_properties is True else (
+                [prop for prop in class_properties if hasattr(cls, prop)]
+                if class_properties else []
+            )
+
+            properties = ['name', 'value'] + [
+                name for name, member in vars(cls).items()
+                if isinstance(member, property)
+            ] if properties is True else (
+                [prop for prop in properties if hasattr(cls, prop)]
+                if properties else ['name', 'value']
+            )
+
+            if isinstance(cls, str):
+                cls = import_string(cls)
+
+            enum_dict = {
+                'strings': {str(en.value): str(en) for en in cls},
+                **{
+                    prop: [
+                        getattr(en, prop)
+                        for en in cls
+                    ] for prop in properties
+                },
+                'getCheck': 1
+            }
+            if class_properties:
+                enum_dict['class_props'] = {
+                    prop: getattr(cls, prop) for prop in class_properties
+                }
+            self.assertEqual(
+                DeepDiff(
+                    enum_dict,
+                    js_dict[cls.__name__],
+                    # treat tuples and lists the same
+                    ignore_type_in_groups=[(tuple, list)]
+                ),
+                {}
+            )
+
+    def get_js_structure(self, js_file):  # pragma: no cover
+        json_structure = run_js_file(js_file)
+        if json_structure:
+            return json.loads(json_structure)
+        return None
 
     def test_simple(self):
-        from render_static.tests.enum.defines import Define
-        call_command('renderstatic', 'enum/defines.js')
-        self.enum_compare(
-            js_file=ENUM_STATIC_DIR / 'enum/defines.js',
-            enum_classes=[Define]
+        from render_static.tests.enum.defines import Def
+        call_command('renderstatic', 'enum/def.js')
+        self.enums_compare(
+            js_file=ENUM_STATIC_DIR / 'enum/def.js',
+            enum_classes=[Def]
         )
 
     def test_enum_properties(self):
         call_command('renderstatic', 'enum/enums.js')
-        self.enum_compare(
+        self.enums_compare(
             js_file=ENUM_STATIC_DIR / 'enum/enums.js',
             enum_classes=[
                 EnumTester.MapBoxStyle,
@@ -2299,6 +2393,383 @@ class EnumGeneratorTest(BaseTestCase):
                 EnumTester.Color
             ]
         )
+
+    @override_settings(
+        STATIC_TEMPLATES={
+            'context': {
+                'include_properties': True,
+                'class_properties': False,
+                'properties': True,
+                'symmetric_properties': False
+            },
+            'templates': [
+                ('enum/enums.js', {
+                    'context': {
+                        'enums': EnumTester.MapBoxStyle
+                    }
+                }),
+            ]
+        }
+    )
+    def test_class_prop_option(self):
+        call_command('renderstatic', 'enum/enums.js')
+        self.enums_compare(
+            js_file=ENUM_STATIC_DIR / 'enum/enums.js',
+            enum_classes=[EnumTester.MapBoxStyle],
+            class_properties=False
+        )
+        self.assertNotIn(
+            'class_name',
+            get_content(ENUM_STATIC_DIR / 'enum/enums.js')
+        )
+
+    @override_settings(
+        STATIC_TEMPLATES={
+            'context': {
+                'include_properties': True,
+                'class_properties': ['docs'],
+                'properties': True,
+                'symmetric_properties': False
+            },
+            'templates': [
+                ('enum/enums.js', {
+                    'context': {
+                        'enums': [
+                            EnumTester.MapBoxStyle,
+                            EnumTester.Color
+                        ]
+                    }
+                }),
+            ]
+        }
+    )
+    def test_class_props_specified(self):
+        call_command('renderstatic', 'enum/enums.js')
+        self.enums_compare(
+            js_file=ENUM_STATIC_DIR / 'enum/enums.js',
+            enum_classes=[
+                EnumTester.MapBoxStyle,
+                EnumTester.Color
+            ],
+            class_properties=['docs']
+        )
+        contents = get_content(ENUM_STATIC_DIR / 'enum/enums.js')
+        self.assertNotIn('class_name', contents)
+        self.assertEqual(contents.count('static docs ='), 1)
+
+    @override_settings(
+        STATIC_TEMPLATES={
+            'context': {
+                'include_properties': False,
+                'properties': False,
+                'symmetric_properties': False
+            },
+            'templates': [
+                ('enum/enums.js', {
+                    'context': {
+                        'enums': [
+                            EnumTester.MapBoxStyle
+                        ]
+                    }
+                }),
+            ]
+        }
+    )
+    def test_exclude_props(self):
+        call_command('renderstatic', 'enum/enums.js')
+        self.enums_compare(
+            js_file=ENUM_STATIC_DIR / 'enum/enums.js',
+            enum_classes=[EnumTester.MapBoxStyle],
+            class_properties=False,
+            properties=False
+        )
+        contents = get_content(ENUM_STATIC_DIR / 'enum/enums.js')
+        self.assertNotIn('slug', contents)
+        self.assertNotIn('label', contents)
+        self.assertNotIn('version', contents)
+        self.assertIn('this.value = ', contents)
+        self.assertIn('this.name = ', contents)
+
+    @override_settings(
+        STATIC_TEMPLATES={
+            'ENGINES': [{
+                'BACKEND': 'render_static.backends.StaticDjangoTemplates',
+                'OPTIONS': {
+                    'loaders': [
+                        ('render_static.loaders.StaticLocMemLoader', {
+                            'enum/enums.js': '{% enum_to_js enum=enums class_name=class_name export=True %}'
+                        })
+                    ],
+                    'builtins': ['render_static.templatetags.render_static']
+                },
+            }],
+            'templates': [
+                ('enum/enums.js', {
+                    'context': {
+                        'enums': [
+                            EnumTester.MapBoxStyle
+                        ],
+                        'class_name': "{}Enum"
+                    }
+                }),
+            ]
+        }
+    )
+    def test_export_on_and_classname(self):
+        call_command('renderstatic', 'enum/enums.js')
+        contents = get_content(GLOBAL_STATIC_DIR / 'enum/enums.js')
+        self.assertIn('export class MapBoxStyleEnum {', contents)
+
+    @override_settings(
+        STATIC_TEMPLATES={
+            'ENGINES': [{
+                'BACKEND': 'render_static.backends.StaticDjangoTemplates',
+                'OPTIONS': {
+                    'loaders': [
+                        ('render_static.loaders.StaticLocMemLoader', {
+                            'enum/enums.js': '{% enum_to_js enum=enums class_name=class_name export=False %}\n'
+                                             '{% enum_tests enums=enums|enum_list name_map=name_map %}'
+                        })
+                    ],
+                    'builtins': [
+                        'render_static.templatetags.render_static',
+                        'render_static.tests.enum.templatetags.enum_test'
+                    ]
+                },
+            }],
+            'templates': [
+                ('enum/enums.js', {
+                    'context': {
+                        'enums': [
+                            EnumTester.MapBoxStyle
+                        ],
+                        'class_name': "Enum{}",
+                        'name_map': {EnumTester.MapBoxStyle: 'EnumMapBoxStyle'}
+                    }
+                }),
+            ]
+        }
+    )
+    def test_export_off_and_classname(self):
+        call_command('renderstatic', 'enum/enums.js')
+        contents = get_content(GLOBAL_STATIC_DIR / 'enum/enums.js')
+        self.assertNotIn('export class EnumMapBoxStyle {', contents)
+        self.assertIn('class EnumMapBoxStyle {', contents)
+        self.enums_compare(
+            js_file=GLOBAL_STATIC_DIR / 'enum/enums.js',
+            enum_classes=[EnumTester.MapBoxStyle],
+            class_properties=True,
+            properties=True
+        )
+
+    @override_settings(
+        STATIC_TEMPLATES={
+            'ENGINES': [{
+                'BACKEND': 'render_static.backends.StaticDjangoTemplates',
+                'OPTIONS': {
+                    'loaders': [
+                        ('render_static.loaders.StaticLocMemLoader', {
+                            'enum/enums.js': '{% enum_to_js enum=enums class_name=class_name export=False %}\n'
+                                             '{% enum_tests enums=enums|enum_list name_map=name_map %}'
+                        })
+                    ],
+                    'builtins': [
+                        'render_static.templatetags.render_static',
+                        'render_static.tests.enum.templatetags.enum_test'
+                    ]
+                },
+            }],
+            'templates': [
+                ('enum/enums.js', {
+                    'context': {
+                        'enums': [
+                            EnumTester.MapBoxStyle
+                        ],
+                        'class_name': "Enum{}",
+                        'name_map': {EnumTester.MapBoxStyle: 'EnumMapBoxStyle'}
+                    }
+                }),
+            ]
+        }
+    )
+    def test_default_export_and_classname(self):
+        self.test_export_off_and_classname.__wrapped__(self)
+
+    @override_settings(
+        STATIC_TEMPLATES={
+            'context': {
+                'include_properties': True,
+                'properties': True,
+                'symmetric_properties': [
+                    'name',
+                    'slug',
+                    'label'
+                ],
+                'test_symmetric_properties': [
+                    'name',
+                    'slug',
+                    'label'
+                ]
+            },
+            'templates': [
+                ('enum/enums.js', {
+                    'context': {
+                        'enums': [
+                            EnumTester.MapBoxStyle
+                        ]
+                    }
+                }),
+            ]
+        }
+    )
+    def test_symmetric_props(self):
+        call_command('renderstatic', 'enum/enums.js')
+        self.enums_compare(
+            js_file=ENUM_STATIC_DIR / 'enum/enums.js',
+            enum_classes=[EnumTester.MapBoxStyle],
+            class_properties=False,
+            properties=True
+        )
+        content = get_content(ENUM_STATIC_DIR / 'enum/enums.js')
+        self.assertIn('=== MapBoxStyle.get("SATELLITE_STREETS");', content)
+        self.assertIn('=== MapBoxStyle.get("Satellite Streets");', content)
+        self.assertIn('=== MapBoxStyle.get("satellite-streets");', content)
+        self.assertIn('=== MapBoxStyle.get(6);', content)
+        self.assertEqual(content.count('switch(value)'), 4)
+
+    @override_settings(
+        STATIC_TEMPLATES={
+            'context': {
+                'include_properties': True,
+                'properties': True,
+                'symmetric_properties': True,
+                'test_symmetric_properties': [
+                    'name',
+                    'slug',
+                    'uri',
+                    'label'
+                ]
+            },
+            'templates': [
+                ('enum/enums.js', {
+                    'context': {
+                        'enums': [
+                            EnumTester.MapBoxStyle
+                        ]
+                    }
+                }),
+            ]
+        }
+    )
+    def test_resolve_symmetric_props(self):
+        call_command('renderstatic', 'enum/enums.js')
+        self.enums_compare(
+            js_file=ENUM_STATIC_DIR / 'enum/enums.js',
+            enum_classes=[EnumTester.MapBoxStyle],
+            class_properties=False,
+            properties=True
+        )
+        content = get_content(ENUM_STATIC_DIR / 'enum/enums.js')
+        self.assertIn('=== MapBoxStyle.get("SATELLITE_STREETS");', content)
+        self.assertIn('=== MapBoxStyle.get("Satellite Streets");', content)
+        self.assertIn('=== MapBoxStyle.get("satellite-streets");', content)
+        self.assertIn('=== MapBoxStyle.get("mapbox://styles/mapbox/satellite-streets-v11");', content)
+        self.assertIn('=== MapBoxStyle.get(6);', content)
+        self.assertEqual(content.count('switch(value)'), 5)
+
+    @override_settings(
+        STATIC_TEMPLATES={
+            'ENGINES': [{
+                'BACKEND': 'render_static.backends.StaticDjangoTemplates',
+                'OPTIONS': {
+                    'loaders': [
+                        ('render_static.loaders.StaticLocMemLoader', {
+                            'enum/enums.js': '{% enum_to_js enum=enums summetric_properties=True raise_on_not_found=False %}\n'
+                                             'console.log(JSON.stringify({not_found: AddressRoute.get("Aly")}));'
+                        })
+                    ],
+                    'builtins': [
+                        'render_static.templatetags.render_static'
+                    ]
+                },
+            }],
+            'templates': [
+                ('enum/enums.js', {
+                    'context': {
+                        'enums': [
+                            EnumTester.AddressRoute
+                        ]
+                    }
+                }),
+            ]
+        }
+    )
+    def test_no_raise_on_not_found(self):
+        call_command('renderstatic', 'enum/enums.js')
+        js_dict = self.get_js_structure(GLOBAL_STATIC_DIR / 'enum/enums.js')
+        self.assertDictEqual(js_dict, {'not_found': None})
+
+    @override_settings(
+        STATIC_TEMPLATES={
+            'ENGINES': [{
+                'BACKEND': 'render_static.backends.StaticDjangoTemplates',
+                'OPTIONS': {
+                    'loaders': [
+                        ('render_static.loaders.StaticLocMemLoader', {
+                            'enum/enums.js': '{% enum_to_js enum=enums summetric_properties=True raise_on_not_found=True %}\n'
+                                             'try { AddressRoute.get("Aly") } catch (e) {console.log(JSON.stringify({not_found: e instanceof TypeError ? "TypeError" : "Unknown"}));}'
+                        })
+                    ],
+                    'builtins': [
+                        'render_static.templatetags.render_static'
+                    ]
+                },
+            }],
+            'templates': [
+                ('enum/enums.js', {
+                    'context': {
+                        'enums': [
+                            EnumTester.AddressRoute
+                        ]
+                    }
+                }),
+            ]
+        }
+    )
+    def test_raise_on_not_found(self):
+        call_command('renderstatic', 'enum/enums.js')
+        js_dict = self.get_js_structure(GLOBAL_STATIC_DIR / 'enum/enums.js')
+        self.assertDictEqual(js_dict, {'not_found': 'TypeError'})
+
+    @override_settings(
+        STATIC_TEMPLATES={
+            'ENGINES': [{
+                'BACKEND': 'render_static.backends.StaticDjangoTemplates',
+                'OPTIONS': {
+                    'loaders': [
+                        ('render_static.loaders.StaticLocMemLoader', {
+                            'enum/enums.js': '{% enum_to_js enum=enums summetric_properties=True %}\n'
+                                             'try { AddressRoute.get("Aly") } catch (e) {console.log(JSON.stringify({not_found: e instanceof TypeError ? "TypeError" : "Unknown"}));}'
+                        })
+                    ],
+                    'builtins': [
+                        'render_static.templatetags.render_static'
+                    ]
+                },
+            }],
+            'templates': [
+                ('enum/enums.js', {
+                    'context': {
+                        'enums': [
+                            EnumTester.AddressRoute
+                        ]
+                    }
+                }),
+            ]
+        }
+    )
+    def test_default_raise_on_not_found(self):
+        return self.test_raise_on_not_found.__wrapped__(self)
 
     def tearDown(self):
         pass

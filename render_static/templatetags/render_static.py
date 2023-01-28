@@ -1,4 +1,6 @@
-# pylint: disable=C0114
+"""
+Template tags and filters available when the render_static app is installed.
+"""
 
 from types import ModuleType
 from typing import Iterable, Optional, Type, Union
@@ -27,7 +29,13 @@ from warnings import warn
 
 register = template.Library()
 
-__all__ = ['split', 'classes_to_js', 'modules_to_js', 'urls_to_js']
+__all__ = [
+    'split',
+    'classes_to_js',
+    'modules_to_js',
+    'urls_to_js',
+    'enum_to_js'
+]
 
 
 @register.filter(name='split')
@@ -47,8 +55,8 @@ def split(to_split: str, sep: Optional[str] = None) -> Iterable[str]:
 
 @register.filter(name='classes_to_js')
 def classes_to_js(
-    classes: Union[Iterable[Union[Type, str]], Type, str],
-    indent: str = '\t'
+        classes: Union[Iterable[Union[Type, str]], Type, str],
+        indent: str = '\t'
 ) -> str:
     """
     Convert a list of classes to javascript. Only upper case, non-callable
@@ -74,10 +82,10 @@ def classes_to_js(
 
 @register.simple_tag
 def classes_to_js(
-    classes: Union[Iterable[Union[Type, str]], Type, str],
-    indent: str = '\t',
-    transpiler: Union[Type[PythonClassVisitor], str] = SimplePODWriter,
-    **kwargs
+        classes: Union[Iterable[Union[Type, str]], Type, str],
+        indent: str = '\t',
+        transpiler: Union[Type[PythonClassVisitor], str] = SimplePODWriter,
+        **kwargs
 ) -> str:
 
     if isinstance(transpiler, str):
@@ -92,8 +100,8 @@ def classes_to_js(
 
 @register.filter(name='modules_to_js')
 def modules_to_js(
-    modules: Iterable[Union[ModuleType, str]],
-    indent: str = '\t'
+        modules: Iterable[Union[ModuleType, str]],
+        indent: str = '\t'
 ) -> str:
     """
     Convert a list of python modules to javascript. Only upper case,
@@ -120,11 +128,11 @@ def modules_to_js(
 
 @register.simple_tag
 def modules_to_js(
-    modules: Union[Iterable[Union[ModuleType, str]], ModuleType, str],
-    indent: str = '\t',
-    transpiler: Union[Type[PythonModuleVisitor], str] = ModuleClassWriter,
-    class_transpiler: Union[Type[PythonClassVisitor], str] = SimplePODWriter,
-    **kwargs
+        modules: Union[Iterable[Union[ModuleType, str]], ModuleType, str],
+        indent: str = '\t',
+        transpiler: Union[Type[PythonModuleVisitor], str] = ModuleClassWriter,
+        class_transpiler: Union[Type[PythonClassVisitor], str] = SimplePODWriter,
+        **kwargs
 ) -> str:
 
     if isinstance(transpiler, str):
@@ -143,14 +151,14 @@ def modules_to_js(
 
 @register.simple_tag
 def urls_to_js(  # pylint: disable=R0913,R0915
-    transpiler: Union[Type[URLTreeVisitor], str] = ClassURLWriter,
-    url_conf: Optional[Union[ModuleType, str]] = None,
-    indent: str = '\t',
-    depth: int = 0,
-    include: Optional[Iterable[str]] = None,
-    exclude: Optional[Iterable[str]] = None,
-    es5: bool = False,
-    **kwargs
+        transpiler: Union[Type[URLTreeVisitor], str] = ClassURLWriter,
+        url_conf: Optional[Union[ModuleType, str]] = None,
+        indent: str = '\t',
+        depth: int = 0,
+        include: Optional[Iterable[str]] = None,
+        exclude: Optional[Iterable[str]] = None,
+        es5: bool = False,
+        **kwargs
 ) -> str:
     """
     Dump reversible URLs to javascript. The javascript generated provides
@@ -321,12 +329,25 @@ def urls_to_js(  # pylint: disable=R0913,R0915
 
 @register.simple_tag
 def enum_to_js(
-    enum: Union[Type[Enum], str, Iterable[Union[Type[Enum], str]]],
-    transpiler: Union[Type[EnumClassWriter], str] = EnumClassWriter,
-    indent: str = '\t',
-    depth: int = 0,
-    **kwargs
+        enum: Union[Type[Enum], str, Iterable[Union[Type[Enum], str]]],
+        transpiler: Union[Type[EnumClassWriter], str] = EnumClassWriter,
+        indent: str = '\t',
+        depth: int = 0,
+        **kwargs
 ) -> str:
+    """
+    Transpile the given enumeration(s).
+
+    :param enum: An enum class or import string or a list of either to
+        transpile.
+    :param transpiler: A transpiler class or import string of the transpiler
+        class to use for the transpilation.
+    :param indent: The indent string to use
+    :param depth: The depth of the initial indent
+    :param kwargs: Any other parameters to pass to the configured transpiler.
+        See transpiler docs for details.
+    :return: SafeString of rendered transpiled code.
+    """
 
     if isinstance(transpiler, str):
         # mypy doesn't pick up this switch from str to class, import_string
@@ -339,25 +360,10 @@ def enum_to_js(
             f'must be of type `EnumClassWriter`!'
         )
 
-    if isinstance(enum, str) or issubclass(enum, Enum):
-        enum = [enum]
-
-    enum_strings = []
-    for en in enum:
-        if isinstance(en, str):
-            en = import_string(en)
-        if not issubclass(en, Enum):
-            raise ValueError(
-                f'{en} most be of type `Enum`!'
-            )
-        enum_strings.append(
-            SafeString(
-                transpiler(
-                    indent=indent,
-                    depth=depth,
-                    **kwargs
-                ).generate(en)  # type: ignore
-            )
-        )
-
-    return '\n'.join(enum_strings)
+    return SafeString(
+        transpiler(
+            indent=indent,
+            depth=depth,
+            **kwargs
+        ).generate(enum)  # type: ignore
+    )

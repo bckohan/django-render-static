@@ -1,7 +1,11 @@
-from enum import Enum, auto
+from enum import IntEnum, auto
+try:
+    from django.utils.decorators import classproperty
+except ImportError:
+    from django.utils.functional import classproperty
 
 
-class Define(Enum):
+class Def(IntEnum):
 
     VALUE1 = auto()
     VALUE2 = auto()
@@ -13,3 +17,7 @@ class Define(Enum):
 
     def __str__(self):
         return self.name.lower()
+
+    @classproperty
+    def class_name(cls):
+        return cls.__name__

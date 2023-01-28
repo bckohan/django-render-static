@@ -1,16 +1,21 @@
+"""
+Transpiler tools for PEP 435 style python enumeration classes.
+"""
 from enum import Enum
-from typing import Generator, Optional, Type, List
+from typing import Generator, Optional, Type, List, Iterable, Set, Union
 from render_static.transpilers import JavaScriptGenerator
+from django.utils.module_loading import import_string
+try:
+    from django.utils.decorators import classproperty
+except ImportError:
+    from django.utils.functional import classproperty
 
 
 class EnumVisitor(JavaScriptGenerator):
-    expected_properties = [
-        'name',
-        'label'
-    ]
-
-    def __init__(self, indent=None, level=None, **kwargs) -> None:
-        super().__init__(indent=indent, level=level)
+    """
+    The base javascript transpiler for python PEP 435 Enums. Extend from this
+    base class to write custom transpilers.
+    """
 
     def generate(self, enum: Type[Enum]) -> str:
         """
@@ -25,30 +30,47 @@ class EnumVisitor(JavaScriptGenerator):
             self.write_line(line)
         return self.rendered_
 
-    def visit(self, enum: Type[Enum]) -> Generator[str, None, None]:
+    def visit(
+            self,
+            enums: Union[
+                Type[Enum],
+                str,
+                Iterable[Union[Type[Enum], str]]
+            ]
+    ) -> Generator[str, None, None]:
         """
         Visit the enumeration, yielding JavaScript where needed.
 
-        :param enum: The URL tree, in the format returned by build_tree().
+        :param enums: The URL tree, in the format returned by build_tree().
         :yield: JavaScript lines
         """
-        yield from self.start_visitation(enum)
-        self.indent()
-        yield from self.visit_enum(enum)
-        self.outdent()
-        yield from self.end_visitation(enum)
 
-    def start_visitation(self, enum: Type[Enum]) -> Generator[str, None, None]:
+        if isinstance(enums, str) or isinstance(enums, type):
+            enums = [enums]
+        enums = [
+            import_string(en)
+            if isinstance(en, str)
+            else en
+            for en in enums
+        ]
+        yield from self.start_visitation()
+        for enum in enums:
+            assert issubclass(enum, Enum), f'{enum} is not an Enum!'
+            yield from self.visit_enum(enum)
+            yield ''
+        yield from self.end_visitation()
+
+    def start_visitation(self) -> Generator[str, None, None]:
         """
-        Begin visitation of the tree - noop
+        Begin visitation of the enum(s), base class hook.
 
         :yield: writes nothing
         """
         yield None  # type: ignore
 
-    def end_visitation(self, enum: Type[Enum]) -> Generator[str, None, None]:
+    def end_visitation(self) -> Generator[str, None, None]:
         """
-        End visitation of the tree - noop
+        End visitation of the enum(s), base class hook.
 
         :yield: writes nothing
         """
@@ -64,111 +86,388 @@ class EnumVisitor(JavaScriptGenerator):
 
 
 class EnumClassWriter(EnumVisitor):
-    class_name_: Optional[str] = '{}'
+    """
+    A PEP 435 transpiler that generates ES6 style classes in the style of
+    https://github.com/rauschma/enumify
+
+    :param class_name: A pattern to use to generate class names. This should
+        be a string that will be formatted with the class name of each enum.
+        The default string '{}' will resolve to the python class name.
+    :param raise_on_not_found: If true, in the transpiled javascript throw a
+        TypeError if an Enum instance cannot be mapped to the given value.
+        If false, return null
+    :param export: If true the classes will be exported - Default: False
+    :param include_properties: If true, any python properties present on the
+        enums will be included in the transpiled javascript enums.
+    :param symmetric_properties: If true, properties that the enums may be
+        instantiated from will be automatically determined and included in the
+        get() function. If False (default), enums will not be instantiable
+        from properties. May also be an iterable of property names to
+        treat as symmetric.
+    :param exclude_properties: Exclude this list of properties. Only useful if
+        include_properties is True
+    :param class_properties: If true, include all Django classproperties as
+        static members on the transpiled Enum class. May also be an iterable
+        of specific property names to include.
+    :param kwargs: additional kwargs for the base transpiler classes.
+    """
+
+    class_name_pattern_: Optional[str] = '{}'
+    class_name_: str
+
     raise_on_not_found_: bool = True
-    export_ = True
-    include_properties_ = True
-    symmetric_properties_ = None
-    exclude_properties_ = None
+
+    export_: bool = False
+
+    symmetric_properties_kwarg_: Union[bool, List[str]] = False
+    symmetric_properties_: List[str] = []
+
+    class_properties_kwarg_: Union[bool, List[str]] = True
+    class_properties_: List[str] = []
+
+    include_properties_: bool = True
+    builtins_: List[str] = ['value', 'name']
+    properties_: List[str] = []
+    exclude_properties_: Set[str]
+
+    str_prop_: Optional[str] = None
+    str_is_prop_: bool = False
+
+    @property
+    def class_name(self):
+        """Get the class name for the enum being transpiled"""
+        return self.class_name_
+
+    @class_name.setter
+    def class_name(self, enum):
+        """
+        Generate the class name for the enum being transpiled from the
+        configured pattern.
+
+        :param enum: The enum class being transpiled
+        """
+        self.class_name_ = self.class_name_pattern_.format(enum.__name__)
+
+    @property
+    def properties(self):
+        """The properties to include in the transpiled javascript class"""
+        return self.properties_
+
+    @properties.setter
+    def properties(self, enum: Type[Enum]):
+        """
+        Determine the properties to include in the transpiled javascript class
+        through introspection.
+
+        :param enum: The enum class being transpiled
+        """
+        if self.include_properties_:
+            self.properties_ = [
+                *self.builtins_,
+                *[
+                    str(name)
+                    for name, member in vars(enum).items()
+                    if (
+                        isinstance(member, property) and
+                        member not in self.exclude_properties_
+                    )
+                ]
+            ]
+        else:
+            self.properties_ = self.builtins_
+
+    @property
+    def symmetric_properties(self):
+        """
+        The list of properties that enum values can be instantiated from
+        """
+        return self.symmetric_properties_
+
+    @symmetric_properties.setter
+    def symmetric_properties(self, enum: Type[Enum]):
+        """
+        Set the list of properties that enum values can be instantiated from.
+        If symmetric_properties_ is True, determine the list of symmetric
+        properties by walking through all the properties and figuring out
+        which properties the Enum can be instantiated from.
+
+        :param enum: The enum class being transpiled
+        """
+        if self.symmetric_properties_kwarg_ is True:
+            self.symmetric_properties_ = []
+            for prop in self.properties:
+                if prop == 'value':
+                    continue
+                count = 0
+                for en in enum:
+                    try:
+                        if enum(getattr(en, prop)) is en:
+                            count += 1
+                    except (TypeError, ValueError):
+                        pass
+                if count == len(enum):
+                    self.symmetric_properties_.append(prop)
+
+        elif self.symmetric_properties_kwarg_ is False:
+            self.symmetric_properties_ = []
+        else:
+            self.symmetric_properties_ = [
+                prop for prop in self.symmetric_properties_kwarg_
+                if hasattr(enum(enum.values[0]), prop)
+            ]
+
+    @property
+    def class_properties(self):
+        """
+        The list of class properties on the enum class that should be
+        transpiled.
+        """
+        return self.class_properties_
+
+    @class_properties.setter
+    def class_properties(self, enum: Type[Enum]):
+        """
+        Either set the class properties to the given set, or if true set to
+        the set of all Django classproperties on the enum class
+
+        :param enum: The enum class to transpile
+        """
+        if self.class_properties_kwarg_ is True:
+            self.class_properties_ = [
+                name for name, member in vars(enum).items()
+                if isinstance(member, classproperty)
+            ]
+        elif self.class_properties_kwarg_ is False:
+            self.class_properties_ = []
+        else:
+            self.class_properties_ = [
+                prop for prop in self.class_properties_kwarg_
+                if hasattr(enum, prop)
+            ]
+
+    @property
+    def str_prop(self):
+        """
+        The property that is the string representation of the field or
+        None if the string is different
+        """
+        return self.str_prop_
+
+    @str_prop.setter
+    def str_prop(self, enum: Type[Enum]):
+        """
+        Determine the property that is the string representation of the
+        enumeration if one exists.
+
+        :param enum: The enum class being transpiled
+        """
+        prop_matches = {}
+        for en in enum:
+            for prop in self.properties:
+                if getattr(en, prop) == str(en):
+                    prop_matches.setdefault(prop, 0)
+                    prop_matches[prop] += 1
+        for prop, count in prop_matches.items():
+            if count == len(enum):
+                self.str_prop_ = prop
+                self.str_is_prop_ = True
+                return
+
+        candidate = 'str'
+        idx = 0
+        while candidate in self.properties:
+            candidate = f'str{idx}'
+            idx += 1
+        self.str_prop_ = candidate
 
     def __init__(
             self,
-            class_name: str = class_name_,
+            class_name: str = class_name_pattern_,
             raise_on_not_found: bool = raise_on_not_found_,
             export: bool = export_,
             include_properties: bool = include_properties_,
-            symmetric_properties: List[str] = symmetric_properties_,
-            exclude_properties: List[str] = exclude_properties_,
+            symmetric_properties: Union[
+                bool,
+                Iterable[str]
+            ] = symmetric_properties_kwarg_,
+            exclude_properties: Optional[Iterable[str]] = None,
+            class_properties: Union[
+                bool,
+                Iterable[str]
+            ] = class_properties_kwarg_,
             **kwargs
     ) -> None:
         super().__init__(**kwargs)
-        self.class_name_ = class_name
+        self.class_name_pattern_ = class_name
         self.raise_on_not_found_ = raise_on_not_found
         self.export_ = export
         self.include_properties_ = include_properties
-        self.symmetric_properties_ = symmetric_properties or []
+        self.symmetric_properties_kwarg_ = symmetric_properties
         self.exclude_properties_ = (
             set(exclude_properties)
             if exclude_properties else set()
         )
-
-    def visit(self, enum: Type[Enum]) -> Generator[str, None, None]:
-        self.class_name_.format(enum.__name__)
-        yield from super().visit(enum)
-
-    def start_visitation(self, enum: Type[Enum]) -> Generator[str, None, None]:
-        """
-        Begin visitation of the enum.
-
-        :yield: declaration string
-        """
-        yield from self.declaration(enum)
+        self.class_properties_kwarg_ = class_properties
 
     def visit_enum(self, enum: Type[Enum]) -> Generator[str, None, None]:
         """
-        Visit the enum.
+        Transpile the enum in sections.
 
-        :param enum:
-        :return:
+        :param enum: The enum class being transpiled
+        :yield: transpiled javascript lines
         """
+        self.class_name = enum
+        self.properties = enum
+        self.str_prop = enum
+        self.class_properties = enum
+        self.symmetric_properties = enum
+        yield from self.declaration(enum)
+        self.indent()
+        yield ''
+        yield from self.enumerations(enum)
+        yield ''
+        if self.class_properties:
+            yield from self.static_properties(enum)
+            yield ''
         yield from self.constructor(enum)
-
-    def declaration(self, enum: Type[Enum]) -> Generator[str, None, None]:
-        yield f'{"export " if self.export_ else ""}class {self.class_name_} {{'
-
-    def constructor(self, enum: Type[Enum]) -> Generator[str, None, None]:
-        yield 'constructor () {'
-
-    def end_visitation(self, enum: Type[Enum]) -> Generator[str, None, None]:
-        """
-        End visitation of the enum
-
-        :yield: writes class closing paren
-        """
+        yield ''
+        yield from self.to_string(enum)
+        yield ''
+        yield from self.getter(enum)
+        yield ''
+        yield from self.iterator(enum)
+        self.outdent()
         yield '}'
 
-    def get_properties(self, enum: Type[Enum]) -> List[str]:
-        if self.include_properties_:
-            return [
-                       name
-                       for name, member in vars(enum).items()
-                       if (
-                        isinstance(member, property) and
-                        member not in self.exclude_properties_
-                )
-                   ] + [
-                       expected for expected in self.expected_properties
-                       if expected in vars(enum)
-                   ]
-        return []
+    def declaration(self, enum: Type[Enum]) -> Generator[str, None, None]:
+        """
+        Transpile the class declaration.
 
+        :param enum: The enum being transpiled
+        :yield: transpiled javascript lines
+        """
+        yield f'{"export " if self.export_ else ""}class {self.class_name} {{'
 
-"""
-class SLMFileType {
+    def enumerations(self, enum: Type[Enum]) -> Generator[str, None, None]:
+        """
+        Transpile the enumeration value instances as static member on the class
 
-    static SITE_LOG = new SLMFileType(1, 'Site Log');
-    static SITE_IMAGE = new SLMFileType(2, 'Site Image');
-    static ATTACHMENT = new SLMFileType(3, 'Attachment');
+        :param enum: The enum class being transpiled
+        :yield: transpiled javascript lines
+        """
+        for en in enum:
+            values = [
+                self.to_js(getattr(en, prop)) for prop in self.properties
+            ]
+            if not self.str_is_prop_:
+                values.append(self.to_js(str(en)))
+            yield (
+                f'static {en.name} = new {self.class_name}'
+                f'({", ".join(values)});'
+            )
 
-    constructor(val, label) {
-        this.val = val;
-        this.label = label;
-    }
+    def static_properties(
+            self,
+            enum: Type[Enum]
+    ) -> Generator[str, None, None]:
+        """
+        Transpile any classproperties as static members on the class.
 
-    toString() {
-        return this.label;
-    }
+        :param enum: The enum class being transpiled
+        :yield: transpiled javascript lines
+        """
+        for prop in self.class_properties:
+            yield f'static {prop} = {self.to_js(getattr(enum, prop))};'
 
-    static get(val) {
-        switch(val) {
-            case 1:
-                return SLMFileType.SITE_LOG;
-            case 2:
-                return SLMFileType.SITE_IMAGE;
-            case 3:
-                return SLMFileType.ATTACHMENT;
-        }
-        return null;
-    }
-}
-"""
+    def constructor(self, enum: Type[Enum]) -> Generator[str, None, None]:
+        """
+        Transpile the constructor for the enum instances.
+
+        :param enum: The enum class being transpiled
+        :yield: transpiled javascript lines
+        """
+        props = [
+            *self.properties,
+            *([] if self.str_is_prop_ else [self.str_prop])
+        ]
+        yield f'constructor ({", ".join(props)}) {{'
+        self.indent()
+        for prop in self.properties:
+            yield f'this.{prop} = {prop};'
+        if not self.str_is_prop_:
+            yield f'this.{self.str_prop} = {self.str_prop};'
+        self.outdent()
+        yield '}'
+
+    def to_string(self, enum: Type[Enum]) -> Generator[str, None, None]:
+        """
+        Transpile the toString() method that converts enum instances to
+        strings.
+
+        :param enum: The enum class being transpiled
+        :yield: transpiled javascript lines
+        """
+        yield 'toString() {'
+        self.indent()
+        yield f'return this.{self.str_prop};'
+        self.outdent()
+        yield '}'
+
+    def getter(self, enum: Type[Enum]) -> Generator[str, None, None]:
+        """
+        Transpile the get() method that converts values and properties into
+        instances of the Enum type.
+
+        :param enum: The enum class being transpiled
+        :yield: transpiled javascript lines
+        """
+        yield 'static get(value) {'
+        self.indent()
+
+        for prop in ['value'] + self.symmetric_properties:
+            yield from self.prop_getter(enum, prop)
+
+        if self.raise_on_not_found_:
+            yield f'throw new TypeError(`No {self.class_name} ' \
+                  f'enumeration maps to value ${{value}}`);'
+        else:
+            yield 'return null;'
+        self.outdent()
+        yield '}'
+
+    def prop_getter(
+            self,
+            enum: Type[Enum],
+            prop: str
+    ) -> Generator[str, None, None]:
+        """
+        Transpile the switch statement to map values of the given property to
+        enumeration instance values.
+
+        :param enum: The enum class being transpiled
+        :param prop:
+        :yield: transpiled javascript lines
+        """
+        yield 'switch(value) {'
+        self.indent()
+        for en in enum:
+            yield f'case {self.to_js(getattr(en, prop))}:'
+            self.indent()
+            yield f'return {self.class_name}.{en.name};'
+            self.outdent()
+        self.outdent()
+        yield '}'
+
+    def iterator(self, enum: Type[Enum]) -> Generator[str, None, None]:
+        """
+        Transpile the iterator for iterating through enum value instances.
+
+        :param enum: The enum class being transpiled
+        :yield: transpiled javascript lines
+        """
+        enums = [f'{self.class_name}.{en.name}' for en in enum]
+        yield 'static [Symbol.iterator]() {'
+        self.indent()
+        yield f'return [{", ".join(enums)}][Symbol.iterator]();'
+        self.outdent()
+        yield '}'
