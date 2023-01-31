@@ -2528,8 +2528,8 @@ class EnumGeneratorTest(BaseTestCase):
     )
     def test_datetime_enum_to_javascript_param(self):
         call_command('renderstatic', 'enum/test.js')
-        from render_static.tests.enum.defines import TimeEnum
         from dateutil.parser import parse
+        from render_static.tests.enum.defines import TimeEnum
         times = run_js_file(GLOBAL_STATIC_DIR / 'enum/test.js').split()
         self.assertEqual(
             parse(times[0]).date(),

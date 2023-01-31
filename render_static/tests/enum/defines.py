@@ -1,5 +1,5 @@
-from enum import IntEnum, auto, Enum
 from datetime import date, datetime, timezone
+from enum import Enum, IntEnum, auto
 
 try:
     from django.utils.decorators import classproperty

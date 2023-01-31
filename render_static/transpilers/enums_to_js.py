@@ -11,7 +11,7 @@ from typing import (
     Optional,
     Set,
     Type,
-    Union
+    Union,
 )
 
 from django.utils.module_loading import import_string
