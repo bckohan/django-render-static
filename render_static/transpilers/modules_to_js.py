@@ -2,15 +2,17 @@
 Built-in transpilers for python modules. Only one is provided that transpiles
 any classes found in the modules.
 """
-from typing import Generator, Union, Type, Iterable, Dict, Any
+import inspect
+from abc import abstractmethod
 from types import ModuleType
+from typing import Any, Collection, Dict, Generator, Type, Union
+
+from django.utils.module_loading import import_module, import_string
 from render_static.transpilers import JavaScriptGenerator
 from render_static.transpilers.classes_to_js import (
+    DefaultClassWriter,
     PythonClassVisitor,
-    SimplePODWriter
 )
-from django.utils.module_loading import import_module, import_string
-import inspect
 
 
 class PythonModuleVisitor(JavaScriptGenerator):
@@ -20,18 +22,22 @@ class PythonModuleVisitor(JavaScriptGenerator):
     base module visitor.
     """
 
-    class_transpiler_: Type[PythonClassVisitor] = SimplePODWriter
+    class_transpiler_: Type[PythonClassVisitor] = DefaultClassWriter
     class_transpiler_kwargs_: Dict[str, Any] = {}
 
     @property
     def class_transpiler(self):
+        """
+        An instance of the configured class transpiler that should be used
+        to transpile any constituent classes on the module
+        """
         return self.class_transpiler_(**self.class_transpiler_kwargs_)
 
     def __init__(
         self,
         class_transpiler: Union[
             Type[PythonClassVisitor], str
-        ] = SimplePODWriter,
+        ] = DefaultClassWriter,
         **kwargs
     ):
         self.class_transpiler_ = (
@@ -47,7 +53,7 @@ class PythonModuleVisitor(JavaScriptGenerator):
 
     def generate(
         self,
-        modules: Union[Iterable[Union[ModuleType, str]], ModuleType, str]
+        modules: Union[Collection[Union[ModuleType, str]], ModuleType, str]
     ) -> str:
         """
         Implements JavaScriptGenerator::generate. Calls the visitation entry
@@ -58,18 +64,19 @@ class PythonModuleVisitor(JavaScriptGenerator):
             modules to transpile
         :return: The rendered module(s) as javascript.
         """
-        if not isinstance(modules, Iterable) or isinstance(modules, str):
+        if not isinstance(modules, Collection) or isinstance(modules, str):
             modules = [modules]
         for idx, module in enumerate(modules):
             if isinstance(module, str):
                 module = import_module(module)
             for line in self.visit_module(
                 module,
-                is_last=(idx == len(modules) - 1)
+                is_last=(idx == (len(modules) - 1))
             ):
                 self.write_line(line)
         return self.rendered_
 
+    @abstractmethod
     def visit_module(
         self,
         module: ModuleType,
@@ -85,7 +92,7 @@ class PythonModuleVisitor(JavaScriptGenerator):
         """
 
 
-class ModuleClassWriter(PythonModuleVisitor):
+class DefaultModuleWriter(PythonModuleVisitor):
     """
     A simple transpiler that will run all classes found in a module through
     the configured class transpiler.
@@ -112,7 +119,7 @@ class ModuleClassWriter(PythonModuleVisitor):
         for idx, cls in enumerate(classes):
             yield from self.visit_class(
                 cls,
-                is_last=(idx == len(classes)-1) and is_last
+                is_last=(idx == (len(classes) - 1)) and is_last
             )
 
     def visit_class(
@@ -132,7 +139,6 @@ class ModuleClassWriter(PythonModuleVisitor):
             for line in self.class_transpiler.generate(cls).split(self.nl_)
             if line.strip()
         ]
-        print(f'generate: {cls}')
         for idx, line in enumerate(lines):
             yield f'{line}' \
-                  f'{"," if idx == (len(lines) - 1) and not is_last else ""}'
+                  f'{"," if (idx == (len(lines) - 1) and not is_last) else ""}'

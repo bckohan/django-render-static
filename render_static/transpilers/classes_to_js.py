@@ -2,10 +2,12 @@
 Built-in transpilers for python classes. Only one is provided that transpiles
 plain old data found on classes and their ancestors.
 """
-from typing import Generator, Union, Type, Callable, Any, Iterable
-from render_static.transpilers import JavaScriptGenerator
-from django.utils.module_loading import import_string
 import inspect
+from abc import abstractmethod
+from typing import Any, Callable, Collection, Generator, Type, Union
+
+from django.utils.module_loading import import_string
+from render_static.transpilers import JavaScriptGenerator
 
 
 class PythonClassVisitor(JavaScriptGenerator):
@@ -17,7 +19,7 @@ class PythonClassVisitor(JavaScriptGenerator):
 
     def generate(
         self,
-        classes: Union[Iterable[Union[Type, str]], Union[Type, str]]
+        classes: Union[Collection[Union[Type, str]], Union[Type, str]]
     ) -> str:
         """
         Implements JavaScriptGenerator::generate. Calls the visitation entry
@@ -28,7 +30,7 @@ class PythonClassVisitor(JavaScriptGenerator):
             classes to transpile
         :return: The rendered class(es) as javascript.
         """
-        if not isinstance(classes, Iterable) or isinstance(classes, str):
+        if not isinstance(classes, Collection) or isinstance(classes, str):
             classes = [classes]
         for idx, cls in enumerate(classes):
             if isinstance(cls, str):
@@ -39,6 +41,7 @@ class PythonClassVisitor(JavaScriptGenerator):
                 self.write_line(line)
         return self.rendered_
 
+    @abstractmethod
     def visit_class(
         self,
         cls: Type,
@@ -54,7 +57,7 @@ class PythonClassVisitor(JavaScriptGenerator):
         """
 
 
-class SimplePODWriter(PythonClassVisitor):
+class DefaultClassWriter(PythonClassVisitor):
     """
     A JavascriptGenerator that transpiles plain old data in python classes
     into simple JavaScript structures. For example if you have a model with
@@ -103,7 +106,7 @@ class SimplePODWriter(PythonClassVisitor):
     """
 
     include_member_: Callable[[Any], bool] = (
-        lambda name, member: name.isupper()
+        lambda name, member: name.isupper()  # type: ignore
     )
 
     def __init__(

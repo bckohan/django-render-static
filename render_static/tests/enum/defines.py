@@ -1,4 +1,5 @@
 from enum import IntEnum, auto
+
 try:
     from django.utils.decorators import classproperty
 except ImportError:

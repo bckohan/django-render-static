@@ -1,13 +1,12 @@
 # pylint: disable=C0114
 
+from enum import Enum
+
 from django import template
 from django.utils.module_loading import import_string
-from render_static.transpilers import (
-    to_js as to_js_transpiler,
-    JavaScriptGenerator
-)
-from enum import Enum
 from django.utils.safestring import SafeString
+from render_static.transpilers import JavaScriptGenerator
+
 try:
     from django.utils.decorators import classproperty
 except ImportError:
@@ -112,11 +111,6 @@ def enum_list(enums):
         else en for en in enums
     ]
     return ret
-
-
-@register.filter(name='to_js')
-def to_js(value):
-    return to_js_transpiler(value)
 
 
 @register.simple_tag
