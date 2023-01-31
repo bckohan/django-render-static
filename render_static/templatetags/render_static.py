@@ -306,8 +306,8 @@ def urls_to_js(  # pylint: disable=R0913,R0915
 
 
 @register.simple_tag
-def enum_to_js(
-        enum: Union[Type[Enum], str, Collection[Union[Type[Enum], str]]],
+def enums_to_js(
+        enums: Union[Type[Enum], str, Collection[Union[Type[Enum], str]]],
         transpiler: Union[Type[EnumClassWriter], str] = EnumClassWriter,
         indent: str = '\t',
         depth: int = 0,
@@ -316,7 +316,7 @@ def enum_to_js(
     """
     Transpile the given enumeration(s).
 
-    :param enum: An enum class or import string or a list of either to
+    :param enums: An enum class or import string or a collection of either to
         transpile.
     :param transpiler: A transpiler class or import string of the transpiler
         class to use for the transpilation.
@@ -337,5 +337,5 @@ def enum_to_js(
             indent=indent,
             depth=depth,
             **kwargs
-        ).generate(enum)  # type: ignore
+        ).generate(enums)  # type: ignore
     )

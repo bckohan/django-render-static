@@ -509,7 +509,7 @@ class URLJavascriptMixin:
         'OPTIONS': {
             'loaders': [
                 ('render_static.loaders.StaticLocMemLoader', {
-                    'urls.js': 'var urls = {\n{% urls_to_js visitor="render_static.SimpleURLWriter" es5=True%}};'
+                    'urls.js': 'var urls = {\n{% urls_to_js transpiler="render_static.SimpleURLWriter" es5=True%}};'
                 })
             ],
             'builtins': ['render_static.templatetags.render_static']
@@ -553,7 +553,7 @@ class URLSToJavascriptTest(URLJavascriptMixin, BaseTestCase):
             'OPTIONS': {
                 'loaders': [
                     ('render_static.loaders.StaticLocMemLoader', {
-                        'urls.js': '{% urls_to_js visitor="render_static.ClassURLWriter" %}'
+                        'urls.js': '{% urls_to_js transpiler="render_static.ClassURLWriter" %}'
                     })
                 ],
                 'builtins': ['render_static.templatetags.render_static']
@@ -574,7 +574,7 @@ class URLSToJavascriptTest(URLJavascriptMixin, BaseTestCase):
             'OPTIONS': {
                 'loaders': [
                     ('render_static.loaders.StaticLocMemLoader', {
-                        'urls.js': '{% urls_to_js visitor="render_static.ClassURLWriter" %}'
+                        'urls.js': '{% urls_to_js transpiler="render_static.ClassURLWriter" %}'
                     })
                 ],
                 'builtins': ['render_static.templatetags.render_static']
@@ -598,7 +598,7 @@ class URLSToJavascriptTest(URLJavascriptMixin, BaseTestCase):
                 'loaders': [
                     ('render_static.loaders.StaticLocMemLoader', {
                         'urls.js': 'var urls = {\n'
-                                   '{% urls_to_js visitor="render_static.SimpleURLWriter" include=include %}'
+                                   '{% urls_to_js transpiler="render_static.SimpleURLWriter" include=include %}'
                                    '\n};'
                     })
                 ],
@@ -622,7 +622,7 @@ class URLSToJavascriptTest(URLJavascriptMixin, BaseTestCase):
             'OPTIONS': {
                 'loaders': [
                     ('render_static.loaders.StaticLocMemLoader', {
-                        'urls.js': '{% urls_to_js visitor="render_static.ClassURLWriter" es5=True%}'
+                        'urls.js': '{% urls_to_js transpiler="render_static.ClassURLWriter" es5=True%}'
                     })
                 ],
                 'builtins': ['render_static.templatetags.render_static']
@@ -643,7 +643,7 @@ class URLSToJavascriptTest(URLJavascriptMixin, BaseTestCase):
             'OPTIONS': {
                 'loaders': [
                     ('render_static.loaders.StaticLocMemLoader', {
-                        'urls.js': '{% urls_to_js visitor="render_static.ClassURLWriter" es5=True%}'
+                        'urls.js': '{% urls_to_js transpiler="render_static.ClassURLWriter" es5=True%}'
                     })
                 ],
                 'builtins': ['render_static.templatetags.render_static']
@@ -666,7 +666,7 @@ class URLSToJavascriptTest(URLJavascriptMixin, BaseTestCase):
             'OPTIONS': {
                 'loaders': [
                     ('render_static.loaders.StaticLocMemLoader', {
-                        'urls.js': 'var urls = {\n{% urls_to_js visitor="render_static.SimpleURLWriter" %}};'
+                        'urls.js': 'var urls = {\n{% urls_to_js transpiler="render_static.SimpleURLWriter" %}};'
                     })
                 ],
                 'builtins': ['render_static.templatetags.render_static']
@@ -685,7 +685,7 @@ class URLSToJavascriptTest(URLJavascriptMixin, BaseTestCase):
             'OPTIONS': {
                 'loaders': [
                     ('render_static.loaders.StaticLocMemLoader', {
-                        'urls.js': 'var urls = {\n{% urls_to_js visitor="render_static.SimpleURLWriter" %}};'
+                        'urls.js': 'var urls = {\n{% urls_to_js transpiler="render_static.SimpleURLWriter" %}};'
                     })
                 ],
                 'builtins': ['render_static.templatetags.render_static']
@@ -862,7 +862,7 @@ class URLSToJavascriptTest(URLJavascriptMixin, BaseTestCase):
                     ('render_static.loaders.StaticLocMemLoader', {
                         'urls.js': 'var urls = {\n'
                                    '{% urls_to_js '
-                                        'visitor="render_static.SimpleURLWriter" '
+                                        'transpiler="render_static.SimpleURLWriter" '
                                         'es5=True '
                                         'include=include '
                                         'exclude=exclude '
@@ -957,7 +957,7 @@ class URLSToJavascriptTest(URLJavascriptMixin, BaseTestCase):
                     ('render_static.loaders.StaticLocMemLoader', {
                         'urls.js': 'var urls = {\n'
                                    '{% urls_to_js '
-                                        'visitor="render_static.SimpleURLWriter" '
+                                        'transpiler="render_static.SimpleURLWriter" '
                                         'es5=True '
                                         'include=include '
                                         'exclude=exclude '
@@ -1048,7 +1048,7 @@ class URLSToJavascriptTest(URLJavascriptMixin, BaseTestCase):
                         'urls.js': 'var urls = {\n'
                                    '{% urls_to_js '
                                         'url_conf=url_mod '
-                                        'visitor="render_static.SimpleURLWriter" '
+                                        'transpiler="render_static.SimpleURLWriter" '
                                         'include=include '
                                         'exclude=exclude '
                                    '%}};'
@@ -1141,7 +1141,7 @@ class URLSToJavascriptTest(URLJavascriptMixin, BaseTestCase):
                         'urls.js': 'var urls = {\n'
                                    '{% urls_to_js '
                                         'url_conf="render_static.tests.urls" '
-                                        'visitor="render_static.SimpleURLWriter" '
+                                        'transpiler="render_static.SimpleURLWriter" '
                                         'include=include '
                                         'exclude=exclude '
                                    '%}};'
@@ -1231,7 +1231,7 @@ class URLSToJavascriptTest(URLJavascriptMixin, BaseTestCase):
                 'loaders': [
                     ('render_static.loaders.StaticLocMemLoader', {
                         'urls.js': ('{% urls_to_js '
-                                    'visitor="render_static.ClassURLWriter" '
+                                    'transpiler="render_static.ClassURLWriter" '
                                     'include=include '
                                     '%}')
                     })
@@ -1267,7 +1267,7 @@ class CornerCaseTest(URLJavascriptMixin, BaseTestCase):
                 'loaders': [
                     ('render_static.loaders.StaticLocMemLoader', {
                         'urls.js': ('{% urls_to_js '
-                                    'visitor="render_static.ClassURLWriter" '
+                                    'transpiler="render_static.ClassURLWriter" '
                                     'include=include '
                                     '%}')
                     })
@@ -1299,7 +1299,7 @@ class CornerCaseTest(URLJavascriptMixin, BaseTestCase):
                 'loaders': [
                     ('render_static.loaders.StaticLocMemLoader', {
                         'urls.js': ('{% urls_to_js '
-                                    'visitor="render_static.ClassURLWriter" '
+                                    'transpiler="render_static.ClassURLWriter" '
                                     'include=include '
                                     '%}')
                     })
@@ -1339,7 +1339,7 @@ class CornerCaseTest(URLJavascriptMixin, BaseTestCase):
                     'loaders': [
                         ('render_static.loaders.StaticLocMemLoader', {
                             'urls.js': ('{% urls_to_js '
-                                        'visitor="render_static.ClassURLWriter" '
+                                        'transpiler="render_static.ClassURLWriter" '
                                         'include=include '
                                         '%}')
                         })
@@ -1379,7 +1379,7 @@ class CornerCaseTest(URLJavascriptMixin, BaseTestCase):
                 'OPTIONS': {
                     'loaders': [
                         ('render_static.loaders.StaticLocMemLoader', {
-                            'urls.js': '{% urls_to_js visitor="render_static.ClassURLWriter" %}'
+                            'urls.js': '{% urls_to_js transpiler="render_static.ClassURLWriter" %}'
                         })
                     ],
                     'builtins': ['render_static.templatetags.render_static']
@@ -1419,7 +1419,7 @@ class CornerCaseTest(URLJavascriptMixin, BaseTestCase):
                     'loaders': [
                         ('render_static.loaders.StaticLocMemLoader', {
                             'urls.js': '{% urls_to_js '
-                                       'visitor="render_static.ClassURLWriter" '
+                                       'transpiler="render_static.ClassURLWriter" '
                                        'include=include %}'
                         })
                     ],
@@ -1460,7 +1460,7 @@ class CornerCaseTest(URLJavascriptMixin, BaseTestCase):
                     'loaders': [
                         ('render_static.loaders.StaticLocMemLoader', {
                             'urls.js': '{% urls_to_js '
-                                       'visitor="render_static.ClassURLWriter" '
+                                       'transpiler="render_static.ClassURLWriter" '
                                        'include=include %}'
                         })
                     ],
@@ -1488,7 +1488,7 @@ class CornerCaseTest(URLJavascriptMixin, BaseTestCase):
                 'loaders': [
                     ('render_static.loaders.StaticLocMemLoader', {
                         'urls.js': ('{% urls_to_js '
-                                    'visitor="render_static.ClassURLWriter" '
+                                    'transpiler="render_static.ClassURLWriter" '
                                     'include=include '
                                     '%}')
                     })
@@ -1565,7 +1565,7 @@ class URLSToJavascriptOffNominalTest(URLJavascriptMixin, BaseTestCase):
             'OPTIONS': {
                 'loaders': [
                     ('render_static.loaders.StaticLocMemLoader', {
-                        'urls.js': 'var urls = {\n{% urls_to_js visitor="render_static.SimpleURLWriter" include=include %}};'
+                        'urls.js': 'var urls = {\n{% urls_to_js transpiler="render_static.SimpleURLWriter" include=include %}};'
                     })
                 ],
                 'builtins': ['render_static.templatetags.render_static']
@@ -1600,7 +1600,7 @@ class URLSToJavascriptOffNominalTest(URLJavascriptMixin, BaseTestCase):
             'OPTIONS': {
                 'loaders': [
                     ('render_static.loaders.StaticLocMemLoader', {
-                        'urls.js': 'var urls = {\n{% urls_to_js visitor="render_static.SimpleURLWriter" include=include %}};'
+                        'urls.js': 'var urls = {\n{% urls_to_js transpiler="render_static.SimpleURLWriter" include=include %}};'
                     })
                 ],
                 'builtins': ['render_static.templatetags.render_static']
@@ -1632,7 +1632,7 @@ class URLSToJavascriptOffNominalTest(URLJavascriptMixin, BaseTestCase):
             'OPTIONS': {
                 'loaders': [
                     ('render_static.loaders.StaticLocMemLoader', {
-                        'urls.js': 'var urls = {\n{% urls_to_js visitor="render_static.SimpleURLWriter" include=include %}};'
+                        'urls.js': 'var urls = {\n{% urls_to_js transpiler="render_static.SimpleURLWriter" include=include %}};'
                     })
                 ],
                 'builtins': ['render_static.templatetags.render_static']
@@ -1658,7 +1658,7 @@ class URLSToJavascriptOffNominalTest(URLJavascriptMixin, BaseTestCase):
                 'loaders': [
                     ('render_static.loaders.StaticLocMemLoader', {
                         'urls.js':
-                            '{% urls_to_js visitor="render_static.tests.js_tests.BadVisitor" %};'
+                            '{% urls_to_js transpiler="render_static.tests.js_tests.BadVisitor" %};'
                     })
                 ],
                 'builtins': ['render_static.templatetags.render_static']
@@ -1674,7 +1674,7 @@ class URLSToJavascriptOffNominalTest(URLJavascriptMixin, BaseTestCase):
             'OPTIONS': {
                 'loaders': [
                     ('render_static.loaders.StaticLocMemLoader', {
-                        'urls.js': 'var urls = {\n{% urls_to_js visitor="render_static.SimpleURLWriter" url_conf=url_mod %}};'
+                        'urls.js': 'var urls = {\n{% urls_to_js transpiler="render_static.SimpleURLWriter" url_conf=url_mod %}};'
                     })
                 ],
                 'builtins': ['render_static.templatetags.render_static']
@@ -1697,7 +1697,7 @@ class URLSToJavascriptOffNominalTest(URLJavascriptMixin, BaseTestCase):
             'OPTIONS': {
                 'loaders': [
                     ('render_static.loaders.StaticLocMemLoader', {
-                        'urls.js': 'var urls = {\n{% urls_to_js visitor="render_static.SimpleURLWriter" url_conf=url_mod %}};'
+                        'urls.js': 'var urls = {\n{% urls_to_js transpiler="render_static.SimpleURLWriter" url_conf=url_mod %}};'
                     })
                 ],
                 'builtins': ['render_static.templatetags.render_static']
@@ -1751,13 +1751,13 @@ class URLSToJavascriptParametersTest(URLJavascriptMixin, BaseTestCase):
                                    '%}',
                         'urls3.js': 'var urls = {\n{% urls_to_js '
                                    'es5=True '
-                                   'visitor="render_static.SimpleURLWriter" '
+                                   'transpiler="render_static.SimpleURLWriter" '
                                    'raise_on_not_found=False '
                                    'indent=None '
                                    'include=include '
                                    '%}}\n',
                         'urls4.js': 'var urls = {\n{% urls_to_js '
-                                    'visitor="render_static.SimpleURLWriter" '
+                                    'transpiler="render_static.SimpleURLWriter" '
                                     'es5=True '
                                     'raise_on_not_found=True '
                                     'indent="" '
@@ -1860,13 +1860,13 @@ class URLSToJavascriptParametersTest(URLJavascriptMixin, BaseTestCase):
                                    'include=include '
                                    '%}',
                         'urls3.js': 'var urls = {\n{% urls_to_js '
-                                   'visitor="render_static.SimpleURLWriter" '
+                                   'transpiler="render_static.SimpleURLWriter" '
                                    'raise_on_not_found=False '
                                    'indent=None '
                                    'include=include '
                                    '%}}\n',
                         'urls4.js': 'var urls = {\n{% urls_to_js '
-                                    'visitor="render_static.SimpleURLWriter" '
+                                    'transpiler="render_static.SimpleURLWriter" '
                                     'raise_on_not_found=True '
                                     'indent="" '
                                     'include=include '
@@ -1965,7 +1965,7 @@ class URLSToJavascriptParametersTest(URLJavascriptMixin, BaseTestCase):
                 'loaders': [
                     ('render_static.loaders.StaticLocMemLoader', {
                         'urls.js': '{% urls_to_js '
-                                   'visitor="render_static.ClassURLWriter" '
+                                   'transpiler="render_static.ClassURLWriter" '
                                    'exclude="exclude_namespace"|split '
                                    '%};'
                     })
@@ -2005,7 +2005,7 @@ class DjangoJSReverseTest(URLJavascriptMixin, BaseTestCase):
                 'loaders': [
                     ('render_static.loaders.StaticLocMemLoader', {
                         'urls.js': '{% urls_to_js '
-                                   'visitor="render_static.ClassURLWriter" '
+                                   'transpiler="render_static.ClassURLWriter" '
                                    'exclude="exclude_namespace"|split '
                                    '%};'
                     })
@@ -2054,7 +2054,7 @@ class DjangoJSReversePrecedenceTest(URLJavascriptMixin, BaseTestCase):
                     ('render_static.loaders.StaticLocMemLoader', {
                         'urls.js': (
                             '{% urls_to_js '
-                            'visitor="render_static.ClassURLWriter" %}'
+                            'transpiler="render_static.ClassURLWriter" %}'
                         )
                     })
                 ],
@@ -2184,7 +2184,7 @@ class URLBugsTestCases(URLJavascriptMixin, BaseTestCase):
                         ('render_static.loaders.StaticLocMemLoader', {
                             'urls.js': (
                                     '{% urls_to_js '
-                                    'visitor="render_static.ClassURLWriter" %}'
+                                    'transpiler="render_static.ClassURLWriter" %}'
                             )
                         })
                     ],
@@ -2347,19 +2347,21 @@ class TestDefaultNamespaces(URLJavascriptMixin, BaseTestCase):
             'symmetric_properties': False
         },
         'templates': [
-            ('enum/enums.js', {
+            ('enum/test.js', {
                 'context': {
                     'enums': [
                         EnumTester.MapBoxStyle,
                         EnumTester.AddressRoute,
                         EnumTester.Color
                     ]
-                }
+                },
+                'dest': GLOBAL_STATIC_DIR / 'enum/enums.js'
              }),
-            ('enum/def.js', {
+            ('enum/test.js', {
                 'context': {
                     'enums': 'render_static.tests.enum.defines.Def'
-                }
+                },
+                'dest': GLOBAL_STATIC_DIR / 'enum/def.js'
             })
         ]
     }
@@ -2405,28 +2407,39 @@ class EnumGeneratorTest(BaseTestCase):
                 if class_properties else []
             )
 
-            properties = ['name', 'value'] + [
+            properties = [
                 name for name, member in vars(cls).items()
                 if isinstance(member, property)
             ] if properties is True else (
                 [prop for prop in properties if hasattr(cls, prop)]
-                if properties else ['name', 'value']
+                if properties else []
             )
+            for param in ['value', 'name']:  # pragma: no cover
+                if param not in properties:
+                    properties.insert(0, param)
 
+            from datetime import date
             enum_dict = {
-                'strings': {str(en.value): str(en) for en in cls},
+                'strings': {
+                    en.value.isoformat()
+                    if isinstance(en.value, date)
+                    else str(en.value): str(en) for en in cls},
                 **{
                     prop: [
-                        getattr(en, prop)
+                        getattr(en, prop).isoformat()
+                        if isinstance(getattr(en, prop), date)
+                        else getattr(en, prop)
                         for en in cls
                     ] for prop in properties
                 },
                 'getCheck': 1
             }
+
             if class_properties:
                 enum_dict['class_props'] = {
                     prop: getattr(cls, prop) for prop in class_properties
                 }
+
             self.assertEqual(
                 DeepDiff(
                     enum_dict,
@@ -2445,16 +2458,16 @@ class EnumGeneratorTest(BaseTestCase):
 
     def test_simple(self):
         from render_static.tests.enum.defines import Def
-        call_command('renderstatic', 'enum/def.js')
+        call_command('renderstatic', 'enum/test.js')
         self.enums_compare(
-            js_file=ENUM_STATIC_DIR / 'enum/def.js',
+            js_file=GLOBAL_STATIC_DIR / 'enum/def.js',
             enum_classes=[Def]
         )
 
     def test_enum_properties(self):
-        call_command('renderstatic', 'enum/enums.js')
+        call_command('renderstatic', 'enum/test.js')
         self.enums_compare(
-            js_file=ENUM_STATIC_DIR / 'enum/enums.js',
+            js_file=GLOBAL_STATIC_DIR / 'enum/enums.js',
             enum_classes=[
                 EnumTester.MapBoxStyle,
                 EnumTester.AddressRoute,
@@ -2471,7 +2484,72 @@ class EnumGeneratorTest(BaseTestCase):
                 'symmetric_properties': False
             },
             'templates': [
-                ('enum/enums.js', {
+                ('enum/test.js', {
+                    'context': {
+                        'enums': ['render_static.tests.enum.defines.TimeEnum']
+                    }
+                 })
+            ]
+        }
+    )
+    def test_datetime_enum(self):
+        call_command('renderstatic', 'enum/test.js')
+        from render_static.tests.enum.defines import TimeEnum
+        self.enums_compare(
+            js_file=ENUM_STATIC_DIR / 'enum/test.js',
+            enum_classes=[TimeEnum],
+            class_properties=False
+        )
+
+    @override_settings(
+        STATIC_TEMPLATES={
+            'ENGINES': [{
+                'BACKEND': 'render_static.backends.StaticDjangoTemplates',
+                'OPTIONS': {
+                    'loaders': [
+                        ('render_static.loaders.StaticLocMemLoader', {
+                            'enum/test.js': '{% enums_to_js enums=enums to_javascript="render_static.transpilers.to_js_datetime" %}\n'
+                                            'console.log(TimeEnum.YEAR1.value.toISOString());\n'
+                                            'console.log(TimeEnum.YEAR2.with_time.toISOString());\n'
+                        })
+                    ],
+                    'builtins': ['render_static.templatetags.render_static']
+                },
+            }],
+            'templates': [
+                ('enum/test.js', {
+                    'context': {
+                            'enums': ['render_static.tests.enum.defines.TimeEnum']
+                        }
+                    }
+                ),
+            ]
+        }
+    )
+    def test_datetime_enum_to_javascript_param(self):
+        call_command('renderstatic', 'enum/test.js')
+        from render_static.tests.enum.defines import TimeEnum
+        from dateutil.parser import parse
+        times = run_js_file(GLOBAL_STATIC_DIR / 'enum/test.js').split()
+        self.assertEqual(
+            parse(times[0]).date(),
+            TimeEnum.YEAR1.value
+        )
+        self.assertEqual(
+            parse(times[1]),
+            TimeEnum.YEAR2.with_time
+        )
+
+    @override_settings(
+        STATIC_TEMPLATES={
+            'context': {
+                'include_properties': True,
+                'class_properties': False,
+                'properties': True,
+                'symmetric_properties': False
+            },
+            'templates': [
+                ('enum/test.js', {
                     'context': {
                         'enums': EnumTester.MapBoxStyle
                     }
@@ -2480,15 +2558,15 @@ class EnumGeneratorTest(BaseTestCase):
         }
     )
     def test_class_prop_option(self):
-        call_command('renderstatic', 'enum/enums.js')
+        call_command('renderstatic', 'enum/test.js')
         self.enums_compare(
-            js_file=ENUM_STATIC_DIR / 'enum/enums.js',
+            js_file=ENUM_STATIC_DIR / 'enum/test.js',
             enum_classes=[EnumTester.MapBoxStyle],
             class_properties=False
         )
         self.assertNotIn(
             'class_name',
-            get_content(ENUM_STATIC_DIR / 'enum/enums.js')
+            get_content(ENUM_STATIC_DIR / 'enum/test.js')
         )
 
     @override_settings(
@@ -2500,7 +2578,7 @@ class EnumGeneratorTest(BaseTestCase):
                 'symmetric_properties': False
             },
             'templates': [
-                ('enum/enums.js', {
+                ('enum/test.js', {
                     'context': {
                         'enums': [
                             EnumTester.MapBoxStyle,
@@ -2512,16 +2590,16 @@ class EnumGeneratorTest(BaseTestCase):
         }
     )
     def test_class_props_specified(self):
-        call_command('renderstatic', 'enum/enums.js')
+        call_command('renderstatic', 'enum/test.js')
         self.enums_compare(
-            js_file=ENUM_STATIC_DIR / 'enum/enums.js',
+            js_file=ENUM_STATIC_DIR / 'enum/test.js',
             enum_classes=[
                 EnumTester.MapBoxStyle,
                 EnumTester.Color
             ],
             class_properties=['docs']
         )
-        contents = get_content(ENUM_STATIC_DIR / 'enum/enums.js')
+        contents = get_content(ENUM_STATIC_DIR / 'enum/test.js')
         self.assertNotIn('class_name', contents)
         self.assertEqual(contents.count('static docs ='), 1)
 
@@ -2533,7 +2611,7 @@ class EnumGeneratorTest(BaseTestCase):
                 'symmetric_properties': False
             },
             'templates': [
-                ('enum/enums.js', {
+                ('enum/test.js', {
                     'context': {
                         'enums': [
                             EnumTester.MapBoxStyle
@@ -2544,14 +2622,14 @@ class EnumGeneratorTest(BaseTestCase):
         }
     )
     def test_exclude_props(self):
-        call_command('renderstatic', 'enum/enums.js')
+        call_command('renderstatic', 'enum/test.js')
         self.enums_compare(
-            js_file=ENUM_STATIC_DIR / 'enum/enums.js',
+            js_file=ENUM_STATIC_DIR / 'enum/test.js',
             enum_classes=[EnumTester.MapBoxStyle],
             class_properties=False,
             properties=False
         )
-        contents = get_content(ENUM_STATIC_DIR / 'enum/enums.js')
+        contents = get_content(ENUM_STATIC_DIR / 'enum/test.js')
         self.assertNotIn('slug', contents)
         self.assertNotIn('label', contents)
         self.assertNotIn('version', contents)
@@ -2560,19 +2638,60 @@ class EnumGeneratorTest(BaseTestCase):
 
     @override_settings(
         STATIC_TEMPLATES={
+            'context': {
+                'include_properties': True,
+                'exclude_properties': ['uri', 'version'],
+                'properties': True,
+                'test_properties': [
+                    'slug',
+                    'label',
+                    'value',
+                    'name'
+                ],
+                'symmetric_properties': False
+            },
+            'templates': [
+                ('enum/test.js', {
+                    'context': {
+                        'enums': [
+                            EnumTester.MapBoxStyle
+                        ]
+                    }
+                }),
+            ]
+        }
+    )
+    def test_exclude_props_param(self):
+        call_command('renderstatic', 'enum/test.js')
+        self.enums_compare(
+            js_file=ENUM_STATIC_DIR / 'enum/test.js',
+            enum_classes=[EnumTester.MapBoxStyle],
+            class_properties=False,
+            properties=['slug', 'label', 'value', 'name']
+        )
+        contents = get_content(ENUM_STATIC_DIR / 'enum/test.js')
+        self.assertNotIn('uri', contents)
+        self.assertNotIn('version', contents)
+        self.assertIn('this.value = ', contents)
+        self.assertIn('this.name = ', contents)
+        self.assertIn('this.slug = ', contents)
+        self.assertIn('this.label = ', contents)
+
+    @override_settings(
+        STATIC_TEMPLATES={
             'ENGINES': [{
                 'BACKEND': 'render_static.backends.StaticDjangoTemplates',
                 'OPTIONS': {
                     'loaders': [
                         ('render_static.loaders.StaticLocMemLoader', {
-                            'enum/enums.js': '{% enum_to_js enum=enums class_name=class_name export=True %}'
+                            'enum/test.js': '{% enums_to_js enums=enums class_name=class_name export=True %}'
                         })
                     ],
                     'builtins': ['render_static.templatetags.render_static']
                 },
             }],
             'templates': [
-                ('enum/enums.js', {
+                ('enum/test.js', {
                     'context': {
                         'enums': [
                             EnumTester.MapBoxStyle
@@ -2584,8 +2703,8 @@ class EnumGeneratorTest(BaseTestCase):
         }
     )
     def test_export_on_and_classname(self):
-        call_command('renderstatic', 'enum/enums.js')
-        contents = get_content(GLOBAL_STATIC_DIR / 'enum/enums.js')
+        call_command('renderstatic', 'enum/test.js')
+        contents = get_content(GLOBAL_STATIC_DIR / 'enum/test.js')
         self.assertIn('export class MapBoxStyleEnum {', contents)
 
     @override_settings(
@@ -2595,7 +2714,7 @@ class EnumGeneratorTest(BaseTestCase):
                 'OPTIONS': {
                     'loaders': [
                         ('render_static.loaders.StaticLocMemLoader', {
-                            'enum/enums.js': '{% enum_to_js enum=enums class_name=class_name export=False %}\n'
+                            'enum/test.js': '{% enums_to_js enums=enums class_name=class_name export=False %}\n'
                                              '{% enum_tests enums=enums|enum_list name_map=name_map %}'
                         })
                     ],
@@ -2606,7 +2725,7 @@ class EnumGeneratorTest(BaseTestCase):
                 },
             }],
             'templates': [
-                ('enum/enums.js', {
+                ('enum/test.js', {
                     'context': {
                         'enums': [
                             EnumTester.MapBoxStyle
@@ -2619,12 +2738,12 @@ class EnumGeneratorTest(BaseTestCase):
         }
     )
     def test_export_off_and_classname(self):
-        call_command('renderstatic', 'enum/enums.js')
-        contents = get_content(GLOBAL_STATIC_DIR / 'enum/enums.js')
+        call_command('renderstatic', 'enum/test.js')
+        contents = get_content(GLOBAL_STATIC_DIR / 'enum/test.js')
         self.assertNotIn('export class EnumMapBoxStyle {', contents)
         self.assertIn('class EnumMapBoxStyle {', contents)
         self.enums_compare(
-            js_file=GLOBAL_STATIC_DIR / 'enum/enums.js',
+            js_file=GLOBAL_STATIC_DIR / 'enum/test.js',
             enum_classes=[EnumTester.MapBoxStyle],
             class_properties=True,
             properties=True
@@ -2637,7 +2756,7 @@ class EnumGeneratorTest(BaseTestCase):
                 'OPTIONS': {
                     'loaders': [
                         ('render_static.loaders.StaticLocMemLoader', {
-                            'enum/enums.js': '{% enum_to_js enum=enums class_name=class_name export=False %}\n'
+                            'enum/test.js': '{% enums_to_js enums=enums class_name=class_name export=False %}\n'
                                              '{% enum_tests enums=enums|enum_list name_map=name_map %}'
                         })
                     ],
@@ -2648,7 +2767,7 @@ class EnumGeneratorTest(BaseTestCase):
                 },
             }],
             'templates': [
-                ('enum/enums.js', {
+                ('enum/test.js', {
                     'context': {
                         'enums': [
                             EnumTester.MapBoxStyle
@@ -2680,7 +2799,7 @@ class EnumGeneratorTest(BaseTestCase):
                 ]
             },
             'templates': [
-                ('enum/enums.js', {
+                ('enum/test.js', {
                     'context': {
                         'enums': [
                             EnumTester.MapBoxStyle
@@ -2691,14 +2810,14 @@ class EnumGeneratorTest(BaseTestCase):
         }
     )
     def test_symmetric_props(self):
-        call_command('renderstatic', 'enum/enums.js')
+        call_command('renderstatic', 'enum/test.js')
         self.enums_compare(
-            js_file=ENUM_STATIC_DIR / 'enum/enums.js',
+            js_file=ENUM_STATIC_DIR / 'enum/test.js',
             enum_classes=[EnumTester.MapBoxStyle],
             class_properties=False,
             properties=True
         )
-        content = get_content(ENUM_STATIC_DIR / 'enum/enums.js')
+        content = get_content(ENUM_STATIC_DIR / 'enum/test.js')
         self.assertIn('=== MapBoxStyle.get("SATELLITE_STREETS");', content)
         self.assertIn('=== MapBoxStyle.get("Satellite Streets");', content)
         self.assertIn('=== MapBoxStyle.get("satellite-streets");', content)
@@ -2719,7 +2838,7 @@ class EnumGeneratorTest(BaseTestCase):
                 ]
             },
             'templates': [
-                ('enum/enums.js', {
+                ('enum/test.js', {
                     'context': {
                         'enums': [
                             EnumTester.MapBoxStyle
@@ -2730,14 +2849,14 @@ class EnumGeneratorTest(BaseTestCase):
         }
     )
     def test_resolve_symmetric_props(self):
-        call_command('renderstatic', 'enum/enums.js')
+        call_command('renderstatic', 'enum/test.js')
         self.enums_compare(
-            js_file=ENUM_STATIC_DIR / 'enum/enums.js',
+            js_file=ENUM_STATIC_DIR / 'enum/test.js',
             enum_classes=[EnumTester.MapBoxStyle],
             class_properties=False,
             properties=True
         )
-        content = get_content(ENUM_STATIC_DIR / 'enum/enums.js')
+        content = get_content(ENUM_STATIC_DIR / 'enum/test.js')
         self.assertIn('=== MapBoxStyle.get("SATELLITE_STREETS");', content)
         self.assertIn('=== MapBoxStyle.get("Satellite Streets");', content)
         self.assertIn('=== MapBoxStyle.get("satellite-streets");', content)
@@ -2752,7 +2871,7 @@ class EnumGeneratorTest(BaseTestCase):
                 'OPTIONS': {
                     'loaders': [
                         ('render_static.loaders.StaticLocMemLoader', {
-                            'enum/enums.js': '{% enum_to_js enum=enums summetric_properties=True raise_on_not_found=False %}\n'
+                            'enum/test.js': '{% enums_to_js enums=enums summetric_properties=True raise_on_not_found=False %}\n'
                                              'console.log(JSON.stringify({not_found: AddressRoute.get("Aly")}));'
                         })
                     ],
@@ -2762,7 +2881,7 @@ class EnumGeneratorTest(BaseTestCase):
                 },
             }],
             'templates': [
-                ('enum/enums.js', {
+                ('enum/test.js', {
                     'context': {
                         'enums': [
                             EnumTester.AddressRoute
@@ -2773,8 +2892,8 @@ class EnumGeneratorTest(BaseTestCase):
         }
     )
     def test_no_raise_on_not_found(self):
-        call_command('renderstatic', 'enum/enums.js')
-        js_dict = self.get_js_structure(GLOBAL_STATIC_DIR / 'enum/enums.js')
+        call_command('renderstatic', 'enum/test.js')
+        js_dict = self.get_js_structure(GLOBAL_STATIC_DIR / 'enum/test.js')
         self.assertDictEqual(js_dict, {'not_found': None})
 
     @override_settings(
@@ -2784,7 +2903,7 @@ class EnumGeneratorTest(BaseTestCase):
                 'OPTIONS': {
                     'loaders': [
                         ('render_static.loaders.StaticLocMemLoader', {
-                            'enum/enums.js': '{% enum_to_js enum=enums summetric_properties=True raise_on_not_found=True %}\n'
+                            'enum/test.js': '{% enums_to_js enums=enums summetric_properties=True raise_on_not_found=True %}\n'
                                              'try { AddressRoute.get("Aly") } catch (e) {console.log(JSON.stringify({not_found: e instanceof TypeError ? "TypeError" : "Unknown"}));}'
                         })
                     ],
@@ -2794,7 +2913,7 @@ class EnumGeneratorTest(BaseTestCase):
                 },
             }],
             'templates': [
-                ('enum/enums.js', {
+                ('enum/test.js', {
                     'context': {
                         'enums': [
                             EnumTester.AddressRoute
@@ -2805,8 +2924,8 @@ class EnumGeneratorTest(BaseTestCase):
         }
     )
     def test_raise_on_not_found(self):
-        call_command('renderstatic', 'enum/enums.js')
-        js_dict = self.get_js_structure(GLOBAL_STATIC_DIR / 'enum/enums.js')
+        call_command('renderstatic', 'enum/test.js')
+        js_dict = self.get_js_structure(GLOBAL_STATIC_DIR / 'enum/test.js')
         self.assertDictEqual(js_dict, {'not_found': 'TypeError'})
 
     @override_settings(
@@ -2816,7 +2935,7 @@ class EnumGeneratorTest(BaseTestCase):
                 'OPTIONS': {
                     'loaders': [
                         ('render_static.loaders.StaticLocMemLoader', {
-                            'enum/enums.js': '{% enum_to_js enum=enums summetric_properties=True transpiler="render_static.EnumClassWriter" %}\n'
+                            'enum/test.js': '{% enums_to_js enums=enums summetric_properties=True transpiler="render_static.EnumClassWriter" %}\n'
                                              'try { AddressRoute.get("Aly") } catch (e) {console.log(JSON.stringify({not_found: e instanceof TypeError ? "TypeError" : "Unknown"}));}'
                         })
                     ],
@@ -2826,7 +2945,7 @@ class EnumGeneratorTest(BaseTestCase):
                 },
             }],
             'templates': [
-                ('enum/enums.js', {
+                ('enum/test.js', {
                     'context': {
                         'enums': [
                             EnumTester.AddressRoute

@@ -59,13 +59,16 @@ class EnumTests(JavaScriptGenerator):
             if self.class_properties_ else []
         )
 
-        properties = ['name', 'value'] + [
+        properties = [
             name for name, member in vars(enum).items()
             if isinstance(member, property)
         ] if self.properties_ is True else (
             [prop for prop in self.properties_ if hasattr(enum, prop)]
-            if self.properties_ else ['value', 'name']
+            if self.properties_ else []
         )
+        for param in ['value', 'name']:  # pragma: no cover
+            if param not in properties:
+                properties.insert(0, param)
 
         yield f'enums.{enum.__name__} = {{'
         self.indent()
