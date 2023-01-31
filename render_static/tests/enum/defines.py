@@ -1,4 +1,5 @@
-from enum import IntEnum, auto
+from enum import IntEnum, auto, Enum
+from datetime import date, datetime, timezone
 
 try:
     from django.utils.decorators import classproperty
@@ -22,3 +23,20 @@ class Def(IntEnum):
     @classproperty
     def class_name(cls):
         return cls.__name__
+
+
+class TimeEnum(Enum):
+
+    YEAR1 = date(year=2020, month=1, day=1)
+    YEAR2 = date(year=2021, month=1, day=1)
+    YEAR3 = date(year=2022, month=1, day=1)
+    YEAR4 = date(year=2023, month=1, day=1)
+
+    @property
+    def with_time(self):
+        return datetime(
+            year=self.value.year,
+            month=self.value.month,
+            day=self.value.day,
+            tzinfo=timezone.utc
+        )

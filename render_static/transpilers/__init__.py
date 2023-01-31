@@ -6,7 +6,7 @@ import json
 import numbers
 from abc import ABCMeta, abstractmethod
 from typing import Any, Callable, Optional, Union
-
+from datetime import datetime, date
 from django.utils.module_loading import import_string
 
 __all__ = ['to_js', 'JavaScriptGenerator']
@@ -25,7 +25,18 @@ def to_js(value: Any) -> str:
         return str(value)
     if isinstance(value, str):
         return f'"{value}"'
-    return json.dumps(value)
+    try:
+        return json.dumps(value)
+    except TypeError:
+        if isinstance(value, datetime):
+            return f'"{value.isoformat()}"'
+        return f'"{str(value)}"'
+
+
+def to_js_datetime(value: Any) -> str:
+    if isinstance(value, date):
+        return f'new Date("{value.isoformat()}")'
+    return to_js(value)
 
 
 class JavaScriptGenerator(metaclass=ABCMeta):
