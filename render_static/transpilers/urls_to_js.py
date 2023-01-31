@@ -18,11 +18,11 @@ from django.urls import URLPattern, URLResolver, reverse
 from django.urls.exceptions import NoReverseMatch
 from django.urls.resolvers import RegexPattern, RoutePattern
 from render_static.exceptions import ReversalLimitHit, URLGenerationFailed
-from render_static.transpilers import JavaScriptGenerator
 from render_static.placeholders import (
     resolve_placeholders,
     resolve_unnamed_placeholders,
 )
+from render_static.transpilers import JavaScriptGenerator
 
 __all__ = [
     'normalize_ns',
@@ -303,9 +303,28 @@ class URLTreeVisitor(JavaScriptGenerator):
     options. When None is yielded or returned, nothing will be written. To
     write a newline and nothing else, simply yield or return an empty string.
 
+    :param include: A list of path names to include, namespaces without
+        path names will be treated as every path under the namespace.
+        Default: include everything
+    :param exclude: A list of path names to exclude, namespaces without
+        path names will be treated as every path under the namespace.
+        Default: exclude nothing
     :param kwargs: Set of configuration parameters, see `JavaScriptGenerator`
         params
     """
+
+    include_: Optional[Iterable[str]] = None
+    exclude_: Optional[Iterable[str]] = None
+
+    def __init__(
+            self,
+            include: Optional[Iterable[str]] = include_,
+            exclude: Optional[Iterable[str]] = exclude_,
+            **kwargs
+    ):
+        self.include_ = include
+        self.exclude_ = exclude
+        super().__init__(**kwargs)
 
     @abstractmethod
     def start_visitation(self) -> Generator[str, None, None]:
@@ -692,8 +711,6 @@ class URLTreeVisitor(JavaScriptGenerator):
     def generate(
         self,
         url_conf: Optional[Union[ModuleType, str]] = None,
-        include: Optional[Iterable[str]] = None,
-        exclude: Optional[Iterable[str]] = None
     ) -> str:
         """
         Implements JavaScriptGenerator::generate. Calls the visitation entry
@@ -702,19 +719,13 @@ class URLTreeVisitor(JavaScriptGenerator):
 
         :param url_conf: The root url module to dump urls from,
             default: settings.ROOT_URLCONF
-        :param include: A list of path names to include, namespaces without
-            path names will be treated as every path under the namespace.
-            Default: include everything
-        :param exclude: A list of path names to exclude, namespaces without
-            path names will be treated as every path under the namespace.
-            Default: exclude nothing
         :return: The rendered JavaScript URL reversal code.
         """
         for line in self.visit(
             build_tree(
                 url_conf,
-                include,
-                exclude
+                self.include_,
+                self.exclude_
             )[0]
         ):
             self.write_line(line)

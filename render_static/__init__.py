@@ -8,11 +8,10 @@ r"""
 """
 from .context import resolve_context
 from .resource import resource
-from .transpilers.urls_to_js import (
-    ClassURLWriter,
-    SimpleURLWriter,
-    URLTreeVisitor
-)
+from .transpilers.classes_to_js import DefaultClassWriter
+from .transpilers.enums_to_js import EnumClassWriter
+from .transpilers.modules_to_js import DefaultModuleWriter
+from .transpilers.urls_to_js import ClassURLWriter, SimpleURLWriter
 
 VERSION = (2, 0, 0)
 

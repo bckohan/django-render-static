@@ -1,6 +1,7 @@
 from django.db import models
 from django_enum import EnumField, IntegerChoices, TextChoices
 from enum_properties import p, s
+
 try:
     from django.utils.decorators import classproperty
 except ImportError:

@@ -2,17 +2,25 @@
 Base transpiler components.
 """
 
-from abc import ABCMeta, abstractmethod
-from typing import Any, Optional, Union, Callable
-import numbers
-from django.utils.module_loading import import_string
 import json
+import numbers
+from abc import ABCMeta, abstractmethod
+from typing import Any, Callable, Optional, Union
 
+from django.utils.module_loading import import_string
 
 __all__ = ['to_js', 'JavaScriptGenerator']
 
 
 def to_js(value: Any) -> str:
+    """
+    Default javascript transpilation function for values. Simply adds quotes
+    if its a string and falls back on json.dumps for non-strings and non-
+    numerics.
+
+    :param value: The value to transpile
+    :return: Valid javascript code that represents the value
+    """
     if isinstance(value, numbers.Number):
         return str(value)
     if isinstance(value, str):
@@ -89,13 +97,12 @@ class JavaScriptGenerator(metaclass=ABCMeta):
         self.level_ = max(0, self.level_)
 
     @abstractmethod
-    def generate(self, *args, **kwargs) -> str:
+    def generate(self, _: Any) -> str:
         """
         Generate and return javascript as a string. Deriving classes must
         implement this.
 
-        :param args: Any positional args - used by deriving classes
-        :param kwargs: Any named args - used by deriving classes
+        :param _: The object to transpile
         :return: The rendered JavaScript string
         """
 
@@ -111,4 +118,10 @@ class JavaScriptGenerator(metaclass=ABCMeta):
             self.rendered_ += f'{self.indent_*self.level_}{line}{self.nl_}'
 
     def to_js(self, value: Any):
+        """
+        Return the javascript transpilation of the given value.
+
+        :param value: The value to transpile
+        :return: A valid javascript code that represents the value
+        """
         return self.to_javascript(value)

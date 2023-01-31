@@ -1,12 +1,24 @@
 """
 Transpiler tools for PEP 435 style python enumeration classes.
 """
+from abc import abstractmethod
 from enum import Enum
-from typing import Generator, Optional, Type, List, Iterable, Set, Union
-from render_static.transpilers import JavaScriptGenerator
+from typing import (
+    Collection,
+    Dict,
+    Generator,
+    List,
+    Optional,
+    Set,
+    Type,
+    Union
+)
+
 from django.utils.module_loading import import_string
+from render_static.transpilers import JavaScriptGenerator
+
 try:
-    from django.utils.decorators import classproperty
+    from django.utils.decorators import classproperty  # pylint: disable=C0412
 except ImportError:
     from django.utils.functional import classproperty
 
@@ -35,7 +47,7 @@ class EnumVisitor(JavaScriptGenerator):
             enums: Union[
                 Type[Enum],
                 str,
-                Iterable[Union[Type[Enum], str]]
+                Collection[Union[Type[Enum], str]]
             ]
     ) -> Generator[str, None, None]:
         """
@@ -45,8 +57,12 @@ class EnumVisitor(JavaScriptGenerator):
         :yield: JavaScript lines
         """
 
-        if isinstance(enums, str) or isinstance(enums, type):
+        if (
+            isinstance(enums, str) or
+            (isinstance(enums, type) and issubclass(enums, Enum))
+        ):
             enums = [enums]
+
         enums = [
             import_string(en)
             if isinstance(en, str)
@@ -55,8 +71,7 @@ class EnumVisitor(JavaScriptGenerator):
         ]
         yield from self.start_visitation()
         for enum in enums:
-            assert issubclass(enum, Enum), f'{enum} is not an Enum!'
-            yield from self.visit_enum(enum)
+            yield from self.visit_enum(enum)  # type: ignore
             yield ''
         yield from self.end_visitation()
 
@@ -76,6 +91,7 @@ class EnumVisitor(JavaScriptGenerator):
         """
         yield None  # type: ignore
 
+    @abstractmethod
     def visit_enum(self, enum: Type[Enum]) -> Generator[str, None, None]:
         """
         Visit the enum.
@@ -85,7 +101,7 @@ class EnumVisitor(JavaScriptGenerator):
         """
 
 
-class EnumClassWriter(EnumVisitor):
+class EnumClassWriter(EnumVisitor):  # pylint: disable=R0902
     """
     A PEP 435 transpiler that generates ES6 style classes in the style of
     https://github.com/rauschma/enumify
@@ -112,17 +128,17 @@ class EnumClassWriter(EnumVisitor):
     :param kwargs: additional kwargs for the base transpiler classes.
     """
 
-    class_name_pattern_: Optional[str] = '{}'
+    class_name_pattern_: str = '{}'
     class_name_: str
 
     raise_on_not_found_: bool = True
 
     export_: bool = False
 
-    symmetric_properties_kwarg_: Union[bool, List[str]] = False
+    symmetric_properties_kwarg_: Union[bool, Collection[str]] = False
     symmetric_properties_: List[str] = []
 
-    class_properties_kwarg_: Union[bool, List[str]] = True
+    class_properties_kwarg_: Union[bool, Collection[str]] = True
     class_properties_: List[str] = []
 
     include_properties_: bool = True
@@ -169,7 +185,7 @@ class EnumClassWriter(EnumVisitor):
                     for name, member in vars(enum).items()
                     if (
                         isinstance(member, property) and
-                        member not in self.exclude_properties_
+                        name not in self.exclude_properties_
                     )
                 ]
             ]
@@ -199,9 +215,9 @@ class EnumClassWriter(EnumVisitor):
                 if prop == 'value':
                     continue
                 count = 0
-                for en in enum:
+                for enm in enum:
                     try:
-                        if enum(getattr(en, prop)) is en:
+                        if enum(getattr(enm, prop)) is enm:
                             count += 1
                     except (TypeError, ValueError):
                         pass
@@ -213,7 +229,7 @@ class EnumClassWriter(EnumVisitor):
         else:
             self.symmetric_properties_ = [
                 prop for prop in self.symmetric_properties_kwarg_
-                if hasattr(enum(enum.values[0]), prop)
+                if hasattr(enum(enum.values[0]), prop)  # type: ignore
             ]
 
     @property
@@ -261,10 +277,10 @@ class EnumClassWriter(EnumVisitor):
 
         :param enum: The enum class being transpiled
         """
-        prop_matches = {}
-        for en in enum:
+        prop_matches: Dict[str, int] = {}
+        for enm in enum:
             for prop in self.properties:
-                if getattr(en, prop) == str(en):
+                if getattr(enm, prop) == str(enm):
                     prop_matches.setdefault(prop, 0)
                     prop_matches[prop] += 1
         for prop, count in prop_matches.items():
@@ -280,7 +296,7 @@ class EnumClassWriter(EnumVisitor):
             idx += 1
         self.str_prop_ = candidate
 
-    def __init__(
+    def __init__(  # pylint: disable=R0913
             self,
             class_name: str = class_name_pattern_,
             raise_on_not_found: bool = raise_on_not_found_,
@@ -288,12 +304,12 @@ class EnumClassWriter(EnumVisitor):
             include_properties: bool = include_properties_,
             symmetric_properties: Union[
                 bool,
-                Iterable[str]
+                Collection[str]
             ] = symmetric_properties_kwarg_,
-            exclude_properties: Optional[Iterable[str]] = None,
+            exclude_properties: Optional[Collection[str]] = None,
             class_properties: Union[
                 bool,
-                Iterable[str]
+                Collection[str]
             ] = class_properties_kwarg_,
             **kwargs
     ) -> None:
@@ -339,7 +355,10 @@ class EnumClassWriter(EnumVisitor):
         self.outdent()
         yield '}'
 
-    def declaration(self, enum: Type[Enum]) -> Generator[str, None, None]:
+    def declaration(  # pylint: disable=W0613
+            self,
+            enum: Type[Enum]
+    ) -> Generator[str, None, None]:
         """
         Transpile the class declaration.
 
@@ -355,14 +374,14 @@ class EnumClassWriter(EnumVisitor):
         :param enum: The enum class being transpiled
         :yield: transpiled javascript lines
         """
-        for en in enum:
+        for enm in enum:
             values = [
-                self.to_js(getattr(en, prop)) for prop in self.properties
+                self.to_js(getattr(enm, prop)) for prop in self.properties
             ]
             if not self.str_is_prop_:
-                values.append(self.to_js(str(en)))
+                values.append(self.to_js(str(enm)))
             yield (
-                f'static {en.name} = new {self.class_name}'
+                f'static {enm.name} = new {self.class_name}'
                 f'({", ".join(values)});'
             )
 
@@ -379,7 +398,10 @@ class EnumClassWriter(EnumVisitor):
         for prop in self.class_properties:
             yield f'static {prop} = {self.to_js(getattr(enum, prop))};'
 
-    def constructor(self, enum: Type[Enum]) -> Generator[str, None, None]:
+    def constructor(  # pylint: disable=W0613
+            self,
+            enum: Type[Enum]
+    ) -> Generator[str, None, None]:
         """
         Transpile the constructor for the enum instances.
 
@@ -399,7 +421,10 @@ class EnumClassWriter(EnumVisitor):
         self.outdent()
         yield '}'
 
-    def to_string(self, enum: Type[Enum]) -> Generator[str, None, None]:
+    def to_string(  # pylint: disable=W0613
+            self,
+            enum: Type[Enum]
+    ) -> Generator[str, None, None]:
         """
         Transpile the toString() method that converts enum instances to
         strings.
@@ -450,10 +475,10 @@ class EnumClassWriter(EnumVisitor):
         """
         yield 'switch(value) {'
         self.indent()
-        for en in enum:
-            yield f'case {self.to_js(getattr(en, prop))}:'
+        for enm in enum:
+            yield f'case {self.to_js(getattr(enm, prop))}:'
             self.indent()
-            yield f'return {self.class_name}.{en.name};'
+            yield f'return {self.class_name}.{enm.name};'
             self.outdent()
         self.outdent()
         yield '}'
@@ -465,7 +490,7 @@ class EnumClassWriter(EnumVisitor):
         :param enum: The enum class being transpiled
         :yield: transpiled javascript lines
         """
-        enums = [f'{self.class_name}.{en.name}' for en in enum]
+        enums = [f'{self.class_name}.{enm.name}' for enm in enum]
         yield 'static [Symbol.iterator]() {'
         self.indent()
         yield f'return [{", ".join(enums)}][Symbol.iterator]();'

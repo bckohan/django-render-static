@@ -17,15 +17,15 @@ from django.urls import reverse
 from django.urls.exceptions import NoReverseMatch
 from django.utils.module_loading import import_string
 from render_static import placeholders
-from render_static.transpilers import JavaScriptGenerator
 from render_static.tests import bad_pattern, defines
+from render_static.tests.enum.models import EnumTester
 from render_static.tests.tests import (
+    ENUM_STATIC_DIR,
     GLOBAL_STATIC_DIR,
     BaseTestCase,
-    ENUM_STATIC_DIR
 )
+from render_static.transpilers import JavaScriptGenerator
 from render_static.transpilers.urls_to_js import ClassURLWriter
-from render_static.tests.enum.models import EnumTester
 
 try:
     from django.utils.decorators import classproperty
@@ -103,15 +103,15 @@ def run_js_file(file_path):  # pragma: no cover
                 ('render_static.loaders.StaticLocMemLoader', {
                     'defines1.js':
                         'var defines = '
-                        '{\n{{ classes|classes_to_js:"  " }}};'
+                        '{\n{% classes_to_js classes=classes indent="  " level=1 %}};'
                         '\nconsole.log(JSON.stringify(defines));',
                     'defines2.js':
                         'var defines = '
-                        '{\n{{ modules|modules_to_js }}};'
+                        '{\n{% modules_to_js modules=modules level=1 %}};'
                         '\nconsole.log(JSON.stringify(defines));',
                     'defines_error.js':
                         'var defines = '
-                        '{\n{{ classes|classes_to_js }}};'
+                        '{\n{% classes_to_js classes=classes %}};'
                         '\nconsole.log(JSON.stringify(defines));'
                 })
             ],
@@ -143,6 +143,9 @@ def run_js_file(file_path):  # pragma: no cover
     }
 })
 class DefinesToJavascriptTest(BaseTestCase):
+
+    def tearDown(self):
+        pass
 
     def diff_modules(self, js_file, py_modules):
         py_classes = []
@@ -204,6 +207,40 @@ class DefinesToJavascriptTest(BaseTestCase):
             jf.readline()
             self.assertTrue(jf.readline().startswith('  '))
 
+    @override_settings(STATIC_TEMPLATES={
+        'ENGINES': [{
+            'BACKEND': 'render_static.backends.StaticDjangoTemplates',
+            'OPTIONS': {
+                'app_dir': 'custom_templates',
+                'loaders': [
+                    ('render_static.loaders.StaticLocMemLoader', {
+                        'defines1.js':
+                            'var defines = '
+                            '{\n{% classes_to_js '
+                            'classes="render_static.tests.defines.ExtendedDefines" '
+                            'transpiler="render_static.DefaultClassWriter" '
+                            'indent="  " %}};'
+                            '\nconsole.log(JSON.stringify(defines));'
+                    })
+                ],
+                'builtins': ['render_static.templatetags.render_static']
+            },
+        }],
+        'templates': [
+            ('defines1.js', {'dest': GLOBAL_STATIC_DIR / 'defines1.js'})
+        ]
+    })
+    def test_single_class_to_js(self):
+        call_command('renderstatic', 'defines1.js')
+        from render_static.tests.defines import ExtendedDefines
+        self.assertEqual(
+            self.diff_classes(
+                js_file=GLOBAL_STATIC_DIR / 'defines1.js',
+                py_classes=[ExtendedDefines]
+            ),
+            {}
+        )
+
     def test_modules_to_js(self):
         call_command('renderstatic', 'defines2.js')
         self.assertEqual(
@@ -220,6 +257,42 @@ class DefinesToJavascriptTest(BaseTestCase):
             jf.readline()
             self.assertFalse(jf.readline().startswith(' '))
 
+    @override_settings(STATIC_TEMPLATES={
+        'ENGINES': [{
+            'BACKEND': 'render_static.backends.StaticDjangoTemplates',
+            'OPTIONS': {
+                'app_dir': 'custom_templates',
+                'loaders': [
+                    ('render_static.loaders.StaticLocMemLoader', {
+                        'defines2.js':
+                            'var defines = '
+                            '{\n{% modules_to_js '
+                            'modules="render_static.tests.defines2" '
+                            'transpiler="render_static.DefaultModuleWriter" '
+                            'level=1 %}};'
+                            '\nconsole.log(JSON.stringify(defines));',
+                    })
+                ],
+                'builtins': ['render_static.templatetags.render_static']
+            },
+        }],
+        'templates': [
+            ('defines2.js', {
+                'dest': GLOBAL_STATIC_DIR / 'defines2.js'
+            })
+        ]
+    })
+    def test_single_module_to_js(self):
+        call_command('renderstatic', 'defines2.js')
+        from render_static.tests import defines2
+        self.assertEqual(
+            self.diff_modules(
+                js_file=GLOBAL_STATIC_DIR / 'defines2.js',
+                py_modules=[defines2]
+            ),
+            {}
+        )
+
     def test_classes_to_js_error(self):
         self.assertRaises(
             CommandError,
@@ -233,17 +306,15 @@ class DefinesToJavascriptTest(BaseTestCase):
                 'loaders': [
                     ('render_static.loaders.StaticLocMemLoader', {
                         'defines1.js': (
-                            'var defines = {\n{{ '
-                            '"render_static.tests.defines.MoreDefines,'
-                            'render_static.tests.defines.ExtendedDefines"'
-                            '|split:","|classes_to_js:"  " }}};'
+                            'var defines = {\n{% '
+                            'classes_to_js classes="'
+                            'render_static.tests.defines.MoreDefines '
+                            'render_static.tests.defines.ExtendedDefines"|split '
+                            'indent="  " %}};'
                             '\nconsole.log(JSON.stringify(defines));'
                         ),
                         'defines2.js': (
-                            'var defines = {\n{{ '
-                            '"render_static.tests.defines '
-                            'render_static.tests.defines2"|split'
-                            '|modules_to_js:"  " }}};'
+                            'var defines = {\n{% modules_to_js modules="render_static.tests.defines render_static.tests.defines2"|split indent="  " %}};'
                             '\nconsole.log(JSON.stringify(defines));'
                         )
                     })
@@ -2342,9 +2413,6 @@ class EnumGeneratorTest(BaseTestCase):
                 if properties else ['name', 'value']
             )
 
-            if isinstance(cls, str):
-                cls = import_string(cls)
-
             enum_dict = {
                 'strings': {str(en.value): str(en) for en in cls},
                 **{
@@ -2748,7 +2816,7 @@ class EnumGeneratorTest(BaseTestCase):
                 'OPTIONS': {
                     'loaders': [
                         ('render_static.loaders.StaticLocMemLoader', {
-                            'enum/enums.js': '{% enum_to_js enum=enums summetric_properties=True %}\n'
+                            'enum/enums.js': '{% enum_to_js enum=enums summetric_properties=True transpiler="render_static.EnumClassWriter" %}\n'
                                              'try { AddressRoute.get("Aly") } catch (e) {console.log(JSON.stringify({not_found: e instanceof TypeError ? "TypeError" : "Unknown"}));}'
                         })
                     ],
