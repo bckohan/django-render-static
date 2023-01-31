@@ -5,8 +5,9 @@ Base transpiler components.
 import json
 import numbers
 from abc import ABCMeta, abstractmethod
+from datetime import date, datetime
 from typing import Any, Callable, Optional, Union
-from datetime import datetime, date
+
 from django.utils.module_loading import import_string
 
 __all__ = ['to_js', 'JavaScriptGenerator']
@@ -34,6 +35,17 @@ def to_js(value: Any) -> str:
 
 
 def to_js_datetime(value: Any) -> str:
+    """
+    A javascript value transpilation function that transpiles python dates and
+    datetimes to javascript Date objects instead of strings. To use this
+    function in any of the transpilation routines pass it to the to_javascript
+    parameter on any of the template tags::
+
+        {% ... to_javascript="render_static.transpilers.to_js_datetime" %}
+
+    :param value: The value to transpile
+    :return: Valid javascript code that represents the value
+    """
     if isinstance(value, date):
         return f'new Date("{value.isoformat()}")'
     return to_js(value)

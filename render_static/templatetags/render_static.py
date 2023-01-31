@@ -28,7 +28,7 @@ __all__ = [
     'classes_to_js',
     'modules_to_js',
     'urls_to_js',
-    'enum_to_js'
+    'enums_to_js'
 ]
 
 
