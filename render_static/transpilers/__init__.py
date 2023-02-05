@@ -7,6 +7,7 @@ import numbers
 from abc import ABCMeta, abstractmethod
 from datetime import date, datetime
 from typing import Any, Callable, Optional, Union
+from warnings import warn
 
 from django.utils.module_loading import import_string
 
@@ -92,6 +93,13 @@ class JavaScriptGenerator(metaclass=ABCMeta):
         self.level_ = level
         self.indent_ = indent or ''
         self.es5_ = kwargs.pop('es5', self.es5_)
+        if self.es5_:
+            warn(
+                'Transpilation to ES5 is no longer supported and will be '
+                'removed in a future version.',
+                DeprecationWarning,
+                stacklevel=2
+            )
         self.nl_ = self.nl_ if self.indent_ else ''  # pylint: disable=C0103
         self.to_javascript = (
             to_javascript
