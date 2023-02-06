@@ -8,20 +8,24 @@ except ImportError:
     from django.utils.functional import classproperty
 
 
-class EnumTester(models.Model):
+class ExampleModel(models.Model):
 
-    class NotAnEnum:
-        pass
+    DEFINE1 = 'D1'
+    DEFINE2 = 'D2'
+    DEFINE3 = 'D3'
+    DEFINES = (
+        (DEFINE1, 'Define 1'),
+        (DEFINE2, 'Define 2'),
+        (DEFINE3, 'Define 3')
+    )
+
+    define_field = models.CharField(choices=DEFINES, max_length=2)
 
     class Color(TextChoices, s('rgb'), s('hex', case_fold=True)):
         # name   value   label       rgb       hex
         RED   =   'R',   'Red',   (1, 0, 0), 'ff0000'
         GREEN =   'G',   'Green', (0, 1, 0), '00ff00'
         BLUE  =   'B',   'Blue',  (0, 0, 1), '0000ff'
-
-        @classproperty
-        def class_name(cls):
-            return cls.__name__
 
     class MapBoxStyle(
         IntegerChoices,
@@ -49,32 +53,11 @@ class EnumTester(models.Model):
             return f'mapbox://styles/mapbox/{self.slug}-v{self.version}'
 
         @classproperty
-        def class_name(cls):
-            return cls.__name__
-
-        @classproperty
         def docs(cls):
             return 'https://mapbox.com'
 
-        # def __str__(self):
-        #    return self.uri
-
-    class AddressRoute(TextChoices, s('alt', case_fold=True), p('str')):
-
-        _symmetric_builtins_ = [s('name', case_fold=True)]
-
-        # name    value          alt
-        ALLEY  =  'ALY',   ['ALLEE', 'ALLY'],                       'Aly' # for this one __str__ and str match, dont change - important for str resolve test
-        AVENUE =  'AVE',   ['AV', 'AVEN', 'AVENU', 'AVN', 'AVNUE'], 'ave'
-        CIRCLE =  'CIR',   ['CIRC', 'CIRCL', 'CRCL', 'CRCLE'],      'cir'
-
         def __str__(self):
-            return self.value.title()
-
-        @classproperty
-        def class_name(cls):
-            return cls.__name__
+            return self.uri
 
     color = EnumField(Color, null=True, default=None)
     style = EnumField(MapBoxStyle, default=MapBoxStyle.STREETS)
-    route = EnumField(AddressRoute, strict=False, max_length=32)

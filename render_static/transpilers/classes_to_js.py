@@ -83,7 +83,7 @@ class DefaultClassWriter(PythonClassVisitor):
             {% classes_to_js
                 classes='package.MyModel'
                 transpiler='render_static.SimplePODWriter'
-            %}'
+            %}
         };
 
     This will produce JavaScript you may invoke like so:

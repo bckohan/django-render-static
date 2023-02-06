@@ -307,7 +307,12 @@ def urls_to_js(  # pylint: disable=R0913,R0915
 
 @register.simple_tag
 def enums_to_js(
-        enums: Union[Type[Enum], str, Collection[Union[Type[Enum], str]]],
+        enums: Union[
+            ModuleType,
+            Type[Enum],
+            str,
+            Collection[Union[ModuleType, Type[Enum], str]]
+        ],
         transpiler: Union[Type[EnumClassWriter], str] = EnumClassWriter,
         indent: str = '\t',
         depth: int = 0,
@@ -337,5 +342,5 @@ def enums_to_js(
             indent=indent,
             depth=depth,
             **kwargs
-        ).generate(enums)  # type: ignore
+        ).generate(enums)
     )
