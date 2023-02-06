@@ -6,12 +6,13 @@ import json
 import numbers
 from abc import ABCMeta, abstractmethod
 from datetime import date, datetime
+from enum import Enum
 from typing import Any, Callable, Optional, Union
 from warnings import warn
 
 from django.utils.module_loading import import_string
 
-__all__ = ['to_js', 'JavaScriptGenerator']
+__all__ = ['to_js', 'to_js_datetime', 'JavaScriptGenerator']
 
 
 def to_js(value: Any) -> str:
@@ -23,6 +24,8 @@ def to_js(value: Any) -> str:
     :param value: The value to transpile
     :return: Valid javascript code that represents the value
     """
+    if isinstance(value, Enum):
+        value = value.value
     if isinstance(value, numbers.Number):
         return str(value)
     if isinstance(value, str):
@@ -76,12 +79,12 @@ class JavaScriptGenerator(metaclass=ABCMeta):
         above.
     """
 
-    rendered_ = ''
-    level_ = 0
-    indent_ = '\t'
-    es5_ = False
-    nl_ = '\n'
-    to_javascript_ = to_js
+    rendered_: str = ''
+    level_: int = 0
+    indent_: str = '\t'
+    es5_: bool = False
+    nl_: str = '\n'
+    to_javascript_: Callable = to_js
 
     def __init__(
         self,

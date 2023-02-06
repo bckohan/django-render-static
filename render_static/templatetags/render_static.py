@@ -331,7 +331,6 @@ def enums_to_js(
         See transpiler docs for details.
     :return: SafeString of rendered transpiled code.
     """
-
     if isinstance(transpiler, str):
         # mypy doesn't pick up this switch from str to class, import_string
         # probably untyped
