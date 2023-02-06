@@ -7,7 +7,7 @@ license = "MIT"
 readme = "README.rst"
 repository = "https://github.com/bckohan/django-render-static"
 homepage = "https://django-render-static.readthedocs.io"
-keywords = ["django", "static", "templates", "javascript", "url", "reverse", "defines"]
+keywords = ["django", "static", "templates", "javascript", "url", "reverse", "defines", "transpiler", "transpile", "enum"]
 classifiers = [
     "Environment :: Console",
     "Framework :: Django",

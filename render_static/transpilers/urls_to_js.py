@@ -769,10 +769,10 @@ class SimpleURLWriter(URLTreeVisitor):
     the one you want. It accepts several additional parameters on top of the
     base parameters. To use this visitor you may call it like so:
 
-    .. code-block::
+    .. code-block:: js+django
 
         var urls = {
-            {% urls_to_js raise_on_not_found=False %}'
+            {% urls_to_js raise_on_not_found=False %}
         };
 
     This will produce JavaScript you may invoke like so:
@@ -938,7 +938,7 @@ class ClassURLWriter(URLTreeVisitor):
     the one you want. It accepts several additional parameters on top of the
     base parameters. To use this visitor you may call it like so:
 
-    ..code-block::
+    .. code-block:: js+django
 
         {% urls_to_js
             visitor="render_static.ClassURLWriter"
@@ -948,7 +948,7 @@ class ClassURLWriter(URLTreeVisitor):
 
     This will produce JavaScript you may invoke like so:
 
-    ..code-block::
+    .. code-block::
 
         const urls = new URLResolver();
         urls.reverse('namespace:path_name', {'arg1': 1, 'arg2': 'a'});

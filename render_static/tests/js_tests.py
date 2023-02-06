@@ -5,6 +5,7 @@ import shutil
 import subprocess
 import traceback
 import uuid
+from os import makedirs
 from time import perf_counter
 
 import pytest
@@ -25,6 +26,7 @@ from render_static.tests.tests import (
     BaseTestCase,
 )
 from render_static.transpilers import JavaScriptGenerator
+from render_static.transpilers.enums_to_js import IGNORED_ENUMS
 from render_static.transpilers.urls_to_js import ClassURLWriter
 
 try:
@@ -94,6 +96,56 @@ def run_js_file(file_path):  # pragma: no cover
         return ''
 
 
+class StructureDiff:
+
+    def diff_modules(self, js_file, py_modules):
+        py_classes = []
+        for module in py_modules:
+            if isinstance(module, str):
+                module = import_string(module)
+            for key in dir(module):
+                cls = getattr(module, key)
+                if inspect.isclass(cls):
+                    py_classes.append(cls)
+
+        return self.diff_classes(js_file, py_classes)
+
+    def get_js_structure(self, js_file):  # pragma: no cover
+        json_structure = run_js_file(js_file)
+        if json_structure:
+            return json.loads(json_structure)
+        return None
+
+    def diff_classes(self, js_file, py_classes):
+        """
+        Given a javascript file and a list of classes, evaluate the javascript
+        code into a python dictionary and determine if that dictionary matches
+        the upper case parameters on the defines class.
+        """
+        members = {}
+        with open(js_file, 'r') as js:
+            js_dict = self.get_js_structure(js_file)
+            for cls in py_classes:
+                if isinstance(cls, str):
+                    cls = import_string(cls)
+                for mcls in reversed(cls.__mro__):
+                    new_mems = {
+                        n: getattr(mcls, n) for n in dir(mcls) if n.isupper()
+                    }
+                    if len(new_mems) > 0:
+                        members.setdefault(cls.__name__, {}).update(new_mems)
+
+        from pprint import pprint
+        pprint(members)
+        pprint(js_dict)
+        return DeepDiff(
+            members,
+            js_dict,
+            # treat tuples and lists the same
+            ignore_type_in_groups=[(tuple, list)]
+        )
+
+
 @override_settings(STATIC_TEMPLATES={
     'ENGINES': [{
         'BACKEND': 'render_static.backends.StaticDjangoTemplates',
@@ -142,54 +194,10 @@ def run_js_file(file_path):  # pragma: no cover
         }
     }
 })
-class DefinesToJavascriptTest(BaseTestCase):
+class DefinesToJavascriptTest(StructureDiff, BaseTestCase):
 
-    def tearDown(self):
-        pass
-
-    def diff_modules(self, js_file, py_modules):
-        py_classes = []
-        for module in py_modules:
-            if isinstance(module, str):
-                module = import_string(module)
-            for key in dir(module):
-                cls = getattr(module, key)
-                if inspect.isclass(cls):
-                    py_classes.append(cls)
-
-        return self.diff_classes(js_file, py_classes)
-
-    def get_js_structure(self, js_file):  # pragma: no cover
-        json_structure = run_js_file(js_file)
-        if json_structure:
-            return json.loads(json_structure)
-        return None
-
-    def diff_classes(self, js_file, py_classes):
-        """
-        Given a javascript file and a list of classes, evaluate the javascript
-        code into a python dictionary and determine if that dictionary matches
-        the upper case parameters on the defines class.
-        """
-        members = {}
-        with open(js_file, 'r') as js:
-            js_dict = self.get_js_structure(js_file)
-            for cls in py_classes:
-                if isinstance(cls, str):
-                    cls = import_string(cls)
-                for mcls in reversed(cls.__mro__):
-                    new_mems = {
-                        n: getattr(mcls, n) for n in dir(mcls) if n.isupper()
-                    }
-                    if len(new_mems) > 0:
-                        members.setdefault(cls.__name__, {}).update(new_mems)
-
-        return DeepDiff(
-            members,
-            js_dict,
-            # treat tuples and lists the same
-            ignore_type_in_groups=[(tuple, list)]
-        )
+    # def tearDown(self):
+    #     pass
 
     def test_classes_to_js(self):
         call_command('renderstatic', 'defines1.js')
@@ -441,6 +449,7 @@ class URLJavascriptMixin:
             )
         tmp_file_pth = GLOBAL_STATIC_DIR / f'get_{url_path.stem}.js'
 
+        makedirs(GLOBAL_STATIC_DIR, exist_ok=True)
         shutil.copyfile(url_path, tmp_file_pth)
         with open(tmp_file_pth, 'a+') as tmp_js:
             for line in js_generator.generate(qname, kwargs, args, query):
@@ -2159,8 +2168,8 @@ class URLBugsTestCases(URLJavascriptMixin, BaseTestCase):
     def test_bug_65_compiles_es5(self):
         self.test_bug_65_compiles(es5=True)
 
-    def tearDown(self):
-        pass
+    # def tearDown(self):
+    #     pass
 
     @override_settings(
         INSTALLED_APPS=[
@@ -2326,47 +2335,7 @@ class TestDefaultNamespaces(URLJavascriptMixin, BaseTestCase):
     #    pass
 
 
-@override_settings(
-    INSTALLED_APPS=[
-        'render_static.tests.enum',
-        'render_static',
-        'django.contrib.auth',
-        'django.contrib.contenttypes',
-        'django.contrib.sessions',
-        'django.contrib.sites',
-        'django.contrib.messages',
-        'django.contrib.staticfiles',
-        'django.contrib.admin'
-    ],
-    ROOT_URLCONF='render_static.tests.enum.urls',
-    STATIC_TEMPLATES={
-        'context': {
-            'include_properties': True,
-            'class_properties': True,
-            'properties': True,
-            'symmetric_properties': False
-        },
-        'templates': [
-            ('enum/test.js', {
-                'context': {
-                    'enums': [
-                        EnumTester.MapBoxStyle,
-                        EnumTester.AddressRoute,
-                        EnumTester.Color
-                    ]
-                },
-                'dest': GLOBAL_STATIC_DIR / 'enum/enums.js'
-             }),
-            ('enum/test.js', {
-                'context': {
-                    'enums': 'render_static.tests.enum.defines.Def'
-                },
-                'dest': GLOBAL_STATIC_DIR / 'enum/def.js'
-            })
-        ]
-    }
-)
-class EnumGeneratorTest(BaseTestCase):
+class EnumComparator:
 
     def enums_compare(
             self,
@@ -2456,6 +2425,49 @@ class EnumGeneratorTest(BaseTestCase):
             return json.loads(json_structure)
         return None
 
+
+@override_settings(
+    INSTALLED_APPS=[
+        'render_static.tests.enum',
+        'render_static',
+        'django.contrib.auth',
+        'django.contrib.contenttypes',
+        'django.contrib.sessions',
+        'django.contrib.sites',
+        'django.contrib.messages',
+        'django.contrib.staticfiles',
+        'django.contrib.admin'
+    ],
+    ROOT_URLCONF='render_static.tests.enum.urls',
+    STATIC_TEMPLATES={
+        'context': {
+            'include_properties': True,
+            'class_properties': True,
+            'properties': True,
+            'symmetric_properties': False
+        },
+        'templates': [
+            ('enum/test.js', {
+                'context': {
+                    'enums': [
+                        EnumTester.MapBoxStyle,
+                        EnumTester.AddressRoute,
+                        EnumTester.Color
+                    ]
+                },
+                'dest': GLOBAL_STATIC_DIR / 'enum/enums.js'
+             }),
+            ('enum/test.js', {
+                'context': {
+                    'enums': 'render_static.tests.enum.defines.Def'
+                },
+                'dest': GLOBAL_STATIC_DIR / 'enum/def.js'
+            })
+        ]
+    }
+)
+class EnumGeneratorTest(EnumComparator, BaseTestCase):
+
     def test_simple(self):
         from render_static.tests.enum.defines import Def
         call_command('renderstatic', 'enum/test.js')
@@ -2465,6 +2477,52 @@ class EnumGeneratorTest(BaseTestCase):
         )
 
     def test_enum_properties(self):
+        call_command('renderstatic', 'enum/test.js')
+        self.enums_compare(
+            js_file=GLOBAL_STATIC_DIR / 'enum/enums.js',
+            enum_classes=[
+                EnumTester.MapBoxStyle,
+                EnumTester.AddressRoute,
+                EnumTester.Color
+            ]
+        )
+
+    @override_settings(
+        INSTALLED_APPS=[
+            'render_static.tests.enum',
+            'render_static',
+            'django.contrib.auth',
+            'django.contrib.contenttypes',
+            'django.contrib.sessions',
+            'django.contrib.sites',
+            'django.contrib.messages',
+            'django.contrib.staticfiles',
+            'django.contrib.admin'
+        ],
+        ROOT_URLCONF='render_static.tests.enum.urls',
+        STATIC_TEMPLATES={
+            'context': {
+                'include_properties': True,
+                'class_properties': True,
+                'properties': True,
+                'symmetric_properties': False
+            },
+            'templates': [
+                ('enum/test.js', {
+                    'context': {
+                        'enums': 'render_static.tests.enum.models.EnumTester',
+                        'test_enums': [
+                            EnumTester.MapBoxStyle,
+                            EnumTester.AddressRoute,
+                            EnumTester.Color
+                        ]
+                    },
+                    'dest': GLOBAL_STATIC_DIR / 'enum/enums.js'
+                })
+            ]
+        }
+    )
+    def test_model_import_string(self):
         call_command('renderstatic', 'enum/test.js')
         self.enums_compare(
             js_file=GLOBAL_STATIC_DIR / 'enum/enums.js',
@@ -2958,5 +3016,30 @@ class EnumGeneratorTest(BaseTestCase):
     def test_default_raise_on_not_found(self):
         return self.test_raise_on_not_found.__wrapped__(self)
 
-    def tearDown(self):
-        pass
+    @override_settings(
+        STATIC_TEMPLATES={
+            'templates': [
+                ('enum/enum.js', {
+                    'context': {
+                        'enums': [
+                            EnumTester.AddressRoute,
+                            *IGNORED_ENUMS,
+                            EnumTester.AddressRoute,
+                            IGNORED_ENUMS
+                        ]
+                    }
+                }),
+            ]
+        }
+    )
+    def test_exclude_ignored_and_no_repeat(self):
+        call_command('renderstatic', 'enum/enum.js')
+        with open(ENUM_STATIC_DIR / 'enum/enum.js', 'r') as en_file:
+            contents = en_file.read()
+            self.assertEqual(contents.count('class '), 1)
+            self.assertIn('class AddressRoute', contents)
+            for en in IGNORED_ENUMS:
+                self.assertNotIn(f'class {en.__name__}', contents)
+
+    # def tearDown(self):
+    #     pass

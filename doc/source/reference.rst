@@ -80,10 +80,10 @@ templatetags.django\_static\_templates
 .. automodule:: render_static.templatetags.render_static
 
     .. autofunction:: split
-    .. autofunction:: to_js
     .. autofunction:: classes_to_js
     .. autofunction:: modules_to_js
     .. autofunction:: urls_to_js
+    .. autofunction:: enums_to_js
 
 .. _exceptions:
 
@@ -115,17 +115,50 @@ placeholders
 javascript
 ----------------------------------------------------------------
 
-.. automodule:: render_static.javascript
-
-   .. autoclass:: JavaScriptGenerator
 
 
-.. _url_tree:
 
-url_tree
+.. _transpilers:
+
+transpilers
 ----------------------------------------------------------------
 
-.. automodule:: render_static.url_tree
+.. automodule:: render_static.transpilers
+
+   .. autoclass:: JavaScriptGenerator
+   .. autofunction:: to_js
+   .. autofunction:: to_js_datetime
+
+
+.. _transpilers_classes_to_js:
+
+transpilers.classes_to_js
+----------------------------------------------------------------
+
+
+.. automodule:: render_static.transpilers.classes_to_js
+
+   .. autoclass:: PythonClassVisitor
+   .. autoclass:: DefaultClassWriter
+
+
+.. _transpilers_modules_to_js:
+
+transpilers.modules_to_js
+----------------------------------------------------------------
+
+.. automodule:: render_static.transpilers.modules_to_js
+
+   .. autoclass:: PythonModuleVisitor
+   .. autoclass:: DefaultModuleWriter
+
+
+.. _transpilers_urls_to_js:
+
+transpilers.urls_to_js
+----------------------------------------------------------------
+
+.. automodule:: render_static.transpilers.urls_to_js
 
    .. autoclass:: URLTreeVisitor
    .. autoclass:: SimpleURLWriter
@@ -133,6 +166,17 @@ url_tree
    .. autoclass:: Substitute
    .. autofunction:: normalize_ns
    .. autofunction:: build_tree
+
+
+.. _transpilers_enums_to_js:
+
+transpilers.enums_to_js
+----------------------------------------------------------------
+
+.. automodule:: render_static.transpilers.enums_to_js
+
+   .. autoclass:: EnumVisitor
+   .. autoclass:: EnumClassWriter
 
 
 .. _context:

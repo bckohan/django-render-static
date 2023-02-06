@@ -149,6 +149,8 @@ cython_debug/
 /render_static/tests/app1/static/
 /render_static/tests/app2/static/exclusive
 /render_static/tests/global_static/
+/render_static/tests/transpiled/
 /render_static/tests/local_static/
 /render_static/tests/resources/*.pickle
 /render_static/tests/enum/static
+/render_static/tests/examples/static

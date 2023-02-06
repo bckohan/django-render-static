@@ -308,6 +308,14 @@ Any number of placeholders may be registered against any number of variable/app_
 When ``urls_to_js`` is run it won't give up until its tried all placeholders that might potentially
 match the path.
 
+Overly complex string parsing logic is avoided by reversing the urls and using the regular
+expression match objects to determine where argument substitutions are made. This keeps
+the code simple, reliable and avoids deep dependencies on Django's url configuration code.
+Placeholders are the price paid for that reliability. Common default placeholders are attempted
+after all registered placeholders fail, and all of Django's native path converters are
+supported. This should allow most urls to work out of the box.
+
+
 `ClassURLWriter` (default)
 **************************
 
