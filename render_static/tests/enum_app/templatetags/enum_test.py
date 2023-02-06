@@ -21,6 +21,13 @@ class EnumTests(JavaScriptGenerator):
     class_properties_ = []
     properties_ = []
     symmetric_properties_ = []
+    class_name_map_ = {}
+
+    def to_js(self, value):
+        if isinstance(value, Enum):
+            if value.__class__ in self.class_name_map_:
+                return f'{self.class_name_map_[value.__class__]}.{value.name}'
+        return self.to_javascript(value)
 
     def __init__(
             self,
@@ -29,6 +36,7 @@ class EnumTests(JavaScriptGenerator):
             class_properties=True,
             properties=True,
             symmetric_properties=None,
+            class_name_map=None,
             **kwargs
     ):
         self.name_map = name_map
@@ -36,6 +44,7 @@ class EnumTests(JavaScriptGenerator):
         self.properties_ = properties
         if symmetric_properties:
             self.symmetric_properties_ = symmetric_properties or []
+        self.class_name_map_ = class_name_map or self.class_name_map_
         super().__init__(*args, **kwargs)
 
     def generate(self, enums):
@@ -122,7 +131,8 @@ def enum_tests(
         name_map=None,
         class_properties=True,
         properties=True,
-        symmetric_properties=False
+        symmetric_properties=False,
+        class_name_map=None
 ):
     if name_map is None:
         name_map = {en: en.__name__ for en in enums}
@@ -131,6 +141,7 @@ def enum_tests(
             name_map=name_map,
             class_properties=class_properties,
             properties=properties,
-            symmetric_properties=symmetric_properties
+            symmetric_properties=symmetric_properties,
+            class_name_map=class_name_map
         ).generate(enums)
     )

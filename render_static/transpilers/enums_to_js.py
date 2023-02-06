@@ -183,6 +183,7 @@ class EnumClassWriter(EnumVisitor):  # pylint: disable=R0902
 
     class_name_pattern_: str = '{}'
     class_name_: str
+    class_name_map_: Dict[Type[Enum], str] = {}
 
     raise_on_not_found_: bool = True
 
@@ -202,6 +203,21 @@ class EnumClassWriter(EnumVisitor):  # pylint: disable=R0902
     str_prop_: Optional[str] = None
     str_is_prop_: bool = False
 
+    def to_js(self, value: Any):
+        """
+        Return the javascript transpilation of the given value. For enum values
+        we first determine if the given enum was also transpiled and if so
+        use its transpiled name to instantiate it - otherwise default enum
+        transpilation is used which simply transpiles the value.
+
+        :param value: The value to transpile
+        :return: A valid javascript code that represents the value
+        """
+        if isinstance(value, Enum):
+            if value.__class__ in self.class_name_map_:
+                return f'{self.class_name_map_[value.__class__]}.{value.name}'
+        return self.to_javascript(value)
+
     @property
     def class_name(self):
         """Get the class name for the enum being transpiled"""
@@ -216,6 +232,7 @@ class EnumClassWriter(EnumVisitor):  # pylint: disable=R0902
         :param enum: The enum class being transpiled
         """
         self.class_name_ = self.class_name_pattern_.format(enum.__name__)
+        self.class_name_map_[enum] = self.class_name_
 
     @property
     def properties(self):
@@ -379,6 +396,7 @@ class EnumClassWriter(EnumVisitor):  # pylint: disable=R0902
             if exclude_properties else set()
         )
         self.class_properties_kwarg_ = class_properties
+        self.class_name_map_ = {}
 
     def visit_enum(self, enum: Type[Enum]) -> Generator[str, None, None]:
         """
