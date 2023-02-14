@@ -59,8 +59,8 @@ if not node_version:  # pragma: no cover
 )
 class TestReadmeDefines(StructureDiff, BaseTestCase):
 
-    # def tearDown(self):
-    #     pass
+    def tearDown(self):
+        pass
 
     to_remove = [
         *BaseTestCase.to_remove,

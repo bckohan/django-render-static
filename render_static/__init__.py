@@ -8,10 +8,10 @@ r"""
 """
 from .context import resolve_context
 from .resource import resource
-from .transpilers.classes_to_js import DefaultClassWriter
 from .transpilers.enums_to_js import EnumClassWriter
-from .transpilers.modules_to_js import DefaultModuleWriter
+from .transpilers.defines_to_js import DefaultDefineTranspiler
 from .transpilers.urls_to_js import ClassURLWriter, SimpleURLWriter
+from datetime import datetime
 
 VERSION = (2, 0, 0)
 
@@ -19,7 +19,7 @@ __title__ = 'Django Render Static'
 __version__ = '.'.join(str(i) for i in VERSION)
 __author__ = 'Brian Kohan'
 __license__ = 'MIT'
-__copyright__ = 'Copyright 2020-2023 Brian Kohan'
+__copyright__ = f'Copyright 2020-{datetime.now().year} Brian Kohan'
 
 
 class Jinja2DependencyNeeded:  # pylint: disable=R0903

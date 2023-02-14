@@ -5,7 +5,7 @@ from enum import Enum
 from django import template
 from django.utils.module_loading import import_string
 from django.utils.safestring import SafeString
-from render_static.transpilers import JavaScriptGenerator
+from render_static.transpilers.enums_to_js import EnumTranspiler
 
 try:
     from django.utils.decorators import classproperty
@@ -15,7 +15,7 @@ except ImportError:
 register = template.Library()
 
 
-class EnumTests(JavaScriptGenerator):
+class EnumTests(EnumTranspiler):
 
     name_map = {}
     class_properties_ = []
@@ -47,18 +47,13 @@ class EnumTests(JavaScriptGenerator):
         self.class_name_map_ = class_name_map or self.class_name_map_
         super().__init__(*args, **kwargs)
 
-    def generate(self, enums):
-        for line in self.transpile_enums(enums):
-            self.write_line(line)
-        return self.rendered_
-
-    def transpile_enums(self, enums):
+    def start_visitation(self):
         yield 'var enums = {};'
-        for enum in enums:
-            yield from self.transpile_test(enum)
+
+    def end_visitation(self):
         yield 'console.log(JSON.stringify(enums));'
 
-    def transpile_test(self, enum):
+    def visit(self, enum, is_bool, final):
 
         class_properties = [
             name for name, member in vars(enum).items()
@@ -143,5 +138,5 @@ def enum_tests(
             properties=properties,
             symmetric_properties=symmetric_properties,
             class_name_map=class_name_map
-        ).generate(enums)
+        ).transpile(enums)
     )

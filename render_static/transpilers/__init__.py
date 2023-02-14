@@ -7,18 +7,42 @@ import numbers
 from abc import ABCMeta, abstractmethod
 from datetime import date, datetime
 from enum import Enum
-from typing import Any, Callable, Optional, Union
+from typing import (
+    Any,
+    Callable,
+    Optional,
+    Union,
+    Type,
+    Collection,
+    Generator,
+    List,
+    Hashable
+)
+from types import ModuleType
 from warnings import warn
+from django.utils.module_loading import import_string, import_module
+from django.apps import apps
+from django.apps.config import AppConfig
 
-from django.utils.module_loading import import_string
+__all__ = [
+    'to_js',
+    'to_js_datetime',
+    'CodeWriter',
+    'Transpiler',
+    'TranspilerTargets',
+    'TranspilerTarget',
+    'ResolvedTranspilerTarget'
+]
 
-__all__ = ['to_js', 'to_js_datetime', 'JavaScriptGenerator']
+ResolvedTranspilerTarget = Union[Type[Any], ModuleType, AppConfig]
+TranspilerTarget = Union[ResolvedTranspilerTarget, str]
+TranspilerTargets = Collection[TranspilerTarget]
 
 
 def to_js(value: Any) -> str:
     """
     Default javascript transpilation function for values. Simply adds quotes
-    if its a string and falls back on json.dumps for non-strings and non-
+    if it's a string and falls back on json.dumps() for non-strings and non-
     numerics.
 
     :param value: The value to transpile
@@ -55,61 +79,76 @@ def to_js_datetime(value: Any) -> str:
     return to_js(value)
 
 
-class JavaScriptGenerator(metaclass=ABCMeta):
+class _TargetTreeNode:
     """
-    An abstract base class for JavaScript generator types. This class defines a
-    basic generation API, and implements configurable indentation/newline
-    behavior. It also offers a toggle for ES5/ES6 mode that deriving classes
-    may use.
+    Simple tree node for tracking python target hierarchy.
 
-    To use this class derive from it and implement generate().
-
-    The configuration parameters that control the JavaScript output include:
-
-        * *depth*
-            the integer starting indentation level, default: 0
-        * *indent*
-            the string to use as the indentation string. May be None or empty
-            string for no indent which will also cause no newlines to be
-            inserted, default: \t
-        * *es5*
-            If true, generated JavaScript will be valid es5.
-
-    :param kwargs: A set of configuration parameters for the generator, see
-        above.
+    :param target: The target at this node
     """
+
+    target: Optional[TranspilerTarget]
+    children: List['_TargetTreeNode']
+    transpile = False
+
+    def __init__(self, target=None, transpile=False):
+        self.target = target
+        self.children = []
+        self.transpile = transpile
+
+    def append(self, child: '_TargetTreeNode'):
+        """
+        Only appends children that are to be transpiled or that have children.
+
+        :param child: The child node
+        """
+        if child.transpile or child.children:
+            self.children.append(child)
+
+    def __repr__(self):
+        def add_branch(branch, level=0):
+            rstr = ''
+            level += 1
+            for child in branch.children:
+                rstr += f'{"  "*level}' \
+                        f'{"[transpile] " if child.transpile else ""}' \
+                        f'{child.target}\n'
+                rstr += add_branch(child, level)
+            level -= 1
+            return rstr
+        return f'{self.target}\n' + add_branch(self)
+
+
+class CodeWriter:
 
     rendered_: str = ''
     level_: int = 0
+    prefix_: str = ''
     indent_: str = '\t'
-    es5_: bool = False
     nl_: str = '\n'
-    to_javascript_: Callable = to_js
 
     def __init__(
         self,
         level: int = level_,
         indent: Optional[str] = indent_,
-        to_javascript: Union[str, Callable] = to_javascript_,
+        prefix: str = prefix_,
         **kwargs
     ) -> None:
         self.level_ = level
         self.indent_ = indent or ''
-        self.es5_ = kwargs.pop('es5', self.es5_)
-        if self.es5_:
-            warn(
-                'Transpilation to ES5 is no longer supported and will be '
-                'removed in a future version.',
-                DeprecationWarning,
-                stacklevel=2
-            )
+        self.prefix_ = prefix or ''
         self.nl_ = self.nl_ if self.indent_ else ''  # pylint: disable=C0103
-        self.to_javascript = (
-            to_javascript
-            if callable(to_javascript)
-            else import_string(to_javascript)
-        )
-        assert callable(self.to_javascript), 'To_javascript is not callable!'
+
+    def write_line(self, line: str) -> None:
+        """
+        Writes a line to the rendered code file, respecting
+        indentation/newline configuration for this generator.
+
+        :param line: The code line to write
+        :return:
+        """
+        if line is not None:
+            self.rendered_ += f'{self.prefix_}{self.indent_ * self.level_}' \
+                              f'{line}{self.nl_}'
 
     def indent(self, incr: int = 1) -> None:
         """
@@ -130,26 +169,275 @@ class JavaScriptGenerator(metaclass=ABCMeta):
         self.level_ -= decr
         self.level_ = max(0, self.level_)
 
-    @abstractmethod
-    def generate(self, _: Any) -> str:
-        """
-        Generate and return javascript as a string. Deriving classes must
-        implement this.
 
-        :param _: The object to transpile
+class Transpiler(CodeWriter, metaclass=ABCMeta):
+    """
+    An abstract base class for JavaScript generator types. This class defines a
+    basic generation API, and implements configurable indentation/newline
+    behavior. It also offers a toggle for ES5/ES6 mode that deriving classes
+    may use.
+
+    To use this class derive from it and implement include_target() and
+    visit().
+
+    :param to_javascript: A callable that accepts a python artifact and returns
+        a transpiled object or primitive instantiation.
+    :param kwargs: A set of configuration parameters for the generator, see
+        above.
+    """
+
+    es5_: bool = False
+    to_javascript_: Callable = to_js
+
+    parents_: List[Union[ModuleType, Type[Any]]]
+
+    @property
+    def parents(self):
+        """
+        When in visit() this returns the parents (modules and classes) of the
+        visited target.
+        """
+        return self.parents_
+
+    def __init__(
+        self,
+        to_javascript: Union[str, Callable] = to_javascript_,
+        **kwargs
+    ) -> None:
+        super().__init__(**kwargs)
+        self.es5_ = kwargs.pop('es5', self.es5_)
+        if self.es5_:
+            warn(
+                'Transpilation to ES5 is no longer supported and will be '
+                'removed in a future version.',
+                DeprecationWarning,
+                stacklevel=2
+            )
+        self.to_javascript = (
+            to_javascript
+            if callable(to_javascript)
+            else import_string(to_javascript)
+        )
+        self.parents_ = []
+        assert callable(self.to_javascript), 'To_javascript is not callable!'
+
+    @abstractmethod
+    def include_target(self, target:  Union[Type[Any], ModuleType]):
+        """
+        Deriving transpilers must implement this method to filter targets
+        (modules or classes) in and out of transpilation. Transpilers are
+        expected to walk module trees and pick out supported python artifacts.
+
+        :param target: The python artifact to filter in or out
+        :return: True if the target can be transpiled
+        """
+        return True
+
+    def transpile(self, targets: TranspilerTargets) -> str:
+        """
+        Generate and return javascript as a string given the targets. This
+        method iterates over the list of given targets, imports any strings
+        and builds a tree from targets the deriving transpiler filters
+        in via `include_target`. It then does a depth first traversal through
+        the tree to any leaf target nodes that were included and visits them
+        where any deriving class transpilation takes place.
+
+        :param targets: The python targets to transpile
         :return: The rendered JavaScript string
         """
+        root = _TargetTreeNode()
+        deduplicate_set = set()
 
-    def write_line(self, line: str) -> None:
-        """
-        Writes a line to the rendered JavaScript, respecting
-        indentation/newline configuration for this generator.
+        def walk_class(cls: _TargetTreeNode):
+            for name, cls_member in vars(cls.target).items():
+                if name.startswith('_'):
+                    continue
+                if (
+                    isinstance(cls_member, type) and
+                    cls_member not in deduplicate_set
+                ):
+                    deduplicate_set.add(cls_member)
+                    cls.append(
+                        walk_class(
+                            _TargetTreeNode(
+                                cls_member,
+                                self.include_target(cls_member)
+                            )
+                        )
+                    )
+            return cls
 
-        :param line: The code line to write
-        :return:
+        for target in targets:
+            # do this instead of isinstance b/c types that inherit from strings
+            # may be targets
+            if isinstance(target, str):
+                if apps.is_installed(target):
+                    target = {
+                        app_config.name: app_config
+                        for app_config in apps.get_app_configs()
+                    }.get(target)
+                else:
+                    try:
+                        target = apps.get_app_config(target)
+                    except LookupError:
+                        try:
+                            target = import_string(target)
+                        except ImportError:
+                            # this is needed when there is no __init__ file in
+                            # the same directory
+                            target = import_module(target)
+
+            node = _TargetTreeNode(target, self.include_target(target))
+
+            if node.target in deduplicate_set:
+                continue
+
+            if isinstance(target, Hashable):
+                deduplicate_set.add(target)
+
+            if isinstance(target, type):
+                root.append(walk_class(node))
+            elif isinstance(target, ModuleType):
+                for _, member in vars(target).items():
+                    if isinstance(member, type):
+                        node.append(
+                            walk_class(
+                                _TargetTreeNode(
+                                    member,
+                                    self.include_target(member)
+                                )
+                            )
+                        )
+                root.append(node)
+            elif isinstance(target, AppConfig):
+                root.append(node)
+
+        if not root.transpile and not root.children:
+            raise ValueError(f'No targets were transpilable: {targets}')
+
+        def visit_depth_first(
+                branch: _TargetTreeNode,
+                is_last: bool = False,
+                final: bool = True
+        ):
+            if branch.transpile:
+                for ln in self.visit(
+                        branch.target,
+                        is_last,
+                        final and not branch.children
+                ):
+                    self.write_line(ln)
+            if branch.children:
+                if branch.target:
+                    for ln in self.enter_parent(branch.target, is_last):
+                        self.write_line(ln)
+                for idx, child in enumerate(branch.children):
+                    visit_depth_first(
+                        child,
+                        idx == len(branch.children) - 1,
+                        (idx == len(branch.children) - 1) and final
+                    )
+                if branch.target:
+                    for ln in self.exit_parent(branch.target, is_last):
+                        self.write_line(ln)
+
+        for line in self.start_visitation():
+            self.write_line(line)
+
+        visit_depth_first(root)
+
+        for line in self.end_visitation():
+            self.write_line(line)
+
+        return self.rendered_
+
+    def enter_parent(
+            self,
+            parent: Union[ModuleType, Type[Any]],
+            is_last: bool
+    ) -> Generator[str, None, None]:
+        self.parents_.append(parent)
+        if isinstance(parent, ModuleType):
+            yield from self.enter_module(parent, is_last)
+        elif isinstance(parent, type):
+            yield from self.enter_class(parent, is_last)
+
+    def exit_parent(
+            self,
+            parent: Union[ModuleType, Type[Any]],
+            is_last: bool
+    ) -> Generator[str, None, None]:
+        del self.parents_[-1]
+        if isinstance(parent, ModuleType):
+            yield from self.exit_module(parent, is_last)
+        elif isinstance(parent, type):
+            yield from self.exit_class(parent, is_last)
+
+    def enter_module(
+            self,
+            module: ModuleType,
+            is_last: bool
+    ) -> Generator[str, None, None]:
+        yield
+
+    def exit_module(
+            self,
+            module: ModuleType,
+            is_last: bool
+    ) -> Generator[str, None, None]:
+        yield
+
+    def enter_class(
+            self,
+            cls: Type[Any],
+            is_last: bool
+    ) -> Generator[str, None, None]:
+        yield
+
+    def exit_class(
+            self,
+            cls: Type[Any],
+            is_last: bool
+    ) -> Generator[str, None, None]:
+        yield
+
+    def start_visitation(self) -> Generator[str, None, None]:
         """
-        if line is not None:
-            self.rendered_ += f'{self.indent_*self.level_}{line}{self.nl_}'
+        Begin transpilation - called before visit(). Override this function
+        to do any initial code generation.
+
+        :yield: javascript lines, writes nothing by default
+        """
+        yield
+
+    def end_visitation(self) -> Generator[str, None, None]:
+        """
+        End transpilation - called after all visit() calls have completed.
+        Override this function to do any wrap up code generation.
+
+        :yield: javascript lines, writes nothing by default
+        """
+        yield
+
+    @abstractmethod
+    def visit(
+        self,
+        target: ResolvedTranspilerTarget,
+        is_last: bool,
+        final: bool
+    ) -> Generator[str, None, None]:
+        """
+        Deriving transpilers must implement this method.
+
+        :param target: The python target to transpile, will be either a class
+            a module or an installed Django app.
+        :param is_last: True if this is the last target that will be visited at
+            this level.
+        :param final: True if this is the last target that will be visited at
+            all.
+        :yield: lines of javascript
+        """
+        yield
 
     def to_js(self, value: Any):
         """

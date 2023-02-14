@@ -28,9 +28,11 @@ from render_static.tests.tests import (
     GLOBAL_STATIC_DIR,
     BaseTestCase,
 )
-from render_static.transpilers import JavaScriptGenerator
+from render_static.transpilers import CodeWriter
 from render_static.transpilers.enums_to_js import IGNORED_ENUMS
-from render_static.transpilers.urls_to_js import ClassURLWriter
+from render_static.transpilers.urls_to_js import (
+    ClassURLWriter
+)
 
 try:
     from django.utils.decorators import classproperty
@@ -140,7 +142,6 @@ class StructureDiff:
 
         from pprint import pprint
         pprint(members)
-        pprint(js_dict)
         return DeepDiff(
             members,
             js_dict,
@@ -157,16 +158,13 @@ class StructureDiff:
             'loaders': [
                 ('render_static.loaders.StaticLocMemLoader', {
                     'defines1.js':
-                        'var defines = '
-                        '{\n{% classes_to_js classes=classes indent="  " level=1 %}};'
+                        '{% defines_to_js defines=classes indent="  " %}'
                         '\nconsole.log(JSON.stringify(defines));',
                     'defines2.js':
-                        'var defines = '
-                        '{\n{% modules_to_js modules=modules level=1 %}};'
+                        '{% defines_to_js defines=modules %}'
                         '\nconsole.log(JSON.stringify(defines));',
                     'defines_error.js':
-                        'var defines = '
-                        '{\n{% classes_to_js classes=classes %}};'
+                        '{% defines_to_js defines=classes %}'
                         '\nconsole.log(JSON.stringify(defines));'
                 })
             ],
@@ -199,8 +197,8 @@ class StructureDiff:
 })
 class DefinesToJavascriptTest(StructureDiff, BaseTestCase):
 
-    # def tearDown(self):
-    #     pass
+    def tearDown(self):
+        pass
 
     def test_classes_to_js(self):
         call_command('renderstatic', 'defines1.js')
@@ -226,11 +224,7 @@ class DefinesToJavascriptTest(StructureDiff, BaseTestCase):
                 'loaders': [
                     ('render_static.loaders.StaticLocMemLoader', {
                         'defines1.js':
-                            'var defines = '
-                            '{\n{% classes_to_js '
-                            'classes="render_static.tests.defines.ExtendedDefines" '
-                            'transpiler="render_static.DefaultClassWriter" '
-                            'indent="  " %}};'
+                            '{% defines_to_js defines="render_static.tests.defines.ExtendedDefines" indent="  " %}'
                             '\nconsole.log(JSON.stringify(defines));'
                     })
                 ],
@@ -276,11 +270,7 @@ class DefinesToJavascriptTest(StructureDiff, BaseTestCase):
                 'loaders': [
                     ('render_static.loaders.StaticLocMemLoader', {
                         'defines2.js':
-                            'var defines = '
-                            '{\n{% modules_to_js '
-                            'modules="render_static.tests.defines2" '
-                            'transpiler="render_static.DefaultModuleWriter" '
-                            'level=1 %}};'
+                            '{% defines_to_js defines="render_static.tests.defines2" %}'
                             '\nconsole.log(JSON.stringify(defines));',
                     })
                 ],
@@ -317,15 +307,15 @@ class DefinesToJavascriptTest(StructureDiff, BaseTestCase):
                 'loaders': [
                     ('render_static.loaders.StaticLocMemLoader', {
                         'defines1.js': (
-                            'var defines = {\n{% '
-                            'classes_to_js classes="'
+                            '{% '
+                            'defines_to_js defines="'
                             'render_static.tests.defines.MoreDefines '
                             'render_static.tests.defines.ExtendedDefines"|split '
-                            'indent="  " %}};'
+                            'indent="  " %}'
                             '\nconsole.log(JSON.stringify(defines));'
                         ),
                         'defines2.js': (
-                            'var defines = {\n{% modules_to_js modules="render_static.tests.defines render_static.tests.defines2"|split indent="  " %}};'
+                            '{% defines_to_js defines="render_static.tests.defines render_static.tests.defines2"|split indent="  " %}'
                             '\nconsole.log(JSON.stringify(defines));'
                         )
                     })
@@ -376,7 +366,7 @@ class URLJavascriptMixin:
     def exists(self, *args, **kwargs):
         return len(self.get_url_from_js(*args, **kwargs)) > 0
 
-    class TestJSGenerator(JavaScriptGenerator):
+    class TestJSGenerator(CodeWriter):
 
         class_mode = None
         legacy_args = False  # generate code that uses separate arguments to js reverse calls
@@ -530,8 +520,8 @@ class URLJavascriptMixin:
 })
 class URLSToJavascriptTest(URLJavascriptMixin, BaseTestCase):
 
-    # def tearDown(self):
-    #     pass
+    def tearDown(self):
+        pass
 
     def setUp(self):
         self.clear_placeholder_registries()
@@ -1514,8 +1504,8 @@ class CornerCaseTest(URLJavascriptMixin, BaseTestCase):
         """
         https://github.com/bckohan/django-render-static/issues/10
 
-        For URLs with lots of unregistered arguments, the reversal attempts may produce an explosion
-        of complexity. Check that the failsafe is working.
+        For URLs with lots of unregistered arguments, the reversal attempts may
+        produce an explosion of complexity. Check that the failsafe is working.
         :return:
         """
         self.es6_mode = True
@@ -1532,8 +1522,8 @@ class CornerCaseTest(URLJavascriptMixin, BaseTestCase):
 
         self.assertTrue('ReversalLimitHit' in tb_str)
 
-        # very generous reversal timing threshold of 20 seconds - anecdotally the default limit of
-        # 2**15 should be hit in about 3 seconds.
+        # very generous reversal timing threshold of 20 seconds - anecdotally
+        # the default limit of 2**15 should be hit in about 3 seconds.
         self.assertTrue(t2-t1 < 20)
 
         placeholders.register_variable_placeholder('one', '666')

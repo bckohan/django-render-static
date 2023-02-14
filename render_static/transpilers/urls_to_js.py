@@ -8,10 +8,18 @@ configuration files.
 import itertools
 import re
 from abc import abstractmethod
-from importlib import import_module
 from types import ModuleType
-from typing import Any, Dict, Generator, Iterable, List, Optional, Tuple, Union
-
+from typing import (
+    Any,
+    Dict,
+    Generator,
+    Iterable,
+    List,
+    Optional,
+    Tuple,
+    Union,
+    Type
+)
 from django import VERSION as DJANGO_VERSION
 from django.conf import settings
 from django.urls import URLPattern, URLResolver, reverse
@@ -22,7 +30,7 @@ from render_static.placeholders import (
     resolve_placeholders,
     resolve_unnamed_placeholders,
 )
-from render_static.transpilers import JavaScriptGenerator
+from render_static.transpilers import Transpiler, ResolvedTranspilerTarget
 
 __all__ = [
     'normalize_ns',
@@ -44,9 +52,10 @@ def normalize_ns(namespaces: str) -> str:
 
 
 def build_tree(
-    url_conf: Optional[Union[ModuleType, str]] = None,
+    patterns: Iterable[URLPattern],
     include: Optional[Iterable[str]] = None,
-    exclude: Optional[Iterable[str]] = None
+    exclude: Optional[Iterable[str]] = None,
+    app_name: Optional[str] = None
 ) -> Tuple[
     Tuple[
         Dict,
@@ -63,7 +72,7 @@ def build_tree(
 
     The tree structure will look like this:
 
-    ..code-block::
+    .. code-block::
 
         [
             { # first dict contains child branches
@@ -80,26 +89,17 @@ def build_tree(
             RegexPattern or RoutePattern # if one exists
         ]
 
-    :param url_conf: The root url module to dump urls from,
-        default: settings.ROOT_URLCONF
+    :param patterns: The list of URLPatterns to transpile into a javascript
+        resolver
     :param include: A list of path names to include, namespaces without path
         names will be treated as every path under the namespace.
         Default: include everything
     :param exclude: A list of path names to exclude, namespaces without path
         names will be treated as every path under the namespace.
         Default: exclude nothing
+    :param app_name: The app name (if any) of the provided patterns.
     :return: A tree structure containing the configured URLs
     """
-    if url_conf is None:
-        url_conf = settings.ROOT_URLCONF
-
-    if isinstance(url_conf, str):
-        url_conf = import_module(url_conf)
-
-    patterns = getattr(url_conf, 'urlpatterns', None)
-    if patterns is None:
-        raise AttributeError(f'{url_conf} has no attribute urlpatterns!')
-
     includes = []
     excludes = []
     if include:
@@ -111,7 +111,7 @@ def build_tree(
         _build_branch(
             patterns,
             not includes or '' in includes,
-            ({}, {}, getattr(url_conf, 'app_name', None), None),
+            ({}, {}, app_name, None),
             includes,
             excludes
         )
@@ -286,7 +286,43 @@ class Substitute:
         )
 
 
-class URLTreeVisitor(JavaScriptGenerator):
+class BaseURLTranspiler(Transpiler):
+    """
+    A base class for URL transpilers that includes targets with 'urlpatterns'
+    attributes that contain a list of URLPattern and URLResolver objects.
+    """
+
+    def include_target(self, target: ResolvedTranspilerTarget):
+        """
+        Only transpile artifacts that have url pattern/resolver lists in them.
+
+        :param target:
+        :return:
+        """
+        if hasattr(target, 'urlpatterns'):
+            for pattern in getattr(target, 'urlpatterns'):
+                if not isinstance(pattern, (URLResolver, URLPattern)):
+                    return False
+            return True
+        return False
+
+    @abstractmethod
+    def visit(
+        self,
+        target: ResolvedTranspilerTarget,
+        is_last: bool,
+        final: bool
+    ) -> Generator[str, None, None]:
+        """
+
+        :param target:
+        :param is_last:
+        :param final:
+        :return:
+        """
+
+
+class URLTreeVisitor(BaseURLTranspiler):
     """
     An abstract base class for JavaScript generators of url reversal code.
     This class defines a visitation design pattern that deriving classes may
@@ -309,7 +345,7 @@ class URLTreeVisitor(JavaScriptGenerator):
     :param exclude: A list of path names to exclude, namespaces without
         path names will be treated as every path under the namespace.
         Default: exclude nothing
-    :param kwargs: Set of configuration parameters, see `JavaScriptGenerator`
+    :param kwargs: Set of configuration parameters, see `Transpiler`
         params
     """
 
@@ -325,23 +361,6 @@ class URLTreeVisitor(JavaScriptGenerator):
         self.include_ = include
         self.exclude_ = exclude
         super().__init__(**kwargs)
-
-    @abstractmethod
-    def start_visitation(self) -> Generator[str, None, None]:
-        """
-        The first visitation call. Deriving visitors must implement.
-
-        :yield: JavaScript, if any, that should be placed at at the very start
-        """
-
-    @abstractmethod
-    def end_visitation(self) -> Generator[str, None, None]:
-        """
-        The last visitation call - visitation will cease after returning.
-        Deriving visitors must implement.
-
-        :yield: JavaScript, if any, that should be placed at the very end
-        """
 
     @abstractmethod
     def enter_namespace(self, namespace) -> Generator[str, None, None]:
@@ -594,6 +613,22 @@ class URLTreeVisitor(JavaScriptGenerator):
         )
 
     @abstractmethod
+    def init_visit(self) -> Generator[str, None, None]:
+        """
+        Called just before visit() is called on a target urlpattern collection.
+
+        :yield: Code that should be placed at the start of each visitation.
+        """
+
+    @abstractmethod
+    def close_visit(self) -> Generator[str, None, None]:
+        """
+        Called just after visit() is called on a target urlpattern collection.
+
+        :yield: Code that should be placed at the end of each visitation.
+        """
+
+    @abstractmethod
     def enter_path_group(self, qname: str) -> Generator[str, None, None]:
         """
         Visit one or more path(s) all referred to by the same fully qualified
@@ -708,41 +743,35 @@ class URLTreeVisitor(JavaScriptGenerator):
                 )
                 yield from self.exit_namespace(nmsp)
 
-    def generate(
+    def visit(
         self,
-        url_conf: Optional[Union[ModuleType, str]] = None,
-    ) -> str:
-        """
-        Implements JavaScriptGenerator::generate. Calls the visitation entry
-        point and writes all the yielded JavaScript lines to a member string
-        which is returned.
-
-        :param url_conf: The root url module to dump urls from,
-            default: settings.ROOT_URLCONF
-        :return: The rendered JavaScript URL reversal code.
-        """
-        for line in self.visit(
-            build_tree(
-                url_conf,
-                self.include_,
-                self.exclude_
-            )[0]
-        ):
-            self.write_line(line)
-        return self.rendered_
-
-    def visit(self, tree) -> Generator[str, None, None]:
+        target: ResolvedTranspilerTarget,
+        is_last: bool,
+        final: bool
+    ) -> Generator[str, None, None]:
         """
         Visit the nodes of the URL tree, yielding JavaScript where needed.
 
-        :param tree: The URL tree, in the format returned by build_tree().
+        :param target: A transpiler target that has a 'urlpatterns' attribute
+            containing an Iterable of URLPatterns.
+        :param is_last: True if this is the last urlpattern list to transpile
+            at this level.
+        :param final: True if this is the last urlpattern that will be visited
+            at all.
         :yield: JavaScript lines
         """
-        yield from self.start_visitation()
+        yield from self.init_visit()
         self.indent()
-        yield from self.visit_branch(tree)
+        yield from self.visit_branch(
+            build_tree(
+                patterns=getattr(target, 'urlpatterns'),
+                include=self.include_,
+                exclude=self.exclude_,
+                app_name=getattr(target, 'app_name', None)
+            )[0]
+        )
         self.outdent()
-        yield from self.end_visitation()
+        yield from self.close_visit()
 
     def path_join(self, path: List[Union[Substitute, str]]) -> str:
         """
@@ -803,21 +832,21 @@ class SimpleURLWriter(URLTreeVisitor):
             self.raise_on_not_found_
         )
 
-    def start_visitation(self) -> Generator[str, None, None]:
+    def init_visit(self) -> Generator[str, None, None]:
         """
-        Begin visitation of the tree - noop
+        No header required.
 
-        :yield: writes nothing
+        :yield: nothing
         """
-        yield None  # type: ignore
+        yield
 
-    def end_visitation(self) -> Generator[str, None, None]:
+    def close_visit(self) -> Generator[str, None, None]:
         """
-        End visitation of the tree - noop
+        No header required.
 
-        :yield: writes nothing
+        :yield: nothing
         """
-        yield None  # type: ignore
+        yield
 
     def enter_namespace(self, namespace: str) -> Generator[str, None, None]:
         """
@@ -979,7 +1008,7 @@ class ClassURLWriter(URLTreeVisitor):
             self.raise_on_not_found_
         )
 
-    def start_visitation(  # pylint: disable=R0915
+    def init_visit(  # pylint: disable=R0915
             self
     ) -> Generator[str, None, None]:
         """
@@ -1265,7 +1294,7 @@ class ClassURLWriter(URLTreeVisitor):
             yield ''
             yield 'urls = {'
 
-    def end_visitation(self) -> Generator[str, None, None]:
+    def close_visit(self) -> Generator[str, None, None]:
         """
         Finish tree visitation/close out the class code.
 

@@ -18,8 +18,7 @@ from typing import (
 )
 
 from django.db.models import IntegerChoices, TextChoices
-from django.utils.module_loading import import_string
-from render_static.transpilers import JavaScriptGenerator
+from render_static.transpilers import Transpiler, TranspilerTarget
 
 try:
     from django.utils.decorators import classproperty  # pylint: disable=C0412
@@ -33,128 +32,27 @@ if sys.version_info >= (3, 11):  # pragma: no cover
     IGNORED_ENUMS.update({FlagBoundary, ReprEnum, StrEnum, EnumCheck})
 
 
-class EnumVisitor(JavaScriptGenerator):
+class EnumTranspiler(Transpiler):
     """
     The base javascript transpiler for python PEP 435 Enums. Extend from this
     base class to write custom transpilers.
     """
 
-    def resolve_enum_members(self, cls: Type[Any]) -> List[Type[Enum]]:
+    def include_target(self, target: TranspilerTarget):
         """
-        Recursively walk nested classes pulling out all classes that subclass
-        enum.Enum
-        :return:
+        Deriving transpilers must implement this method to filter targets in
+        and out of transpilation. Transpilers are expected to walk module trees
+        and pick out supported python artifacts.
+
+        :param target: The python artifact to filter in or out
+        :return: True if the target can be transpiled
         """
-        if issubclass(cls, Enum):
-            return [cls]
-        enums = []
-        for _, member in vars(cls).items():
-            if isinstance(member, type):
-                enums += [
-                    en for en in self.resolve_enum_members(member)
-                    if en not in enums
-                ]
-        return enums
-
-    def generate(
-            self,
-            enums: Union[
-                ModuleType,
-                Type[Enum],
-                str,
-                Collection[Union[ModuleType, Type[Enum], str]]
-            ]
-    ) -> str:
-        """
-        Implements JavaScriptGenerator::generate. Calls the visitation entry
-        point and writes all the yielded JavaScript lines to a member string
-        which is returned.
-
-        :param enums: The enumeration class to generate javascript for
-        :return: The rendered enum as javascript.
-        """
-        for line in self.visit(enums):
-            self.write_line(line)
-        return self.rendered_
-
-    def visit(
-            self,
-            enums: Union[
-                ModuleType,
-                Type[Enum],
-                str,
-                Collection[Union[ModuleType, Type[Enum], str]]
-            ]
-    ) -> Generator[str, None, None]:
-        """
-        Visit the enumeration, yielding JavaScript where needed.
-
-        :param enums: The URL tree, in the format returned by build_tree().
-        :yield: JavaScript lines
-        """
-
-        if (
-            (isinstance(enums, type) and issubclass(enums, Enum)) or
-            isinstance(enums, str) or
-            not isinstance(enums, Collection)
-        ):
-            enums = [enums]
-
-        resolved_enums: List[Type[Enum]] = []
-        for enum in [
-            import_string(en)
-            if isinstance(en, str)
-            else en
-            for en in enums  # type: ignore
-        ]:
-            if isinstance(enum, type):
-                resolved_enums += [
-                    en for en in self.resolve_enum_members(enum)
-                    if en not in resolved_enums
-                ]
-            elif isinstance(enum, ModuleType):
-                for _, member in vars(enum).items():
-                    if isinstance(member, type):
-                        resolved_enums += [
-                            en for en in self.resolve_enum_members(member)
-                            if en not in resolved_enums
-                        ]
-
-        yield from self.start_visitation()
-        for enum in resolved_enums:
-            if enum in IGNORED_ENUMS:
-                continue
-            yield from self.visit_enum(enum)
-            yield ''
-        yield from self.end_visitation()
-
-    def start_visitation(self) -> Generator[str, None, None]:
-        """
-        Begin visitation of the enum(s), base class hook.
-
-        :yield: writes nothing
-        """
-        yield None  # type: ignore
-
-    def end_visitation(self) -> Generator[str, None, None]:
-        """
-        End visitation of the enum(s), base class hook.
-
-        :yield: writes nothing
-        """
-        yield None  # type: ignore
-
-    @abstractmethod
-    def visit_enum(self, enum: Type[Enum]) -> Generator[str, None, None]:
-        """
-        Visit the enum.
-
-        :param enum:
-        :return:
-        """
+        if isinstance(target, type) and issubclass(target, Enum):
+            return target not in IGNORED_ENUMS and target.__module__ != 'enum'
+        return False
 
 
-class EnumClassWriter(EnumVisitor):  # pylint: disable=R0902
+class EnumClassWriter(EnumTranspiler):  # pylint: disable=R0902
     """
     A PEP 435 transpiler that generates ES6 style classes in the style of
     https://github.com/rauschma/enumify
@@ -398,11 +296,19 @@ class EnumClassWriter(EnumVisitor):  # pylint: disable=R0902
         self.class_properties_kwarg_ = class_properties
         self.class_name_map_ = {}
 
-    def visit_enum(self, enum: Type[Enum]) -> Generator[str, None, None]:
+    def visit(
+            self,
+            enum: Type[Enum],
+            is_last: bool,
+            final: bool
+    ) -> Generator[str, None, None]:
         """
         Transpile the enum in sections.
 
         :param enum: The enum class being transpiled
+        :param is_last: True if this is the last enum to be transpiled at this
+            level.
+        :param final: True if this is the last enum to be transpiled at all.
         :yield: transpiled javascript lines
         """
         self.class_name = enum

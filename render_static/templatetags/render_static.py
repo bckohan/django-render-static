@@ -4,29 +4,26 @@ Template tags and filters available when the render_static app is installed.
 
 from enum import Enum
 from types import ModuleType
-from typing import Collection, Iterable, List, Optional, Type, Union
-from warnings import warn
+from typing import Collection, Iterable, List, Optional, Type, Union, Any
 
 from django import template
 from django.utils.module_loading import import_string
 from django.utils.safestring import SafeString
-from render_static.transpilers.classes_to_js import (
-    DefaultClassWriter,
-    PythonClassVisitor,
+from django.conf import settings
+from render_static.transpilers import (
+    Transpiler,
+    TranspilerTarget,
+    TranspilerTargets
 )
+from render_static.transpilers.defines_to_js import DefaultDefineTranspiler
 from render_static.transpilers.enums_to_js import EnumClassWriter
-from render_static.transpilers.modules_to_js import (
-    DefaultModuleWriter,
-    PythonModuleVisitor,
-)
-from render_static.transpilers.urls_to_js import ClassURLWriter, URLTreeVisitor
+from render_static.transpilers.urls_to_js import ClassURLWriter
 
 register = template.Library()
 
 __all__ = [
     'split',
-    'classes_to_js',
-    'modules_to_js',
+    'defines_to_js',
     'urls_to_js',
     'enums_to_js'
 ]
@@ -48,88 +45,44 @@ def split(to_split: str, sep: Optional[str] = None) -> List[str]:
 
 
 @register.simple_tag
-def classes_to_js(
-        classes: Union[Collection[Union[Type, str]], Type, str],
-        indent: str = '\t',
-        transpiler: Union[Type[PythonClassVisitor], str] = DefaultClassWriter,
-        **kwargs
+def transpile(
+    targets: Union[TranspilerTargets, TranspilerTarget],
+    transpiler: Union[Type[Transpiler], str],
+    **kwargs
 ) -> str:
     """
-    Convert a list of classes to javascript. Only upper case, non-callable
-    members will be translated.
+    Run the given transpiler on the given targets and write the generated
+    javascript in-place.
 
-    .. code-block::
-
-        {{ classes_to_js classes=classes indent="  " %}
-
-    :param classes: An iterable of class types, or class string paths to
-        convert
-    :param indent: A sequence that will be prepended to all output lines,
-        default: \t
-    :param transpiler: The transpiler class or import string to the transpiler
-        class to use
-    :return: The translated javascript
+    :param targets: A list or single transpiler target which can be an import
+        string a module type or a class.
+    :param transpiler: The transpiler class or import string for the transpiler
+        class to use.
+    :param kwargs: Any kwargs that the transpiler takes.
+    :return:
     """
     if isinstance(transpiler, str):
         # mypy doesn't pick up this switch from str to class, import_string
         # probably untyped
         transpiler = import_string(transpiler)
 
-    return SafeString(
-        transpiler(indent=indent, **kwargs).generate(classes)  # type: ignore
-    )
-
-
-@register.simple_tag
-def modules_to_js(
-        modules: Union[Collection[Union[ModuleType, str]], ModuleType, str],
-        indent: str = '\t',
-        transpiler: Union[
-            Type[PythonModuleVisitor],
-            str
-        ] = DefaultModuleWriter,
-        class_transpiler: Union[
-            Type[PythonClassVisitor],
-            str
-        ] = DefaultClassWriter,
-        **kwargs
-) -> str:
-    """
-    Convert a list of python modules to javascript. Only upper case,
-    non-callable class members will be translated. If a class has no
-    qualifying members it will not be included.
-
-    .. code-block::
-
-        {% modules_to_js modules=modules indent="  " %}
-
-    :param modules: An iterable of python modules or string paths of modules
-        to convert
-    :param indent: A sequence that will be prepended to all output lines,
-        default: \t
-    :param transpiler: The transpiler class or import string to the transpiler
-        class to use
-    :param class_transpiler: The class transpiler class or import string to the
-        transpiler class to use
-    :return: The translated javascript
-    """
-    if isinstance(transpiler, str):
-        # mypy doesn't pick up this switch from str to class, import_string
-        # probably untyped
-        transpiler = import_string(transpiler)
+    if (
+        isinstance(targets, type) or
+        isinstance(targets, str) or
+        not isinstance(targets, Collection)
+    ):
+        targets = [targets]
 
     return SafeString(
         transpiler(  # type: ignore
-            indent=indent,
-            class_transpiler=class_transpiler,
             **kwargs
-        ).generate(modules)
+        ).transpile(targets)
     )
 
 
 @register.simple_tag
 def urls_to_js(  # pylint: disable=R0913,R0915
-        transpiler: Union[Type[URLTreeVisitor], str] = ClassURLWriter,
+        transpiler: Union[Type[Transpiler], str] = ClassURLWriter,
         url_conf: Optional[Union[ModuleType, str]] = None,
         indent: str = '\t',
         depth: int = 0,
@@ -280,28 +233,32 @@ def urls_to_js(  # pylint: disable=R0913,R0915
     kwargs['include'] = include
     kwargs['exclude'] = exclude
 
-    if 'visitor' in kwargs:
-        warn(
-            '`visitor` argument is deprecated, change to `transpiler`.',
-            DeprecationWarning
-        )
+    return transpile(
+        targets=(url_conf if url_conf else settings.ROOT_URLCONF),
+        transpiler=transpiler,
+        **kwargs
+    )
 
-    transpiler = kwargs.pop('visitor', transpiler)
-    if isinstance(transpiler, str):
-        # mypy doesn't pick up this switch from str to class, import_string
-        # probably untyped
-        transpiler = import_string(transpiler)
 
-    if not issubclass(transpiler, URLTreeVisitor):  # type: ignore
-        raise ValueError(
-            f'{transpiler.__class__.__name__} must be of type '
-            f'`URLTreeVisitor`!'
-        )
-
-    return SafeString(
-        transpiler(**kwargs).generate(  # type: ignore
-            url_conf
-        )
+@register.simple_tag
+def defines_to_js(
+        defines: Union[
+            ModuleType,
+            Type[Any],
+            str,
+            Collection[Union[ModuleType, Type[Any], str]]
+        ],
+        transpiler: Union[Type[Transpiler], str] = DefaultDefineTranspiler,
+        indent: str = '\t',
+        depth: int = 0,
+        **kwargs
+) -> str:
+    return transpile(
+        targets=defines,
+        transpiler=transpiler,
+        indent=indent,
+        depth=depth,
+        **kwargs
     )
 
 
@@ -313,7 +270,7 @@ def enums_to_js(
             str,
             Collection[Union[ModuleType, Type[Enum], str]]
         ],
-        transpiler: Union[Type[EnumClassWriter], str] = EnumClassWriter,
+        transpiler: Union[Type[Transpiler], str] = EnumClassWriter,
         indent: str = '\t',
         depth: int = 0,
         **kwargs
@@ -331,15 +288,10 @@ def enums_to_js(
         See transpiler docs for details.
     :return: SafeString of rendered transpiled code.
     """
-    if isinstance(transpiler, str):
-        # mypy doesn't pick up this switch from str to class, import_string
-        # probably untyped
-        transpiler = import_string(transpiler)
-
-    return SafeString(
-        transpiler(  # type: ignore
-            indent=indent,
-            depth=depth,
-            **kwargs
-        ).generate(enums)
+    return transpile(
+        targets=enums,
+        transpiler=transpiler,
+        indent=indent,
+        depth=depth,
+        **kwargs
     )
