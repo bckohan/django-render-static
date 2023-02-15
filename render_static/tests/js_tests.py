@@ -128,17 +128,16 @@ class StructureDiff:
         the upper case parameters on the defines class.
         """
         members = {}
-        with open(js_file, 'r') as js:
-            js_dict = self.get_js_structure(js_file)
-            for cls in py_classes:
-                if isinstance(cls, str):
-                    cls = import_string(cls)
-                for mcls in reversed(cls.__mro__):
-                    new_mems = {
-                        n: getattr(mcls, n) for n in dir(mcls) if n.isupper()
-                    }
-                    if len(new_mems) > 0:
-                        members.setdefault(cls.__name__, {}).update(new_mems)
+        js_dict = self.get_js_structure(js_file)
+        for cls in py_classes:
+            if isinstance(cls, str):
+                cls = import_string(cls)
+            for mcls in reversed(cls.__mro__):
+                new_mems = {
+                    n: getattr(mcls, n) for n in dir(mcls) if n.isupper()
+                }
+                if len(new_mems) > 0:
+                    members.setdefault(cls.__name__, {}).update(new_mems)
 
         from pprint import pprint
         pprint(members)

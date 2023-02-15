@@ -4,17 +4,77 @@ Tests for base transpiler source tree traversal.
 from django.test import TestCase
 from render_static.transpilers import Transpiler
 from render_static.transpilers.enums_to_js import IGNORED_ENUMS
+from types import ModuleType
 from enum import auto, Enum
 from copy import copy
 
 
+class ParentTraversal:
+    def __init__(self, target, is_last, is_final):
+        self.target = target
+        self.is_last = is_last
+        self.is_final = is_final
+
+    def __eq__(self, other):
+        return other.__class__ is self.__class__ and (
+            self.target == other.target and
+            self.is_last == other.is_last and
+            self.is_final == other.is_final
+        )
+
+    def __str__(self):
+        return f'{self.__class__.__name__}({self.target}, {self.is_last}, {self.is_final})'
+
+    def __repr__(self):
+        return str(self)
+
+
+class EnterModule(ParentTraversal):
+    pass
+
+
+class ExitModule(ParentTraversal):
+    pass
+
+
+class EnterClass(ParentTraversal):
+    pass
+
+
+class ExitClass(ParentTraversal):
+    pass
+
+
+class Visit:
+
+    def __init__(self, target, is_last, is_final, parents=None):
+        self.parents = parents or []
+        self.target = target
+        self.is_last = is_last
+        self.is_final = is_final
+
+    def __eq__(self, other):
+        return other.__class__ is self.__class__ and (
+            self.parents == other.parents and
+            self.target == other.target and
+            self.is_last == other.is_last and
+            self.is_final == other.is_final
+        )
+
+    def __str__(self):
+        return f'{self.__class__.__name__}({self.target}, {self.is_last}, {self.is_final}, {self.parents})'
+
+    def __repr__(self):
+        return str(self)
+
+
 class TestTranspiler(Transpiler):
 
-    VISITS = []
+    TRAVERSAL = []
     include = None
 
     def __init__(self, include=include, **kwargs):
-        self.VISITS = []
+        self.TRAVERSAL = []
         self.include = include
         super().__init__(**kwargs)
 
@@ -25,13 +85,31 @@ class TestTranspiler(Transpiler):
             return False
         return super().include_target(target)
 
+    def enter_module(self, module, is_last, is_final):
+        self.TRAVERSAL.append(EnterModule(module, is_last, is_final))
+        yield from super().enter_module(module, is_last, is_final)
+
+    def exit_module(self, module, is_last, is_final):
+        self.TRAVERSAL.append(ExitModule(module, is_last, is_final))
+        yield from super().exit_module(module, is_last, is_final)
+
+    def enter_class(self, cls, is_last, is_final):
+        self.TRAVERSAL.append(EnterClass(cls, is_last, is_final))
+        yield from super().enter_class(cls, is_last, is_final)
+
+    def exit_class(self, cls, is_last, is_final):
+        self.TRAVERSAL.append(ExitClass(cls, is_last, is_final))
+        yield from super().exit_class(cls, is_last, is_final)
+
     def visit(
         self,
         target,
         is_last,
-        final
+        is_final
     ):
-        self.VISITS.append((copy(self.parents), target, is_last, final))
+        self.TRAVERSAL.append(
+            Visit(target, is_last, is_final, parents=(copy(self.parents)))
+        )
         yield
 
 
@@ -42,18 +120,26 @@ class TranspileTraverseTests(TestCase):
         transpiler = TestTranspiler()
         transpiler.transpile([Class1Module1])
         self.assertEqual(
-            transpiler.VISITS,
+            transpiler.TRAVERSAL,
             [
-                ([], Class1Module1, True, False),
-                ([Class1Module1], Class1Module1.SubClass1, True, False),
-                ([
+                EnterClass(Class1Module1, True, False),
+                Visit(Class1Module1, True, False),
+                EnterClass(Class1Module1.SubClass1, True, False),
+                Visit(Class1Module1.SubClass1, True, False, parents=[Class1Module1]),
+                EnterClass(Class1Module1.SubClass1.Enum1, False, False),
+                Visit(Class1Module1.SubClass1.Enum1, False, False, parents=[
                      Class1Module1,
                      Class1Module1.SubClass1
-                 ], Class1Module1.SubClass1.Enum1, False, False),
-                ([
+                ]),
+                ExitClass(Class1Module1.SubClass1.Enum1, False, False),
+                EnterClass(Class1Module1.SubClass1.Enum2, True, True),
+                Visit(Class1Module1.SubClass1.Enum2, True, True, parents=[
                      Class1Module1,
                      Class1Module1.SubClass1
-                 ], Class1Module1.SubClass1.Enum2, True, True)
+                 ]),
+                ExitClass(Class1Module1.SubClass1.Enum2, True, True),
+                ExitClass(Class1Module1.SubClass1, True, False),
+                ExitClass(Class1Module1, True, False)
             ]
         )
 
@@ -62,18 +148,26 @@ class TranspileTraverseTests(TestCase):
         transpiler = TestTranspiler()
         transpiler.transpile(['render_static.tests.traverse.module1.Class1Module1'])
         self.assertEqual(
-            transpiler.VISITS,
+            transpiler.TRAVERSAL,
             [
-                ([], Class1Module1, True, False),
-                ([Class1Module1], Class1Module1.SubClass1, True, False),
-                ([
+                EnterClass(Class1Module1, True, False),
+                Visit(Class1Module1, True, False),
+                EnterClass(Class1Module1.SubClass1, True, False),
+                Visit(Class1Module1.SubClass1, True, False, parents=[Class1Module1]),
+                EnterClass(Class1Module1.SubClass1.Enum1, False, False),
+                Visit(Class1Module1.SubClass1.Enum1, False, False, parents=[
                      Class1Module1,
                      Class1Module1.SubClass1
-                 ], Class1Module1.SubClass1.Enum1, False, False),
-                ([
+                ]),
+                ExitClass(Class1Module1.SubClass1.Enum1, False, False),
+                EnterClass(Class1Module1.SubClass1.Enum2, True, True),
+                Visit(Class1Module1.SubClass1.Enum2, True, True, parents=[
                      Class1Module1,
                      Class1Module1.SubClass1
-                 ], Class1Module1.SubClass1.Enum2, True, True)
+                ]),
+                ExitClass(Class1Module1.SubClass1.Enum2, True, True),
+                ExitClass(Class1Module1.SubClass1, True, False),
+                ExitClass(Class1Module1, True, False)
             ]
         )
 
@@ -85,18 +179,27 @@ class TranspileTraverseTests(TestCase):
             'render_static.tests.traverse.module1.Class1Module1'
         ])
         self.assertEqual(
-            transpiler.VISITS,
+            transpiler.TRAVERSAL,
             [
-                ([], Class1Module1, True, False),
-                ([Class1Module1], Class1Module1.SubClass1, True, False),
-                ([
-                     Class1Module1,
-                     Class1Module1.SubClass1
-                 ], Class1Module1.SubClass1.Enum1, False, False),
-                ([
-                     Class1Module1,
-                     Class1Module1.SubClass1
-                 ], Class1Module1.SubClass1.Enum2, True, True)
+                EnterClass(Class1Module1, True, False),
+                Visit(Class1Module1, True, False),
+                EnterClass(Class1Module1.SubClass1, True, False),
+                Visit(Class1Module1.SubClass1, True, False,
+                      parents=[Class1Module1]),
+                EnterClass(Class1Module1.SubClass1.Enum1, False, False),
+                Visit(Class1Module1.SubClass1.Enum1, False, False, parents=[
+                    Class1Module1,
+                    Class1Module1.SubClass1
+                ]),
+                ExitClass(Class1Module1.SubClass1.Enum1, False, False),
+                EnterClass(Class1Module1.SubClass1.Enum2, True, True),
+                Visit(Class1Module1.SubClass1.Enum2, True, True, parents=[
+                    Class1Module1,
+                    Class1Module1.SubClass1
+                ]),
+                ExitClass(Class1Module1.SubClass1.Enum2, True, True),
+                ExitClass(Class1Module1.SubClass1, True, False),
+                ExitClass(Class1Module1, True, False)
             ]
         )
 
@@ -109,24 +212,40 @@ class TranspileTraverseTests(TestCase):
         transpiler = TestTranspiler()
         transpiler.transpile([module1])
         self.assertEqual(
-            transpiler.VISITS,
+            transpiler.TRAVERSAL,
             [
-                ([], module1, True, False),
-                ([module1], Class1Module1, False, False),
-                ([module1, Class1Module1], Class1Module1.SubClass1, True, False),
-                ([
+                EnterModule(module1, True, False),
+                Visit(module1, True, False),
+                EnterClass(Class1Module1, False, False),
+                Visit(Class1Module1, False, False, parents=[module1]),
+                EnterClass(Class1Module1.SubClass1, True, False),
+                Visit(Class1Module1.SubClass1, True, False, parents=[module1, Class1Module1]),
+                EnterClass(Class1Module1.SubClass1.Enum1, False, False),
+                Visit(Class1Module1.SubClass1.Enum1, False, False, parents=[
                      module1,
                      Class1Module1,
                      Class1Module1.SubClass1
-                 ], Class1Module1.SubClass1.Enum1, False, False),
-                ([
+                ]),
+                ExitClass(Class1Module1.SubClass1.Enum1, False, False),
+                EnterClass(Class1Module1.SubClass1.Enum2, True, False),
+                Visit(Class1Module1.SubClass1.Enum2, True, False, parents=[
                      module1,
                      Class1Module1,
                      Class1Module1.SubClass1
-                 ], Class1Module1.SubClass1.Enum2, True, False),
-                ([module1], Class2Module1, True, False),
-                ([module1, Class2Module1], Class2Module1.EnumStr, False, False),
-                ([module1, Class2Module1], Class2Module1.NotAnEnum, True, True)
+                ]),
+                ExitClass(Class1Module1.SubClass1.Enum2, True, False),
+                ExitClass(Class1Module1.SubClass1, True, False),
+                ExitClass(Class1Module1, False, False),
+                EnterClass(Class2Module1, True, False),
+                Visit(Class2Module1, True, False, parents=[module1]),
+                EnterClass(Class2Module1.EnumStr, False, False),
+                Visit(Class2Module1.EnumStr, False, False, parents=[module1, Class2Module1]),
+                ExitClass(Class2Module1.EnumStr, False, False),
+                EnterClass(Class2Module1.NotAnEnum, True, True),
+                Visit(Class2Module1.NotAnEnum, True, True, parents=[module1, Class2Module1]),
+                ExitClass(Class2Module1.NotAnEnum, True, True),
+                ExitClass(Class2Module1, True, False),
+                ExitModule(module1, True, False),
             ]
         )
 
@@ -139,24 +258,40 @@ class TranspileTraverseTests(TestCase):
         transpiler = TestTranspiler()
         transpiler.transpile(['render_static.tests.traverse.module1'])
         self.assertEqual(
-            transpiler.VISITS,
+            transpiler.TRAVERSAL,
             [
-                ([], module1, True, False),
-                ([module1], Class1Module1, False, False),
-                ([module1, Class1Module1], Class1Module1.SubClass1, True, False),
-                ([
+                EnterModule(module1, True, False),
+                Visit(module1, True, False),
+                EnterClass(Class1Module1, False, False),
+                Visit(Class1Module1, False, False, parents=[module1]),
+                EnterClass(Class1Module1.SubClass1, True, False),
+                Visit(Class1Module1.SubClass1, True, False, parents=[module1, Class1Module1]),
+                EnterClass(Class1Module1.SubClass1.Enum1, False, False),
+                Visit(Class1Module1.SubClass1.Enum1, False, False, parents=[
                      module1,
                      Class1Module1,
                      Class1Module1.SubClass1
-                 ], Class1Module1.SubClass1.Enum1, False, False),
-                ([
+                ]),
+                ExitClass(Class1Module1.SubClass1.Enum1, False, False),
+                EnterClass(Class1Module1.SubClass1.Enum2, True, False),
+                Visit(Class1Module1.SubClass1.Enum2, True, False, parents=[
                      module1,
                      Class1Module1,
                      Class1Module1.SubClass1
-                 ], Class1Module1.SubClass1.Enum2, True, False),
-                ([module1], Class2Module1, True, False),
-                ([module1, Class2Module1], Class2Module1.EnumStr, False, False),
-                ([module1, Class2Module1], Class2Module1.NotAnEnum, True, True)
+                ]),
+                ExitClass(Class1Module1.SubClass1.Enum2, True, False),
+                ExitClass(Class1Module1.SubClass1, True, False),
+                ExitClass(Class1Module1, False, False),
+                EnterClass(Class2Module1, True, False),
+                Visit(Class2Module1, True, False, parents=[module1]),
+                EnterClass(Class2Module1.EnumStr, False, False),
+                Visit(Class2Module1.EnumStr, False, False, parents=[module1, Class2Module1]),
+                ExitClass(Class2Module1.EnumStr, False, False),
+                EnterClass(Class2Module1.NotAnEnum, True, True),
+                Visit(Class2Module1.NotAnEnum, True, True, parents=[module1, Class2Module1]),
+                ExitClass(Class2Module1.NotAnEnum, True, True),
+                ExitClass(Class2Module1, True, False),
+                ExitModule(module1, True, False),
             ]
         )
 
@@ -172,24 +307,40 @@ class TranspileTraverseTests(TestCase):
             module1
         ])
         self.assertEqual(
-            transpiler.VISITS,
+            transpiler.TRAVERSAL,
             [
-                ([], module1, True, False),
-                ([module1], Class1Module1, False, False),
-                ([module1, Class1Module1], Class1Module1.SubClass1, True, False),
-                ([
+                EnterModule(module1, True, False),
+                Visit(module1, True, False),
+                EnterClass(Class1Module1, False, False),
+                Visit(Class1Module1, False, False, parents=[module1]),
+                EnterClass(Class1Module1.SubClass1, True, False),
+                Visit(Class1Module1.SubClass1, True, False, parents=[module1, Class1Module1]),
+                EnterClass(Class1Module1.SubClass1.Enum1, False, False),
+                Visit(Class1Module1.SubClass1.Enum1, False, False, parents=[
                      module1,
                      Class1Module1,
                      Class1Module1.SubClass1
-                 ], Class1Module1.SubClass1.Enum1, False, False),
-                ([
+                ]),
+                ExitClass(Class1Module1.SubClass1.Enum1, False, False),
+                EnterClass(Class1Module1.SubClass1.Enum2, True, False),
+                Visit(Class1Module1.SubClass1.Enum2, True, False, parents=[
                      module1,
                      Class1Module1,
                      Class1Module1.SubClass1
-                 ], Class1Module1.SubClass1.Enum2, True, False),
-                ([module1], Class2Module1, True, False),
-                ([module1, Class2Module1], Class2Module1.EnumStr, False, False),
-                ([module1, Class2Module1], Class2Module1.NotAnEnum, True, True)
+                ]),
+                ExitClass(Class1Module1.SubClass1.Enum2, True, False),
+                ExitClass(Class1Module1.SubClass1, True, False),
+                ExitClass(Class1Module1, False, False),
+                EnterClass(Class2Module1, True, False),
+                Visit(Class2Module1, True, False, parents=[module1]),
+                EnterClass(Class2Module1.EnumStr, False, False),
+                Visit(Class2Module1.EnumStr, False, False, parents=[module1, Class2Module1]),
+                ExitClass(Class2Module1.EnumStr, False, False),
+                EnterClass(Class2Module1.NotAnEnum, True, True),
+                Visit(Class2Module1.NotAnEnum, True, True, parents=[module1, Class2Module1]),
+                ExitClass(Class2Module1.NotAnEnum, True, True),
+                ExitClass(Class2Module1, True, False),
+                ExitModule(module1, True, False),
             ]
         )
 
@@ -206,44 +357,78 @@ class TranspileTraverseTests(TestCase):
         )
         transpiler = TestTranspiler()
         transpiler.transpile(['render_static.tests.traverse.module1', module2])
+        expected = [
+                EnterModule(module1, False, False),
+                Visit(module1, False, False),
+                EnterClass(Class1Module1, False, False),
+                Visit(Class1Module1, False, False, parents=[module1]),
+                EnterClass(Class1Module1.SubClass1, True, False),
+                Visit(Class1Module1.SubClass1, True, False,
+                      parents=[module1, Class1Module1]),
+                EnterClass(Class1Module1.SubClass1.Enum1, False, False),
+                Visit(Class1Module1.SubClass1.Enum1, False, False, parents=[
+                    module1,
+                    Class1Module1,
+                    Class1Module1.SubClass1
+                ]),
+                ExitClass(Class1Module1.SubClass1.Enum1, False, False),
+                EnterClass(Class1Module1.SubClass1.Enum2, True, False),
+                Visit(Class1Module1.SubClass1.Enum2, True, False, parents=[
+                    module1,
+                    Class1Module1,
+                    Class1Module1.SubClass1
+                ]),
+                ExitClass(Class1Module1.SubClass1.Enum2, True, False),
+                ExitClass(Class1Module1.SubClass1, True, False),
+                ExitClass(Class1Module1, False, False),
+                EnterClass(Class2Module1, True, False),
+                Visit(Class2Module1, True, False, parents=[module1]),
+                EnterClass(Class2Module1.EnumStr, False, False),
+                Visit(Class2Module1.EnumStr, False, False,
+                      parents=[module1, Class2Module1]),
+                ExitClass(Class2Module1.EnumStr, False, False),
+                EnterClass(Class2Module1.NotAnEnum, True, False),
+                Visit(Class2Module1.NotAnEnum, True, False,
+                      parents=[module1, Class2Module1]),
+                ExitClass(Class2Module1.NotAnEnum, True, False),
+                ExitClass(Class2Module1, True, False),
+                ExitModule(module1, False, False),
 
-        self.assertEqual(
-            transpiler.VISITS,
-            [
-                ([], module1, False, False),
-                ([module1], Class1Module1, False, False),
-                ([module1, Class1Module1], Class1Module1.SubClass1, True, False),
-                ([
-                     module1,
-                     Class1Module1,
-                     Class1Module1.SubClass1
-                 ], Class1Module1.SubClass1.Enum1, False, False),
-                ([
-                     module1,
-                     Class1Module1,
-                     Class1Module1.SubClass1
-                 ], Class1Module1.SubClass1.Enum2, True, False),
-                ([module1], Class2Module1, True, False),
-                ([module1, Class2Module1], Class2Module1.EnumStr, False, False),
-                ([module1, Class2Module1], Class2Module1.NotAnEnum, True, False),
+                EnterModule(module2, True, False),
+                Visit(module2, True, False),
+                EnterClass(Class1Module2, False, False),
+                Visit(Class1Module2, False, False, parents=[module2]),
 
-                ([], module2, True, False),
-                ([module2], Class1Module2, False, False),
-                ([module2, Class1Module2], Class1Module2.SubClass1, True, False),
-                ([
+                EnterClass(Class1Module2.SubClass1, True, False),
+                Visit(Class1Module2.SubClass1, True, False, parents=[
+                    module2, Class1Module2
+                ]),
+                EnterClass(Class1Module2.SubClass1.Enum1, False, False),
+                Visit(Class1Module2.SubClass1.Enum1, False, False, parents=[
                      module2,
                      Class1Module2,
                      Class1Module2.SubClass1
-                 ], Class1Module2.SubClass1.Enum1, False, False),
-                ([
+                ]),
+                ExitClass(Class1Module2.SubClass1.Enum1, False, False),
+                EnterClass(Class1Module2.SubClass1.Enum2, True, False),
+                Visit(Class1Module2.SubClass1.Enum2, True, False, parents=[
                      module2,
                      Class1Module2,
                      Class1Module2.SubClass1
-                 ], Class1Module2.SubClass1.Enum2, True, False),
-                ([module2], Class2Module2, True, False),
-                ([module2, Class2Module2], Class2Module2.EnumStr, True, True)
+                ]),
+                ExitClass(Class1Module2.SubClass1.Enum2, True, False),
+                ExitClass(Class1Module2.SubClass1, True, False),
+                ExitClass(Class1Module2, False, False),
+
+                EnterClass(Class2Module2, True, False),
+                Visit(Class2Module2, True, False, parents=[module2]),
+                EnterClass(Class2Module2.EnumStr, True, True),
+                Visit(Class2Module2.EnumStr, True, True, parents=[module2, Class2Module2]),
+                ExitClass(Class2Module2.EnumStr, True, True),
+                ExitClass(Class2Module2, True, False),
+                ExitModule(module2, True, False)
             ]
-        )
+        self.assertEqual(transpiler.TRAVERSAL, expected)
 
     def test_multi_class_traversal(self):
         from render_static.tests.traverse.module1 import (
@@ -252,24 +437,36 @@ class TranspileTraverseTests(TestCase):
         )
         transpiler = TestTranspiler()
         transpiler.transpile([Class1Module1, Class2Module1])
-        self.assertEqual(
-            transpiler.VISITS,
-            [
-                ([], Class1Module1, False, False),
-                ([Class1Module1], Class1Module1.SubClass1, True, False),
-                ([
-                     Class1Module1,
-                     Class1Module1.SubClass1
-                 ], Class1Module1.SubClass1.Enum1, False, False),
-                ([
-                     Class1Module1,
-                     Class1Module1.SubClass1
-                 ], Class1Module1.SubClass1.Enum2, True, False),
-                ([], Class2Module1, True, False),
-                ([Class2Module1], Class2Module1.EnumStr, False, False),
-                ([Class2Module1], Class2Module1.NotAnEnum, True, True)
-            ]
-        )
+        expected = [
+            EnterClass(Class1Module1, False, False),
+            Visit(Class1Module1, False, False),
+            EnterClass(Class1Module1.SubClass1, True, False),
+            Visit(Class1Module1.SubClass1, True, False, parents=[Class1Module1]),
+            EnterClass(Class1Module1.SubClass1.Enum1, False, False),
+            Visit(Class1Module1.SubClass1.Enum1, False, False, parents=[
+                 Class1Module1,
+                 Class1Module1.SubClass1
+             ]),
+            ExitClass(Class1Module1.SubClass1.Enum1, False, False),
+            EnterClass(Class1Module1.SubClass1.Enum2, True, False),
+            Visit(Class1Module1.SubClass1.Enum2, True, False, parents=[
+                 Class1Module1,
+                 Class1Module1.SubClass1
+            ]),
+            ExitClass(Class1Module1.SubClass1.Enum2, True, False),
+            ExitClass(Class1Module1.SubClass1, True, False),
+            ExitClass(Class1Module1, False, False),
+            EnterClass(Class2Module1, True, False),
+            Visit(Class2Module1, True, False),
+            EnterClass(Class2Module1.EnumStr, False, False),
+            Visit(Class2Module1.EnumStr, False, False, parents=[Class2Module1]),
+            ExitClass(Class2Module1.EnumStr, False, False),
+            EnterClass(Class2Module1.NotAnEnum, True, True),
+            Visit(Class2Module1.NotAnEnum, True, True, parents=[Class2Module1]),
+            ExitClass(Class2Module1.NotAnEnum, True, True),
+            ExitClass(Class2Module1, True, False)
+        ]
+        self.assertEqual(transpiler.TRAVERSAL, expected)
 
     def test_select_enums(self):
         class EnumTranspiler(TestTranspiler):
@@ -295,23 +492,41 @@ class TranspileTraverseTests(TestCase):
             'render_static.tests.traverse.module1',
             Class2Module2
         ])
-        self.assertEqual(
-            transpiler.VISITS,
-            [
-                ([
-                    module1,
-                    Class1Module1,
-                    Class1Module1.SubClass1
-                 ], Class1Module1.SubClass1.Enum1, False, False),
-                ([
-                    module1,
-                    Class1Module1,
-                    Class1Module1.SubClass1
-                 ], Class1Module1.SubClass1.Enum2, True, False),
-                ([module1, Class2Module1], Class2Module1.EnumStr, True, False),
-                ([Class2Module2], Class2Module2.EnumStr, True, True)
-            ]
-        )
+        expected = [
+            EnterModule(module1, False, False),
+            EnterClass(Class1Module1, False, False),
+            EnterClass(Class1Module1.SubClass1, True, False),
+            EnterClass(Class1Module1.SubClass1.Enum1, False, False),
+            Visit(Class1Module1.SubClass1.Enum1, False, False, parents=[
+                module1,
+                Class1Module1,
+                Class1Module1.SubClass1
+            ]),
+            ExitClass(Class1Module1.SubClass1.Enum1, False, False),
+            EnterClass(Class1Module1.SubClass1.Enum2, True, False),
+            Visit(Class1Module1.SubClass1.Enum2, True, False, parents=[
+                module1,
+                Class1Module1,
+                Class1Module1.SubClass1
+            ]),
+            ExitClass(Class1Module1.SubClass1.Enum2, True, False),
+            ExitClass(Class1Module1.SubClass1, True, False),
+            ExitClass(Class1Module1, False, False),
+            EnterClass(Class2Module1, True, False),
+            EnterClass(Class2Module1.EnumStr, True, False),
+            Visit(Class2Module1.EnumStr, True, False, parents=[
+                module1, Class2Module1
+            ]),
+            ExitClass(Class2Module1.EnumStr, True, False),
+            ExitClass(Class2Module1, True, False),
+            ExitModule(module1, False, False),
+            EnterClass(Class2Module2, True, False),
+            EnterClass(Class2Module2.EnumStr, True, True),
+            Visit(Class2Module2.EnumStr, True, True, parents=[Class2Module2]),
+            ExitClass(Class2Module2.EnumStr, True, True),
+            ExitClass(Class2Module2, True, False)
+        ]
+        self.assertEqual(transpiler.TRAVERSAL, expected)
 
     def test_app_transpile_string(self):
         from django.apps import apps
@@ -320,10 +535,9 @@ class TranspileTraverseTests(TestCase):
             'render_static.tests.enum_app'
         ])
         self.assertEqual(
-            transpiler.VISITS,
+            transpiler.TRAVERSAL,
             [
-                (
-                    [],
+                Visit(
                     apps.get_app_config('render_static_tests_enum_app'),
                     True,
                     True
@@ -338,10 +552,9 @@ class TranspileTraverseTests(TestCase):
             apps.get_app_config('render_static_tests_enum_app')
         ])
         self.assertEqual(
-            transpiler.VISITS,
+            transpiler.TRAVERSAL,
             [
-                (
-                    [],
+                Visit(
                     apps.get_app_config('render_static_tests_enum_app'),
                     True,
                     True
@@ -356,10 +569,9 @@ class TranspileTraverseTests(TestCase):
             'render_static_tests_enum_app'
         ])
         self.assertEqual(
-            transpiler.VISITS,
+            transpiler.TRAVERSAL,
             [
-                (
-                    [],
+                Visit(
                     apps.get_app_config('render_static_tests_enum_app'),
                     True,
                     True
@@ -376,13 +588,40 @@ class TranspileTraverseTests(TestCase):
             'render_static_tests_enum_app'
         ])
         self.assertEqual(
-            transpiler.VISITS,
+            transpiler.TRAVERSAL,
             [
-                (
-                    [],
+                Visit(
                     apps.get_app_config('render_static_tests_enum_app'),
                     True,
                     True
                 )
+            ]
+        )
+
+    def test_transpiled_parent_and_children(self):
+        def include_defines(target):
+            if isinstance(target, (type, ModuleType)):
+                for name in dir(target):
+                    if name.isupper():
+                        return True
+            return False
+
+        transpiler = TestTranspiler(include=include_defines)
+        from render_static.tests.traverse import models
+        transpiler.transpile(["render_static.tests.traverse.models"])
+        self.assertEqual(
+            transpiler.TRAVERSAL,
+            [
+                EnterModule(models, True, False),
+                EnterClass(models.ExampleModel, True, False),
+                Visit(models.ExampleModel, True, False, parents=[models]),
+                EnterClass(models.ExampleModel.Color, False, False),
+                Visit(models.ExampleModel.Color, False, False, parents=[models, models.ExampleModel]),
+                ExitClass(models.ExampleModel.Color, False, False),
+                EnterClass(models.ExampleModel.MapBoxStyle, True, True),
+                Visit(models.ExampleModel.MapBoxStyle, True, True, parents=[models, models.ExampleModel]),
+                ExitClass(models.ExampleModel.MapBoxStyle, True, True),
+                ExitClass(models.ExampleModel, True, False),
+                ExitModule(models, True, False)
             ]
         )

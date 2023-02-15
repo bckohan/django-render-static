@@ -190,6 +190,11 @@ class Transpiler(CodeWriter, metaclass=ABCMeta):
     to_javascript_: Callable = to_js
 
     parents_: List[Union[ModuleType, Type[Any]]]
+    target_: ResolvedTranspilerTarget
+
+    @property
+    def target(self):
+        return self.target_
 
     @property
     def parents(self):
@@ -197,7 +202,11 @@ class Transpiler(CodeWriter, metaclass=ABCMeta):
         When in visit() this returns the parents (modules and classes) of the
         visited target.
         """
-        return self.parents_
+        return [
+            parent
+            for parent in self.parents_
+            if parent is not self.target
+        ]
 
     def __init__(
         self,
@@ -320,26 +329,27 @@ class Transpiler(CodeWriter, metaclass=ABCMeta):
                 is_last: bool = False,
                 final: bool = True
         ):
-            if branch.transpile:
-                for ln in self.visit(
-                        branch.target,
-                        is_last,
-                        final and not branch.children
-                ):
+            is_final = final and not branch.children
+            if branch.target:
+                for ln in self.enter_parent(branch.target, is_last, is_final):
                     self.write_line(ln)
+
+            if branch.transpile:
+                self.target_ = branch.target
+                for ln in self.visit(branch.target, is_last, is_final):
+                    self.write_line(ln)
+
             if branch.children:
-                if branch.target:
-                    for ln in self.enter_parent(branch.target, is_last):
-                        self.write_line(ln)
                 for idx, child in enumerate(branch.children):
                     visit_depth_first(
                         child,
                         idx == len(branch.children) - 1,
                         (idx == len(branch.children) - 1) and final
                     )
-                if branch.target:
-                    for ln in self.exit_parent(branch.target, is_last):
-                        self.write_line(ln)
+
+            if branch.target:
+                for ln in self.exit_parent(branch.target, is_last, is_final):
+                    self.write_line(ln)
 
         for line in self.start_visitation():
             self.write_line(line)
@@ -354,50 +364,56 @@ class Transpiler(CodeWriter, metaclass=ABCMeta):
     def enter_parent(
             self,
             parent: Union[ModuleType, Type[Any]],
-            is_last: bool
+            is_last: bool,
+            is_final: bool
     ) -> Generator[str, None, None]:
         self.parents_.append(parent)
         if isinstance(parent, ModuleType):
-            yield from self.enter_module(parent, is_last)
+            yield from self.enter_module(parent, is_last, is_final)
         elif isinstance(parent, type):
-            yield from self.enter_class(parent, is_last)
+            yield from self.enter_class(parent, is_last, is_final)
 
     def exit_parent(
             self,
             parent: Union[ModuleType, Type[Any]],
-            is_last: bool
+            is_last: bool,
+            is_final: bool
     ) -> Generator[str, None, None]:
         del self.parents_[-1]
         if isinstance(parent, ModuleType):
-            yield from self.exit_module(parent, is_last)
+            yield from self.exit_module(parent, is_last, is_final)
         elif isinstance(parent, type):
-            yield from self.exit_class(parent, is_last)
+            yield from self.exit_class(parent, is_last, is_final)
 
     def enter_module(
             self,
             module: ModuleType,
-            is_last: bool
+            is_last: bool,
+            is_final: bool
     ) -> Generator[str, None, None]:
         yield
 
     def exit_module(
             self,
             module: ModuleType,
-            is_last: bool
+            is_last: bool,
+            is_final: bool
     ) -> Generator[str, None, None]:
         yield
 
     def enter_class(
             self,
             cls: Type[Any],
-            is_last: bool
+            is_last: bool,
+            is_final: bool
     ) -> Generator[str, None, None]:
         yield
 
     def exit_class(
             self,
             cls: Type[Any],
-            is_last: bool
+            is_last: bool,
+            is_final: bool
     ) -> Generator[str, None, None]:
         yield
 
@@ -424,7 +440,7 @@ class Transpiler(CodeWriter, metaclass=ABCMeta):
         self,
         target: ResolvedTranspilerTarget,
         is_last: bool,
-        final: bool
+        is_final: bool
     ) -> Generator[str, None, None]:
         """
         Deriving transpilers must implement this method.
@@ -433,7 +449,7 @@ class Transpiler(CodeWriter, metaclass=ABCMeta):
             a module or an installed Django app.
         :param is_last: True if this is the last target that will be visited at
             this level.
-        :param final: True if this is the last target that will be visited at
+        :param is_final: True if this is the last target that will be visited at
             all.
         :yield: lines of javascript
         """

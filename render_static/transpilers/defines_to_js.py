@@ -2,11 +2,7 @@
 Built-in transpilers for python classes. Only one is provided that transpiles
 plain old data found on classes and their ancestors.
 """
-import inspect
-from abc import abstractmethod
 from typing import Any, Callable, Dict, Generator, Type, Union
-
-from django.utils.module_loading import import_string
 from render_static.transpilers import Transpiler, ResolvedTranspilerTarget
 from types import ModuleType
 
@@ -82,8 +78,29 @@ class DefaultDefineTranspiler(Transpiler):
     )
     const_name_ = 'defines'
 
+    members_: Dict[str, Any]
+
+    @property
+    def members(self) -> Dict[str, Any]:
+        return self.members_
+
+    @members.setter
+    def members(self, target: Union[ModuleType, Type[Any]]):
+        self.members_ = {}
+        for ancestor in (
+            list(reversed(getattr(target, '__mro__', []))) + [target]
+        ):
+            self.members_.update({
+                name: member
+                for name, member in vars(ancestor).items()
+                if getattr(self, 'include_member_')(name, member)
+            })
+
     def include_target(self, target: ResolvedTranspilerTarget):
-        return isinstance(target, (type, ModuleType))
+        if isinstance(target, (type, ModuleType)):
+            self.members = target
+            return len(self.members) > 0
+        return False
 
     def __init__(
         self,
@@ -99,12 +116,14 @@ class DefaultDefineTranspiler(Transpiler):
             self,
             target: Union[ModuleType, Type[Any]],
             is_last: bool,
-            final: bool
+            is_final: bool
     ) -> Generator[str, None, None]:
-        if isinstance(target, ModuleType):
-            yield from self.visit_module(target, is_last, final)
-        elif isinstance(target, type):
-            yield from self.visit_class(target, is_last, final)
+        self.members = target
+        yield from self.visit_members(
+            self.members,
+            is_last=is_last,
+            is_final=is_final
+        )
 
     def start_visitation(self) -> Generator[str, None, None]:
         yield f'const {self.const_name_} = {{'
@@ -114,46 +133,11 @@ class DefaultDefineTranspiler(Transpiler):
         self.outdent()
         yield '};'
 
-    def visit_module(
-            self,
-            module: ModuleType,
-            is_last: bool,
-            final: bool
-    ) -> Generator[str, None, None]:
-        yield from self.visit_members({
-                name: member
-                for name, member in vars(module).items()
-                if getattr(self, 'include_member_')(name, member)
-            },
-            is_last=is_last,
-            final=final
-        )
-
-    def visit_class(
-            self,
-            cls: Type[Any],
-            is_last: bool,
-            final: bool
-    ) -> Generator[str, None, None]:
-        members = {}
-        for ancestor in list(reversed(cls.__mro__)) + [cls]:
-            members.update({
-                name: member
-                for name, member in vars(ancestor).items()
-                if getattr(self, 'include_member_')(name, member)
-            })
-        if members:
-            yield f'{cls.__name__}: {{'
-            self.indent()
-            yield from self.visit_members(members, is_last=is_last, final=final)
-            self.outdent()
-            yield f'}}{"" if final else ","}'
-
     def visit_members(
             self,
             members: Dict[str, Any],
             is_last: bool,
-            final: bool
+            is_final: bool
     ) -> Generator[str, None, None]:
         idx = 0
         for name, member in members.items():
@@ -162,33 +146,36 @@ class DefaultDefineTranspiler(Transpiler):
                 name,
                 member,
                 is_last=(idx == len(members) and is_last),
-                final=(idx == len(members) and final)
+                is_final=(idx == len(members) and is_final)
             )
 
-    """
     def enter_class(
             self,
             cls: Type[Any],
-            is_last: bool
+            is_last: bool,
+            is_final: bool
     ) -> Generator[str, None, None]:
-        yield f'{cls.__name__}: {{'
-        self.indent()
+        self.members = cls
+        if self.members:
+            yield f'{cls.__name__}: {{'
+            self.indent()
 
     def exit_class(
             self,
             cls: Type[Any],
-            is_last: bool
+            is_last: bool,
+            is_final: bool
     ) -> Generator[str, None, None]:
-        self.outdent()
-        yield f'}}{"" if is_last else ","}'
-    """
+        if self.members:
+            self.outdent()
+            yield f'}},'
 
     def visit_member(
         self,
         name: str,
         member: Any,
         is_last: bool = False,
-        final: bool = False
+        is_final: bool = False
     ) -> Generator[str, None, None]:
         """
         Visit a member of a class and yield its rendered javascript.
@@ -196,11 +183,11 @@ class DefaultDefineTranspiler(Transpiler):
         :param name: The name of the class member
         :param member: The member itself
         :param is_last: True if this is the last member of the class
-        :param final: True if this is the last member that will be visited at
+        :param is_final: True if this is the last member that will be visited at
             all
         :yield: Transpiled javascript for the member.
         """
-        yield f'{name}: {self.to_js(member)}{"" if final else ","}'
+        yield f'{name}: {self.to_js(member)},'
 
 
 """

@@ -5,7 +5,7 @@ import re
 import shutil
 import subprocess
 from pathlib import Path
-
+from deepdiff import DeepDiff
 import pytest
 from django.core.management import call_command
 from django.test import override_settings
@@ -69,11 +69,38 @@ class TestReadmeDefines(StructureDiff, BaseTestCase):
 
     def test_readme_defines(self):
         call_command('renderstatic', 'examples/defines.js')
-        from render_static.tests.examples import models
+        js_dict = self.get_js_structure(EXAMPLE_STATIC_DIR / 'defines.js')
         self.assertEqual(
-            self.diff_modules(
-                js_file=EXAMPLE_STATIC_DIR / 'defines.js',
-                py_modules=[models]
+            DeepDiff(
+                js_dict, {
+                    'ExampleModel': {
+                        'DEFINE1': "D1",
+                        'DEFINE2': "D2",
+                        'DEFINE3': "D3",
+                        'DEFINES': [
+                            ["D1", "Define 1"],
+                            ["D2", "Define 2"],
+                            ["D3", "Define 3"]
+                        ],
+                        'Color': {
+                            'RED': "R",
+                            'GREEN': "G",
+                            'BLUE': "B",
+                        },
+                        'MapBoxStyle': {
+                            'STREETS': 1,
+                            'OUTDOORS': 2,
+                            'LIGHT': 3,
+                            'DARK': 4,
+                            'SATELLITE': 5,
+                            'SATELLITE_STREETS': 6,
+                            'NAVIGATION_DAY': 7,
+                            'NAVIGATION_NIGHT': 8,
+                        },
+                    }
+                },
+                # treat tuples and lists the same
+                ignore_type_in_groups=[(tuple, list)]
             ),
             {}
         )
