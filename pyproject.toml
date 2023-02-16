@@ -1,6 +1,6 @@
 [tool.poetry]
 name = "django-render-static"
-version = "1.1.5"
+version = "1.1.6"
 description = "Use Django's template engine to render static files at deployment time. Extend Django's url reverse mechanism to JavaScript."
 authors = ["Brian Kohan <bckohan@gmail.com>"]
 license = "MIT"
@@ -31,9 +31,7 @@ classifiers = [
     "Topic :: Software Development :: Libraries",
     "Topic :: Software Development :: Libraries :: Python Modules"
 ]
-include = [
-    "LICENSE",
-]
+
 packages = [
     { include = "render_static" }
 ]

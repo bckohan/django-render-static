@@ -2,6 +2,11 @@
 Change Log
 ==========
 
+v1.1.6
+====================
+
+* Fixed `LICENSE is packaged as source. <https://github.com/bckohan/django-render-static/issues/95>`_
+
 v1.1.5
 ====================
 
