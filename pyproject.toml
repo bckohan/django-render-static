@@ -64,7 +64,7 @@ pylint = [
 ]
 sphinx-argparse = "^0.3.0"
 Js2Py = "^0.74"
-deepdiff = "^5.2.3"
+deepdiff = ">=5.2.3,<7.0.0"
 safety = "^2.0.0"
 readme-renderer = "^34.0"
 pygount = "^1.2.4"
