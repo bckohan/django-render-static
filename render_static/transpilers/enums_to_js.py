@@ -30,6 +30,11 @@ IGNORED_ENUMS = {Enum, IntEnum, IntFlag, Flag, TextChoices, IntegerChoices}
 if sys.version_info >= (3, 11):  # pragma: no cover
     from enum import EnumCheck, FlagBoundary, ReprEnum, StrEnum
     IGNORED_ENUMS.update({FlagBoundary, ReprEnum, StrEnum, EnumCheck})
+    try:
+        from django_enum import TextChoices, IntegerChoices
+        IGNORED_ENUMS.update({TextChoices, IntegerChoices})
+    except ImportError:
+        pass
 
 
 class EnumTranspiler(Transpiler):
@@ -155,6 +160,11 @@ class EnumClassWriter(EnumTranspiler):  # pylint: disable=R0902
                         isinstance(member, property) and
                         name not in self.exclude_properties_
                     )
+                ],
+                # handle enum-properties defined properties
+                *[
+                    prop for prop in getattr(enum, '_properties_', [])
+                    if prop not in self.exclude_properties_
                 ]
             ]
         else:
