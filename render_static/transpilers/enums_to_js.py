@@ -3,6 +3,7 @@ Transpiler tools for PEP 435 style python enumeration classes.
 """
 import sys
 from abc import abstractmethod
+from copy import copy
 from enum import Enum, Flag, IntEnum, IntFlag
 from types import ModuleType
 from typing import (
@@ -31,7 +32,7 @@ if sys.version_info >= (3, 11):  # pragma: no cover
     from enum import EnumCheck, FlagBoundary, ReprEnum, StrEnum
     IGNORED_ENUMS.update({FlagBoundary, ReprEnum, StrEnum, EnumCheck})
     try:
-        from django_enum import TextChoices, IntegerChoices
+        from django_enum import IntegerChoices, TextChoices
         IGNORED_ENUMS.update({TextChoices, IntegerChoices})
     except ImportError:
         pass
@@ -150,25 +151,35 @@ class EnumClassWriter(EnumTranspiler):  # pylint: disable=R0902
 
         :param enum: The enum class being transpiled
         """
+        builtins = copy(self.builtins_)
         if self.include_properties_:
+            if (
+                hasattr([en for en in enum][0], 'label') and
+                'label' not in builtins and
+                'label' not in self.exclude_properties_
+            ):
+                builtins.append('label')
+            props_on_class = [
+                str(name)
+                for name, member in vars(enum).items()
+                if (
+                    isinstance(member, property) and
+                    name not in self.exclude_properties_
+                    and str(name) not in builtins
+                )
+            ]
             self.properties_ = [
-                *self.builtins_,
-                *[
-                    str(name)
-                    for name, member in vars(enum).items()
-                    if (
-                        isinstance(member, property) and
-                        name not in self.exclude_properties_
-                    )
-                ],
+                *builtins,
+                *props_on_class,
                 # handle enum-properties defined properties
                 *[
                     prop for prop in getattr(enum, '_properties_', [])
                     if prop not in self.exclude_properties_
+                    and prop not in builtins and prop not in props_on_class
                 ]
             ]
         else:
-            self.properties_ = self.builtins_
+            self.properties_ = builtins
 
     @property
     def symmetric_properties(self):

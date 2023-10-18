@@ -4,16 +4,16 @@ Template tags and filters available when the render_static app is installed.
 
 from enum import Enum
 from types import ModuleType
-from typing import Collection, Iterable, List, Optional, Type, Union, Any
+from typing import Any, Collection, Iterable, List, Optional, Type, Union
 
 from django import template
+from django.conf import settings
 from django.utils.module_loading import import_string
 from django.utils.safestring import SafeString
-from django.conf import settings
 from render_static.transpilers import (
     Transpiler,
     TranspilerTarget,
-    TranspilerTargets
+    TranspilerTargets,
 )
 from render_static.transpilers.defines_to_js import DefaultDefineTranspiler
 from render_static.transpilers.enums_to_js import EnumClassWriter

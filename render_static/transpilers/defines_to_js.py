@@ -2,9 +2,10 @@
 Built-in transpilers for python classes. Only one is provided that transpiles
 plain old data found on classes and their ancestors.
 """
-from typing import Any, Callable, Dict, Generator, Type, Union
-from render_static.transpilers import Transpiler, ResolvedTranspilerTarget
 from types import ModuleType
+from typing import Any, Callable, Dict, Generator, Type, Union
+
+from render_static.transpilers import ResolvedTranspilerTarget, Transpiler
 
 
 class DefaultDefineTranspiler(Transpiler):

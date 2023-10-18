@@ -1,12 +1,13 @@
 """
 Tests for base transpiler source tree traversal.
 """
+from copy import copy
+from enum import Enum, auto
+from types import ModuleType
+
 from django.test import TestCase
 from render_static.transpilers import Transpiler
 from render_static.transpilers.enums_to_js import IGNORED_ENUMS
-from types import ModuleType
-from enum import auto, Enum
-from copy import copy
 
 
 class ParentTraversal:
@@ -207,7 +208,7 @@ class TranspileTraverseTests(TestCase):
         from render_static.tests.traverse import module1
         from render_static.tests.traverse.module1 import (
             Class1Module1,
-            Class2Module1
+            Class2Module1,
         )
         transpiler = TestTranspiler()
         transpiler.transpile([module1])
@@ -253,7 +254,7 @@ class TranspileTraverseTests(TestCase):
         from render_static.tests.traverse import module1
         from render_static.tests.traverse.module1 import (
             Class1Module1,
-            Class2Module1
+            Class2Module1,
         )
         transpiler = TestTranspiler()
         transpiler.transpile(['render_static.tests.traverse.module1'])
@@ -299,7 +300,7 @@ class TranspileTraverseTests(TestCase):
         from render_static.tests.traverse import module1
         from render_static.tests.traverse.module1 import (
             Class1Module1,
-            Class2Module1
+            Class2Module1,
         )
         transpiler = TestTranspiler()
         transpiler.transpile([
@@ -346,14 +347,14 @@ class TranspileTraverseTests(TestCase):
 
     def test_multi_module_traversal(self):
         from render_static.tests.traverse import module1
-        from render_static.tests.traverse.sub_pkg import module2
         from render_static.tests.traverse.module1 import (
             Class1Module1,
-            Class2Module1
+            Class2Module1,
         )
+        from render_static.tests.traverse.sub_pkg import module2
         from render_static.tests.traverse.sub_pkg.module2 import (
             Class1Module2,
-            Class2Module2
+            Class2Module2,
         )
         transpiler = TestTranspiler()
         transpiler.transpile(['render_static.tests.traverse.module1', module2])
@@ -433,7 +434,7 @@ class TranspileTraverseTests(TestCase):
     def test_multi_class_traversal(self):
         from render_static.tests.traverse.module1 import (
             Class1Module1,
-            Class2Module1
+            Class2Module1,
         )
         transpiler = TestTranspiler()
         transpiler.transpile([Class1Module1, Class2Module1])
@@ -482,11 +483,11 @@ class TranspileTraverseTests(TestCase):
                 return ret
 
         from render_static.tests.traverse import module1
-        from render_static.tests.traverse.sub_pkg.module2 import Class2Module2
         from render_static.tests.traverse.module1 import (
             Class1Module1,
-            Class2Module1
+            Class2Module1,
         )
+        from render_static.tests.traverse.sub_pkg.module2 import Class2Module2
         transpiler = EnumTranspiler()
         transpiler.transpile([
             'render_static.tests.traverse.module1',

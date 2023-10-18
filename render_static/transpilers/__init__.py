@@ -7,22 +7,23 @@ import numbers
 from abc import ABCMeta, abstractmethod
 from datetime import date, datetime
 from enum import Enum
+from types import ModuleType
 from typing import (
     Any,
     Callable,
-    Optional,
-    Union,
-    Type,
     Collection,
     Generator,
+    Hashable,
     List,
-    Hashable
+    Optional,
+    Type,
+    Union,
 )
-from types import ModuleType
 from warnings import warn
-from django.utils.module_loading import import_string, import_module
+
 from django.apps import apps
 from django.apps.config import AppConfig
+from django.utils.module_loading import import_module, import_string
 
 __all__ = [
     'to_js',

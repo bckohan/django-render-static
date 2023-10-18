@@ -30,9 +30,7 @@ from render_static.tests.tests import (
 )
 from render_static.transpilers import CodeWriter
 from render_static.transpilers.enums_to_js import IGNORED_ENUMS
-from render_static.transpilers.urls_to_js import (
-    ClassURLWriter
-)
+from render_static.transpilers.urls_to_js import ClassURLWriter
 
 try:
     from django.utils.decorators import classproperty

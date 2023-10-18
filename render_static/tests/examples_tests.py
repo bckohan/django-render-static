@@ -5,8 +5,9 @@ import re
 import shutil
 import subprocess
 from pathlib import Path
-from deepdiff import DeepDiff
+
 import pytest
+from deepdiff import DeepDiff
 from django.core.management import call_command
 from django.test import override_settings
 from django.urls import reverse

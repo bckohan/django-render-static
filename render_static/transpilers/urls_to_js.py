@@ -17,9 +17,10 @@ from typing import (
     List,
     Optional,
     Tuple,
+    Type,
     Union,
-    Type
 )
+
 from django import VERSION as DJANGO_VERSION
 from django.conf import settings
 from django.urls import URLPattern, URLResolver, reverse
@@ -30,7 +31,7 @@ from render_static.placeholders import (
     resolve_placeholders,
     resolve_unnamed_placeholders,
 )
-from render_static.transpilers import Transpiler, ResolvedTranspilerTarget
+from render_static.transpilers import ResolvedTranspilerTarget, Transpiler
 
 __all__ = [
     'normalize_ns',

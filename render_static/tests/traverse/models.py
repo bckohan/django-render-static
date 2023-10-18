@@ -1,5 +1,5 @@
-from django_enum import TextChoices, IntegerChoices
-from enum_properties import s, p
+from django_enum import IntegerChoices, TextChoices
+from enum_properties import p, s
 
 
 class ExampleModel:
