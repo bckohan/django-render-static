@@ -28,6 +28,6 @@ urlpatterns = [
         r'^re_path/([adfa]{2,3})/(?P<strarg>\w+)/(\d+){2}/(?P<intarg>\d+)$',
         TestView.as_view(),
         name='re_path_mixed'
-    ),
+    )
 ]
 

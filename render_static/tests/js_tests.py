@@ -1410,6 +1410,44 @@ class CornerCaseTest(URLJavascriptMixin, BaseTestCase):
         self.assertTrue(True)
 
     @override_settings(
+        ROOT_URLCONF='render_static.tests.urls5',
+        STATIC_TEMPLATES={
+            'context': {'include': ['default']},
+            'ENGINES': [{
+                'BACKEND': 'render_static.backends.StaticDjangoTemplates',
+                'OPTIONS': {
+                    'loaders': [
+                        ('render_static.loaders.StaticLocMemLoader', {
+                            'urls.js': '{% urls_to_js transpiler="render_static.ClassURLWriter" %}'
+                        })
+                    ],
+                    'builtins': ['render_static.templatetags.render_static']
+                },
+            }]
+        }
+    )
+    def test_nested_named_unnamed(self):
+        """
+        Nested unnamed/named parameters should work.
+
+        https://github.com/bckohan/django-render-static/issues/93
+        """
+        self.es6_mode = True
+        self.url_js = None
+        self.class_mode = ClassURLWriter.class_name_
+
+        #placeholders.register_unnamed_placeholders('nested_re_path_unnamed', ['page-', 22])
+        placeholders.register_unnamed_placeholders('nested_re_path_named', 9)
+        call_command('renderstatic', 'urls.js')
+
+        with open(GLOBAL_STATIC_DIR / 'urls.js', 'r') as urls:
+            if 'overruled' not in urls.read():
+                #self.compare('nested_re_path_unnamed', args=['page-22'])
+                self.compare('nested_re_path_named', kwargs={'page_number': '22'})
+
+        self.assertTrue(True)
+
+    @override_settings(
         STATIC_TEMPLATES={
             'context': {'include': ['bad_mix']},
             'ENGINES': [{
