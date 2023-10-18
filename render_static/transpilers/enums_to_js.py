@@ -32,7 +32,7 @@ if sys.version_info >= (3, 11):  # pragma: no cover
     from enum import EnumCheck, FlagBoundary, ReprEnum, StrEnum
     IGNORED_ENUMS.update({FlagBoundary, ReprEnum, StrEnum, EnumCheck})
     try:
-        from django_enum import IntegerChoices, TextChoices
+        from django_enum.choices import IntegerChoices, TextChoices
         IGNORED_ENUMS.update({TextChoices, IntegerChoices})
     except ImportError:
         pass
@@ -54,7 +54,15 @@ class EnumTranspiler(Transpiler):
         :return: True if the target can be transpiled
         """
         if isinstance(target, type) and issubclass(target, Enum):
-            return target not in IGNORED_ENUMS and target.__module__ != 'enum'
+            try:
+                return (
+                    target not in IGNORED_ENUMS and
+                    target.__module__ != 'enum' and
+                    # make sure this enum type actually has values
+                    len([en for en in target]) > 0
+                )
+            except TypeError:
+                pass
         return False
 
 
