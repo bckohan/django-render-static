@@ -23,11 +23,11 @@ class ParentTraversal:
             self.is_final == other.is_final
         )
 
-    def __str__(self):
-        return f'{self.__class__.__name__}({self.target}, {self.is_last}, {self.is_final})'
-
-    def __repr__(self):
-        return str(self)
+    # def __str__(self):
+    #     return f'{self.__class__.__name__}({self.target}, {self.is_last}, {self.is_final})'
+    #
+    # def __repr__(self):
+    #     return str(self)
 
 
 class EnterModule(ParentTraversal):
@@ -62,14 +62,14 @@ class Visit:
             self.is_final == other.is_final
         )
 
-    def __str__(self):
-        return f'{self.__class__.__name__}({self.target}, {self.is_last}, {self.is_final}, {self.parents})'
+    # def __str__(self):
+    #     return f'{self.__class__.__name__}({self.target}, {self.is_last}, {self.is_final}, {self.parents})'
+    #
+    # def __repr__(self):
+    #     return str(self)
 
-    def __repr__(self):
-        return str(self)
 
-
-class TestTranspiler(Transpiler):
+class TranspilerTester(Transpiler):
 
     TRAVERSAL = []
     include = None
@@ -118,7 +118,7 @@ class TranspileTraverseTests(TestCase):
 
     def test_class_traversal(self):
         from render_static.tests.traverse.module1 import Class1Module1
-        transpiler = TestTranspiler()
+        transpiler = TranspilerTester()
         transpiler.transpile([Class1Module1])
         self.assertEqual(
             transpiler.TRAVERSAL,
@@ -146,7 +146,7 @@ class TranspileTraverseTests(TestCase):
 
     def test_class_import_string_traversal(self):
         from render_static.tests.traverse.module1 import Class1Module1
-        transpiler = TestTranspiler()
+        transpiler = TranspilerTester()
         transpiler.transpile(['render_static.tests.traverse.module1.Class1Module1'])
         self.assertEqual(
             transpiler.TRAVERSAL,
@@ -174,7 +174,7 @@ class TranspileTraverseTests(TestCase):
 
     def test_deduplicate_class(self):
         from render_static.tests.traverse.module1 import Class1Module1
-        transpiler = TestTranspiler()
+        transpiler = TranspilerTester()
         transpiler.transpile([
             Class1Module1,
             'render_static.tests.traverse.module1.Class1Module1'
@@ -210,7 +210,7 @@ class TranspileTraverseTests(TestCase):
             Class1Module1,
             Class2Module1,
         )
-        transpiler = TestTranspiler()
+        transpiler = TranspilerTester()
         transpiler.transpile([module1])
         self.assertEqual(
             transpiler.TRAVERSAL,
@@ -256,7 +256,7 @@ class TranspileTraverseTests(TestCase):
             Class1Module1,
             Class2Module1,
         )
-        transpiler = TestTranspiler()
+        transpiler = TranspilerTester()
         transpiler.transpile(['render_static.tests.traverse.module1'])
         self.assertEqual(
             transpiler.TRAVERSAL,
@@ -302,7 +302,7 @@ class TranspileTraverseTests(TestCase):
             Class1Module1,
             Class2Module1,
         )
-        transpiler = TestTranspiler()
+        transpiler = TranspilerTester()
         transpiler.transpile([
             'render_static.tests.traverse.module1',
             module1
@@ -356,7 +356,7 @@ class TranspileTraverseTests(TestCase):
             Class1Module2,
             Class2Module2,
         )
-        transpiler = TestTranspiler()
+        transpiler = TranspilerTester()
         transpiler.transpile(['render_static.tests.traverse.module1', module2])
         expected = [
                 EnterModule(module1, False, False),
@@ -436,7 +436,7 @@ class TranspileTraverseTests(TestCase):
             Class1Module1,
             Class2Module1,
         )
-        transpiler = TestTranspiler()
+        transpiler = TranspilerTester()
         transpiler.transpile([Class1Module1, Class2Module1])
         expected = [
             EnterClass(Class1Module1, False, False),
@@ -470,7 +470,7 @@ class TranspileTraverseTests(TestCase):
         self.assertEqual(transpiler.TRAVERSAL, expected)
 
     def test_select_enums(self):
-        class EnumTranspiler(TestTranspiler):
+        class EnumTranspiler(TranspilerTester):
 
             def include_target(self, target):
 
@@ -531,7 +531,7 @@ class TranspileTraverseTests(TestCase):
 
     def test_app_transpile_string(self):
         from django.apps import apps
-        transpiler = TestTranspiler()
+        transpiler = TranspilerTester()
         transpiler.transpile([
             'render_static.tests.enum_app'
         ])
@@ -548,7 +548,7 @@ class TranspileTraverseTests(TestCase):
 
     def test_app_transpile_app_config(self):
         from django.apps import apps
-        transpiler = TestTranspiler()
+        transpiler = TranspilerTester()
         transpiler.transpile([
             apps.get_app_config('render_static_tests_enum_app')
         ])
@@ -565,7 +565,7 @@ class TranspileTraverseTests(TestCase):
 
     def test_app_transpile_app_label(self):
         from django.apps import apps
-        transpiler = TestTranspiler()
+        transpiler = TranspilerTester()
         transpiler.transpile([
             'render_static_tests_enum_app'
         ])
@@ -582,7 +582,7 @@ class TranspileTraverseTests(TestCase):
 
     def test_deduplicate_appconfigs(self):
         from django.apps import apps
-        transpiler = TestTranspiler()
+        transpiler = TranspilerTester()
         transpiler.transpile([
             'render_static.tests.enum_app',
             apps.get_app_config('render_static_tests_enum_app'),
@@ -607,9 +607,9 @@ class TranspileTraverseTests(TestCase):
                         return True
             return False
 
-        transpiler = TestTranspiler(include=include_defines)
+        transpiler = TranspilerTester(include=include_defines)
         from render_static.tests.traverse import models
-        transpiler.transpile(["render_static.tests.traverse.models"])
+        transpiler.transpile(["render_static.tests.traverse.models", None])
         self.assertEqual(
             transpiler.TRAVERSAL,
             [

@@ -28,31 +28,25 @@ context. The first argument is the string to split and the second is the separat
     {{ "my_app.mod.Class, my_app.mod.OtherClass"|split:"," }}
 
 
-.. _classes_to_js:
+.. _defines_to_js:
 
-``classes_to_js``
+``defines_to_js``
 ~~~~~~~~~~~~~~~~~
 
-Converts a list of classes and their defines-style attributes into JavaScript structures.
-Defines-style attributes are attributes that:
+Converts a list of classes or modules and their defines-style attributes into
+JavaScript structures. Defines-style attributes are attributes that:
 
     - Are all upper case
     - Contain plain old data including iterables and dictionaries that contain json-serializbale
       types.
 
-The filter accepts two arguments the first is a list of class types or string import paths to
-classes and the second is the string to use for indentation. The indentation string defaults to
-'\t':
+The filter accepts two arguments the first is a list of class types, module types or string
+import paths to classes and the second is the string to use for indentation. The indentation
+string defaults to '\t':
 
 .. code-block:: js+django
 
-    var defines = {
-        {{ class_list|classes_to_js:"\t" }}
-    };
-
-.. note::
-    Note that the filter does not produce valid JavaScript on its own. It must be embedded in an
-    object as above.
+    {% defines_to_js defines=class_list indent="\t" %}
 
 For instance if the class_list context variable contained the following:
 
@@ -99,21 +93,6 @@ The generated source would look like:
 .. note::
     The filter will also walk inheritance hierarchy and pull out any defines-style attributes in
     parent classes and add them to the JavaScript.
-
-
-.. _modules_to_js:
-
-``modules_to_js``
-~~~~~~~~~~~~~~~~~
-
-This filter pulls out all the classes from a list of modules and feeds them through
-``classes_to_js``. It also takes one additional argument, the `indent` string to use:
-
-.. code-block:: htmldjango
-
-    {{ module_list|modules_to_js:"\t" }}
-
-The module_list may be a list of module types or string import paths to modules.
 
 
 .. _tags:

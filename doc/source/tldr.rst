@@ -48,7 +48,7 @@ And your defines.js template might look like this:
 .. code-block:: js+django
 
     var defines = {
-        {{ "my_app.defines.Defines"|split|classes_to_js }}
+        {{ "my_app.defines.Defines"|split|defines_to_js }}
     };
 
 

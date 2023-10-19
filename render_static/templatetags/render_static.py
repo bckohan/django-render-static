@@ -66,11 +66,7 @@ def transpile(
         # probably untyped
         transpiler = import_string(transpiler)
 
-    if (
-        isinstance(targets, type) or
-        isinstance(targets, str) or
-        not isinstance(targets, Collection)
-    ):
+    if isinstance(targets, (type, str)) or not isinstance(targets, Collection):
         targets = [targets]
 
     return SafeString(
@@ -253,6 +249,18 @@ def defines_to_js(
         depth: int = 0,
         **kwargs
 ) -> str:
+    """
+    Transpile defines from the given modules or classes into javascript.
+
+    :param defines: A module, class or import string to either.
+    :param transpiler: The transpiler class or import string for the transpiler
+        class that will perform the conversion,
+        default: DefaultDefineTranspiler
+    :param indent: The indent string to use
+    :param depth: The depth of the initial indent
+    :param kwargs: Any other kwargs to pass to the transpiler.
+    :return: SafeString of rendered transpiled code.
+    """
     return transpile(
         targets=defines,
         transpiler=transpiler,

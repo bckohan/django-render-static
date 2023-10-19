@@ -435,6 +435,9 @@ class MultipleDestinationsTestCase(BaseTestCase):
                     '\nconsole.log(JSON.stringify(defines));',
                 'defines_error.js':
                     '{{ defines_to_js(classes) }}'
+                    '\nconsole.log(JSON.stringify(defines));',
+                'empty_defines.js':
+                    '{{ defines_to_js(classes) }}'
                     '\nconsole.log(JSON.stringify(defines));'
             })
         },
@@ -459,6 +462,12 @@ class MultipleDestinationsTestCase(BaseTestCase):
             'dest': GLOBAL_STATIC_DIR / 'defines_error.js',
             'context': {
                 'classes': [0, {}]
+            }
+        },
+        'empty_defines.js': {
+            'dest': GLOBAL_STATIC_DIR / 'empty_defines.js',
+            'context': {
+                'classes': ['render_static.tests.empty_defines']
             }
         }
     }

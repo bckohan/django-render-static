@@ -8,18 +8,7 @@ configuration files.
 import itertools
 import re
 from abc import abstractmethod
-from types import ModuleType
-from typing import (
-    Any,
-    Dict,
-    Generator,
-    Iterable,
-    List,
-    Optional,
-    Tuple,
-    Type,
-    Union,
-)
+from typing import Any, Dict, Generator, Iterable, List, Optional, Tuple, Union
 
 from django import VERSION as DJANGO_VERSION
 from django.conf import settings
@@ -203,6 +192,10 @@ def _build_branch(  # pylint: disable=R0913
                     else None
                 )
             )
+        else:
+            raise NotImplementedError(
+                f'Unknown pattern type: {type(pattern)}'
+            )  # pragma: no cover
 
     return branch
 
@@ -312,14 +305,18 @@ class BaseURLTranspiler(Transpiler):
         self,
         target: ResolvedTranspilerTarget,
         is_last: bool,
-        final: bool
-    ) -> Generator[str, None, None]:
+        is_final: bool
+    ) -> Generator[Optional[str], None, None]:
         """
+        Deriving url transpilers must implement this method.
 
-        :param target:
-        :param is_last:
-        :param final:
-        :return:
+        :param target: A transpiler target that has a 'urlpatterns' attribute
+            containing an Iterable of URLPatterns.
+        :param is_last: True if this is the last urlpattern list to transpile
+            at this level.
+        :param is_final: True if this is the last urlpattern that will be
+            visited at all.
+        :yield: JavaScript lines
         """
 
 
@@ -364,7 +361,10 @@ class URLTreeVisitor(BaseURLTranspiler):
         super().__init__(**kwargs)
 
     @abstractmethod
-    def enter_namespace(self, namespace) -> Generator[str, None, None]:
+    def enter_namespace(
+            self,
+            namespace
+    ) -> Generator[Optional[str], None, None]:
         """
         Walking down the url tree, the visitor has entered the given namespace.
         Deriving visitors must implement.
@@ -375,7 +375,10 @@ class URLTreeVisitor(BaseURLTranspiler):
         """
 
     @abstractmethod
-    def exit_namespace(self, namespace) -> Generator[str, None, None]:
+    def exit_namespace(
+            self,
+            namespace
+    ) -> Generator[Optional[str], None, None]:
         """
         Walking down the url tree, the visitor has exited the given namespace.
         Deriving visitors must implement.
@@ -391,7 +394,7 @@ class URLTreeVisitor(BaseURLTranspiler):
             qname: str,
             app_name: Optional[str],
             route: List[RoutePattern]
-    ) -> Generator[str, None, None]:
+    ) -> Generator[Optional[str], None, None]:
         """
         Visit a pattern. Translates the pattern into a path component string
         which may contain substitution objects. This function will call
@@ -431,7 +434,7 @@ class URLTreeVisitor(BaseURLTranspiler):
                         'app_name': app_name
                     } for var in pattern.regex.groupindex.keys()
                 }
-            raise URLGenerationFailed(
+            raise URLGenerationFailed(  # pragma: no cover
                 f'Unrecognized pattern type: {type(pattern)}'
             )
 
@@ -614,7 +617,7 @@ class URLTreeVisitor(BaseURLTranspiler):
         )
 
     @abstractmethod
-    def init_visit(self) -> Generator[str, None, None]:
+    def init_visit(self) -> Generator[Optional[str], None, None]:
         """
         Called just before visit() is called on a target urlpattern collection.
 
@@ -622,7 +625,7 @@ class URLTreeVisitor(BaseURLTranspiler):
         """
 
     @abstractmethod
-    def close_visit(self) -> Generator[str, None, None]:
+    def close_visit(self) -> Generator[Optional[str], None, None]:
         """
         Called just after visit() is called on a target urlpattern collection.
 
@@ -630,7 +633,10 @@ class URLTreeVisitor(BaseURLTranspiler):
         """
 
     @abstractmethod
-    def enter_path_group(self, qname: str) -> Generator[str, None, None]:
+    def enter_path_group(
+            self,
+            qname: str
+    ) -> Generator[Optional[str], None, None]:
         """
         Visit one or more path(s) all referred to by the same fully qualified
         name. Deriving classes must implement.
@@ -640,7 +646,10 @@ class URLTreeVisitor(BaseURLTranspiler):
         """
 
     @abstractmethod
-    def exit_path_group(self, qname: str) -> Generator[str, None, None]:
+    def exit_path_group(
+            self,
+            qname: str
+    ) -> Generator[Optional[str], None, None]:
         """
         End visitation to one or more path(s) all referred to by the same fully
         qualified name. Deriving classes must implement.
@@ -655,7 +664,7 @@ class URLTreeVisitor(BaseURLTranspiler):
             path: List[Union[Substitute, str]],
             kwargs: List[str],
             defaults: Optional[Dict[str, Any]] = None
-    ) -> Generator[str, None, None]:
+    ) -> Generator[Optional[str], None, None]:
         """
         Visit a singular realization of a path into components. This is called
         by visit_pattern and deriving classes must implement.
@@ -676,7 +685,7 @@ class URLTreeVisitor(BaseURLTranspiler):
         qname: str,
         app_name: Optional[str] = None,
         route: Optional[List[RoutePattern]] = None
-    ) -> Generator[str, None, None]:
+    ) -> Generator[Optional[str], None, None]:
         """
         Convert a list of URLPatterns all corresponding to the same qualified
         name to javascript.
@@ -706,7 +715,7 @@ class URLTreeVisitor(BaseURLTranspiler):
         namespace: Optional[str] = None,
         parent_qname: str = '',
         route: Optional[List[RoutePattern]] = None
-    ) -> Generator[str, None, None]:
+    ) -> Generator[Optional[str], None, None]:
         """
         Walk the tree, writing javascript for URLs indexed by their nested
         namespaces.
@@ -748,8 +757,8 @@ class URLTreeVisitor(BaseURLTranspiler):
         self,
         target: ResolvedTranspilerTarget,
         is_last: bool,
-        final: bool
-    ) -> Generator[str, None, None]:
+        is_final: bool
+    ) -> Generator[Optional[str], None, None]:
         """
         Visit the nodes of the URL tree, yielding JavaScript where needed.
 
@@ -757,8 +766,8 @@ class URLTreeVisitor(BaseURLTranspiler):
             containing an Iterable of URLPatterns.
         :param is_last: True if this is the last urlpattern list to transpile
             at this level.
-        :param final: True if this is the last urlpattern that will be visited
-            at all.
+        :param is_final: True if this is the last urlpattern that will be
+            visited at all.
         :yield: JavaScript lines
         """
         yield from self.init_visit()
@@ -795,9 +804,8 @@ class SimpleURLWriter(URLTreeVisitor):
     path namespaces and names and the values are functions that accept
     positional and named arguments and return paths.
 
-    This is the default visitor for the `url_to_js` tag, but its probably not
-    the one you want. It accepts several additional parameters on top of the
-    base parameters. To use this visitor you may call it like so:
+    This visitor accepts several additional parameters on top of the base
+    parameters. To use this visitor you may call it like so:
 
     .. code-block:: js+django
 
@@ -833,23 +841,26 @@ class SimpleURLWriter(URLTreeVisitor):
             self.raise_on_not_found_
         )
 
-    def init_visit(self) -> Generator[str, None, None]:
+    def init_visit(self) -> Generator[Optional[str], None, None]:
         """
         No header required.
 
         :yield: nothing
         """
-        yield
+        yield None
 
-    def close_visit(self) -> Generator[str, None, None]:
+    def close_visit(self) -> Generator[Optional[str], None, None]:
         """
         No header required.
 
         :yield: nothing
         """
-        yield
+        yield None
 
-    def enter_namespace(self, namespace: str) -> Generator[str, None, None]:
+    def enter_namespace(
+            self,
+            namespace: str
+    ) -> Generator[Optional[str], None, None]:
         """
         Start the namespace object.
 
@@ -860,7 +871,10 @@ class SimpleURLWriter(URLTreeVisitor):
         yield f'"{namespace}": {{'
         self.indent()
 
-    def exit_namespace(self, namespace: str) -> Generator[str, None, None]:
+    def exit_namespace(
+            self,
+            namespace: str
+    ) -> Generator[Optional[str], None, None]:
         """
         End the namespace object.
 
@@ -871,7 +885,10 @@ class SimpleURLWriter(URLTreeVisitor):
         self.outdent()
         yield '},'
 
-    def enter_path_group(self, qname: str) -> Generator[str, None, None]:
+    def enter_path_group(
+            self,
+            qname: str
+    ) -> Generator[Optional[str], None, None]:
         """
         Start of the reversal function for a collection of paths of the given
         qname.
@@ -890,7 +907,10 @@ class SimpleURLWriter(URLTreeVisitor):
             yield 'const kwargs = ((options.kwargs || null) || options) || {};'
             yield 'args = ((options.args || null) || args) || [];'
 
-    def exit_path_group(self, qname: str) -> Generator[str, None, None]:
+    def exit_path_group(
+            self,
+            qname: str
+    ) -> Generator[Optional[str], None, None]:
         """
         Close out the function for the given qname. If we're configured to
         throw an exception if no path reversal was found, we do that here
@@ -910,7 +930,7 @@ class SimpleURLWriter(URLTreeVisitor):
             path: List[Union[Substitute, str]],
             kwargs: List[str],
             defaults: Optional[Dict[str, Any]] = None
-    ) -> Generator[str, None, None]:
+    ) -> Generator[Optional[str], None, None]:
         """
         Convert a list of path components into JavaScript reverse function. The
         JS must determine if the passed named or positional arguments match
@@ -1017,7 +1037,7 @@ class ClassURLWriter(URLTreeVisitor):
 
     def init_visit(  # pylint: disable=R0915
             self
-    ) -> Generator[str, None, None]:
+    ) -> Generator[Optional[str], None, None]:
         """
         Start the tree visitation - this is where we write out all the common
         class code.
@@ -1301,7 +1321,7 @@ class ClassURLWriter(URLTreeVisitor):
             yield ''
             yield 'urls = {'
 
-    def close_visit(self) -> Generator[str, None, None]:
+    def close_visit(self) -> Generator[Optional[str], None, None]:
         """
         Finish tree visitation/close out the class code.
 
@@ -1316,7 +1336,10 @@ class ClassURLWriter(URLTreeVisitor):
             else:
                 yield f'export {{ {self.class_name_} }};'
 
-    def enter_namespace(self, namespace: str) -> Generator[str, None, None]:
+    def enter_namespace(
+            self,
+            namespace: str
+    ) -> Generator[Optional[str], None, None]:
         """
         Start the namespace object.
 
@@ -1327,7 +1350,10 @@ class ClassURLWriter(URLTreeVisitor):
         yield f'"{namespace}": {{'
         self.indent()
 
-    def exit_namespace(self, namespace: str) -> Generator[str, None, None]:
+    def exit_namespace(
+            self,
+            namespace: str
+    ) -> Generator[Optional[str], None, None]:
         """
         End the namespace object.
 
@@ -1338,7 +1364,10 @@ class ClassURLWriter(URLTreeVisitor):
         self.outdent()
         yield '},'
 
-    def enter_path_group(self, qname: str) -> Generator[str, None, None]:
+    def enter_path_group(
+            self,
+            qname: str
+    ) -> Generator[Optional[str], None, None]:
         """
         Start of the reversal function for a collection of paths of the given
         qname. If in ES5 mode, sets default args.
@@ -1355,7 +1384,10 @@ class ClassURLWriter(URLTreeVisitor):
             yield f'"{qname.split(":")[-1]}": (kwargs={{}}, args=[]) => {{'
             self.indent()
 
-    def exit_path_group(self, qname: str) -> Generator[str, None, None]:
+    def exit_path_group(
+            self,
+            qname: str
+    ) -> Generator[Optional[str], None, None]:
         """
         Close out the function for the given qname.
 
@@ -1370,7 +1402,7 @@ class ClassURLWriter(URLTreeVisitor):
             path: List[Union[Substitute, str]],
             kwargs: List[str],
             defaults: Optional[Dict[str, Any]] = None
-    ) -> Generator[str, None, None]:
+    ) -> Generator[Optional[str], None, None]:
         """
         Convert a list of path components into JavaScript reverse function. The
         JS must determine if the passed named or positional arguments match

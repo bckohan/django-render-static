@@ -119,10 +119,10 @@ class TestReadmeEnum(BaseTestCase):
     # def tearDown(self):
     #     pass
 
-    to_remove = [
-        *BaseTestCase.to_remove,
-        EXAMPLE_STATIC_DIR
-    ]
+    to_remove = []
+    #     *BaseTestCase.to_remove,
+    #     EXAMPLE_STATIC_DIR
+    # ]
 
     def test_readme_enums(self):
         call_command('renderstatic', 'examples/enums.js')
@@ -174,11 +174,11 @@ class TestReadmeEnum(BaseTestCase):
 )
 class TestReadmeURLs(URLJavascriptMixin, BaseTestCase):
 
-    to_remove = [
-        *BaseTestCase.to_remove,
-        EXAMPLE_STATIC_DIR,
-        TRANSPILED_DIR
-    ]
+    to_remove = []
+    #     *BaseTestCase.to_remove,
+    #     EXAMPLE_STATIC_DIR,
+    #     TRANSPILED_DIR
+    # ]
 
     # def tearDown(self):
     #     pass

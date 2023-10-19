@@ -14,7 +14,7 @@ side code maintains DRYness.
 `django-render-static` includes builtins for:
     - Replicating Django's `reverse` function in JavaScript (:ref:`urls_to_js`)
     - Auto-translating Python class and module structures into JavaScript
-      (:ref:`modules_to_js`, :ref:`classes_to_js`)
+      (:ref:`defines_to_js`)
 
 You can report bugs and discuss features on the
 `issues page <https://github.com/bckohan/django-render-static/issues>`_.
@@ -34,3 +34,5 @@ encouraged! Especially additional template tags and filters!
    commands
    reference
    changelog
+   migration
+

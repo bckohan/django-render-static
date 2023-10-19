@@ -43,7 +43,7 @@ side code keeps the stack bone DRY.
     - Django's `reverse` function (`urls_to_js`)
     - PEP 435 style Python enumerations (`enums_to_js`)
     - Pain data structures in Python classes and modules
-      (`modules_to_js`, `classes_to_js`)
+      (`defines_to_js`)
 
 You can report bugs and discuss features on the
 `issues page <https://github.com/bckohan/django-render-static/issues>`_.
@@ -143,7 +143,7 @@ And your defines.js template might look like this:
 .. code:: js+django
 
     const defines = {
-        {% modules_to_js modules="examples.models" %}
+        {% defines_to_js modules="examples.models" %}
     };
 
 

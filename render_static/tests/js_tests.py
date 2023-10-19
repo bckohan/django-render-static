@@ -1,5 +1,6 @@
 import inspect
 import json
+import os
 import re
 import shutil
 import subprocess
@@ -127,15 +128,26 @@ class StructureDiff:
         """
         members = {}
         js_dict = self.get_js_structure(js_file)
-        for cls in py_classes:
+
+        def get_members(cls):
+            lcls = {}
             if isinstance(cls, str):
                 cls = import_string(cls)
             for mcls in reversed(cls.__mro__):
                 new_mems = {
                     n: getattr(mcls, n) for n in dir(mcls) if n.isupper()
                 }
-                if len(new_mems) > 0:
-                    members.setdefault(cls.__name__, {}).update(new_mems)
+                if new_mems:
+                    lcls.setdefault(cls.__name__, {}).update(new_mems)
+            for nested in cls.__dict__.values():
+                if inspect.isclass(nested):
+                    lcls.setdefault(cls.__name__, {}).update(
+                        get_members(nested)
+                    )
+            return lcls
+
+        for cls in py_classes:
+            members.update(get_members(cls))
 
         from pprint import pprint
         pprint(members)
@@ -161,6 +173,9 @@ class StructureDiff:
                         '{% defines_to_js defines=modules %}'
                         '\nconsole.log(JSON.stringify(defines));',
                     'defines_error.js':
+                        '{% defines_to_js defines=classes %}'
+                        '\nconsole.log(JSON.stringify(defines));',
+                    'empty_defines.js':
                         '{% defines_to_js defines=classes %}'
                         '\nconsole.log(JSON.stringify(defines));'
                 })
@@ -188,6 +203,12 @@ class StructureDiff:
             'dest': GLOBAL_STATIC_DIR / 'defines_error.js',
             'context': {
                 'classes': [0, {}]
+            }
+        },
+        'empty_defines.js': {
+            'dest': GLOBAL_STATIC_DIR / 'empty_defines.js',
+            'context': {
+                'classes': ['render_static.tests.empty_defines']
             }
         }
     }
@@ -258,6 +279,20 @@ class DefinesToJavascriptTest(StructureDiff, BaseTestCase):
         with open(GLOBAL_STATIC_DIR / 'defines2.js', 'r') as jf:
             jf.readline()
             self.assertFalse(jf.readline().startswith(' '))
+
+    def test_empty_module_to_js(self):
+        # import ipdb
+        # ipdb.set_trace()
+        call_command('renderstatic', 'empty_defines.js')
+        self.assertEqual(
+            self.diff_modules(
+                js_file=GLOBAL_STATIC_DIR / 'empty_defines.js',
+                py_modules=settings.STATIC_TEMPLATES[
+                    'templates'
+                ]['empty_defines.js']['context']['classes']
+            ),
+            {}
+        )
 
     @override_settings(STATIC_TEMPLATES={
         'ENGINES': [{
@@ -368,12 +403,14 @@ class URLJavascriptMixin:
         class_mode = None
         legacy_args = False  # generate code that uses separate arguments to js reverse calls
         catch = True
+        module = False
 
-        def __init__(self, class_mode=None, catch=True, legacy_args=False, default_ns=None, **kwargs):
+        def __init__(self, class_mode=None, catch=True, legacy_args=False, default_ns=None, module=False, **kwargs):
             self.class_mode = class_mode
             self.catch = catch
             self.legacy_args = legacy_args
             self.default_ns = default_ns
+            self.module = module
             super().__init__(**kwargs)
 
         def generate(self, qname, kwargs=None, args=None, query=None):
@@ -437,13 +474,20 @@ class URLJavascriptMixin:
                 legacy_args=self.legacy_args,
                 default_ns=default_ns
             )
-        tmp_file_pth = GLOBAL_STATIC_DIR / f'get_{url_path.stem}.js'
+        tmp_file_pth = GLOBAL_STATIC_DIR / f'get_{url_path.stem}.{"m" if js_generator.module else ""}js'
 
         makedirs(GLOBAL_STATIC_DIR, exist_ok=True)
-        shutil.copyfile(url_path, tmp_file_pth)
-        with open(tmp_file_pth, 'a+') as tmp_js:
-            for line in js_generator.generate(qname, kwargs, args, query):
-                tmp_js.write(f'{line}')
+        if os.path.exists(tmp_file_pth):
+            os.remove(tmp_file_pth)
+
+        with open(tmp_file_pth, 'wt') as tmp_js:
+            if not js_generator.module:
+                with (open(url_path, 'rt')) as url_js:
+                    tmp_js.write(url_js.read())
+            if js_generator.module:
+                tmp_js.write(f'import {{ {js_generator.class_mode} }} from "{url_path}";\n')
+            js_code = js_generator.generate(qname, kwargs, args, query)
+            tmp_js.write(js_code)
 
         return run_js_file(tmp_file_pth)
 
@@ -455,7 +499,8 @@ class URLJavascriptMixin:
             query=None,
             object_hook=lambda dct: dct,
             args_hook=lambda args: args,
-            url_path=GLOBAL_STATIC_DIR / 'urls.js'
+            url_path=GLOBAL_STATIC_DIR / 'urls.js',
+            js_generator=None
     ):
         if kwargs is None:
             kwargs = {}
@@ -464,7 +509,7 @@ class URLJavascriptMixin:
         if query is None or not self.class_mode:
             query = {}
 
-        tst_pth = self.get_url_from_js(qname, kwargs, args, query, url_path=url_path)
+        tst_pth = self.get_url_from_js(qname, kwargs, args, query, js_generator=js_generator, url_path=url_path)
         resp = self.client.get(tst_pth)
 
         resp = resp.json(object_hook=object_hook)
@@ -1441,9 +1486,8 @@ class CornerCaseTest(URLJavascriptMixin, BaseTestCase):
         call_command('renderstatic', 'urls.js')
 
         with open(GLOBAL_STATIC_DIR / 'urls.js', 'r') as urls:
-            if 'overruled' not in urls.read():
-                #self.compare('nested_re_path_unnamed', args=['page-22'])
-                self.compare('nested_re_path_named', kwargs={'page_number': '22'})
+            #self.compare('nested_re_path_unnamed', args=['page-22'])
+            self.compare('nested_re_path_named', kwargs={'page_number': '22'})
 
         self.assertTrue(True)
 
@@ -1800,6 +1844,13 @@ class URLSToJavascriptParametersTest(URLJavascriptMixin, BaseTestCase):
                                     'indent="" '
                                     'include=include '
                                     '%}};\n',
+                        'urls3_export.mjs': '{% urls_to_js '
+                                   'es5=True '
+                                   'raise_on_not_found=False '
+                                   'indent="\t" '
+                                   'include=include '
+                                   'export_class=True '
+                                   '%}\n',
                     })
                 ],
                 'builtins': ['render_static.templatetags.render_static']
@@ -1809,7 +1860,8 @@ class URLSToJavascriptParametersTest(URLJavascriptMixin, BaseTestCase):
             'urls.js': {'context': {'include': ['path_tst', 're_path_unnamed']}},
             'urls2.js': {'context': {'include': ['path_tst', 're_path_unnamed']}},
             'urls3.js': {'context': {'include': ['path_tst', 're_path_unnamed']}},
-            'urls4.js': {'context': {'include': ['path_tst', 're_path_unnamed']}}
+            'urls4.js': {'context': {'include': ['path_tst', 're_path_unnamed']}},
+            'urls3_export.mjs': {'context': {'include': ['path_tst', 're_path_unnamed']}}
         }
     })
     def test_class_parameters_es5(self):
@@ -1880,6 +1932,25 @@ class URLSToJavascriptParametersTest(URLJavascriptMixin, BaseTestCase):
         self.compare('path_tst', {'arg1': 1}, url_path=up4)
         self.compare('path_tst', {'arg1': 12, 'arg2': 'xo'}, url_path=up4)
 
+        up3_exprt = GLOBAL_STATIC_DIR / 'urls3_export.mjs'
+        generator = URLJavascriptMixin.TestJSGenerator(
+            class_mode=ClassURLWriter.class_name_,
+            catch=False
+        )
+        js_ret3_exprt = self.get_url_from_js(
+            'path_tst',
+            kwargs={'arg1': 12, 'arg2': 'xo'},
+            url_path=up3_exprt,
+            js_generator=generator
+        )
+        self.assertFalse('TypeError' in js_ret3_exprt)
+        generator.rendered_ = ''
+        self.compare('path_tst', js_generator=generator, url_path=up3_exprt)
+        generator.rendered_ = ''
+        self.compare('path_tst', {'arg1': 1}, js_generator=generator, url_path=up3_exprt)
+        generator.rendered_ = ''
+        self.compare('path_tst', {'arg1': 12, 'arg2': 'xo'}, js_generator=generator, url_path=up3_exprt)
+
     @override_settings(STATIC_TEMPLATES={
         'ENGINES': [{
             'BACKEND': 'render_static.backends.StaticDjangoTemplates',
@@ -1908,6 +1979,12 @@ class URLSToJavascriptParametersTest(URLJavascriptMixin, BaseTestCase):
                                     'indent="" '
                                     'include=include '
                                     '%}};\n',
+                        'urls3_export.mjs': '{% urls_to_js '
+                                           'raise_on_not_found=False '
+                                           'indent="\t" '
+                                           'include=include '
+                                           'export_class=True '
+                                           '%}\n',
                     })
                 ],
                 'builtins': ['render_static.templatetags.render_static']
@@ -1917,7 +1994,8 @@ class URLSToJavascriptParametersTest(URLJavascriptMixin, BaseTestCase):
             'urls.js': {'context': {'include': ['path_tst', 're_path_unnamed']}},
             'urls2.js': {'context': {'include': ['path_tst', 're_path_unnamed']}},
             'urls3.js': {'context': {'include': ['path_tst', 're_path_unnamed']}},
-            'urls4.js': {'context': {'include': ['path_tst', 're_path_unnamed']}}
+            'urls4.js': {'context': {'include': ['path_tst', 're_path_unnamed']}},
+            'urls3_export.mjs': {'context': {'include': ['path_tst', 're_path_unnamed']}}
         }
     })
     def test_class_parameters_es6(self):
@@ -1987,6 +2065,26 @@ class URLSToJavascriptParametersTest(URLJavascriptMixin, BaseTestCase):
         self.compare('path_tst', url_path=up4)
         self.compare('path_tst', {'arg1': 1}, url_path=up4)
         self.compare('path_tst', {'arg1': 12, 'arg2': 'xo'}, url_path=up4)
+
+        up3_exprt = GLOBAL_STATIC_DIR / 'urls3_export.mjs'
+        generator = URLJavascriptMixin.TestJSGenerator(
+            class_mode=ClassURLWriter.class_name_,
+            catch=False,
+            module=True
+        )
+        js_ret3_exprt = self.get_url_from_js(
+            'path_tst',
+            kwargs={'arg1': 12, 'arg2': 'xo'},
+            url_path=up3_exprt,
+            js_generator=generator
+        )
+        self.assertFalse('TypeError' in js_ret3_exprt)
+        generator.rendered_ = ''
+        self.compare('path_tst', js_generator=generator, url_path=up3_exprt)
+        generator.rendered_ = ''
+        self.compare('path_tst', {'arg1': 1}, js_generator=generator, url_path=up3_exprt)
+        generator.rendered_ = ''
+        self.compare('path_tst', {'arg1': 12, 'arg2': 'xo'}, js_generator=generator, url_path=up3_exprt)
 
     # uncomment to not delete generated js
     # def tearDown(self):

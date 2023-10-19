@@ -5,7 +5,6 @@ import sys
 from abc import abstractmethod
 from copy import copy
 from enum import Enum, Flag, IntEnum, IntFlag
-from types import ModuleType
 from typing import (
     Any,
     Collection,
@@ -19,7 +18,10 @@ from typing import (
 )
 
 from django.db.models import IntegerChoices, TextChoices
-from render_static.transpilers import Transpiler, TranspilerTarget
+from render_static.transpilers import (
+    Transpiler,
+    TranspilerTarget,
+)
 
 try:
     from django.utils.decorators import classproperty  # pylint: disable=C0412
@@ -31,11 +33,6 @@ IGNORED_ENUMS = {Enum, IntEnum, IntFlag, Flag, TextChoices, IntegerChoices}
 if sys.version_info >= (3, 11):  # pragma: no cover
     from enum import EnumCheck, FlagBoundary, ReprEnum, StrEnum
     IGNORED_ENUMS.update({FlagBoundary, ReprEnum, StrEnum, EnumCheck})
-    try:
-        from django_enum.choices import IntegerChoices, TextChoices
-        IGNORED_ENUMS.update({TextChoices, IntegerChoices})
-    except ImportError:
-        pass
 
 
 class EnumTranspiler(Transpiler):
@@ -54,16 +51,32 @@ class EnumTranspiler(Transpiler):
         :return: True if the target can be transpiled
         """
         if isinstance(target, type) and issubclass(target, Enum):
-            try:
-                return (
-                    target not in IGNORED_ENUMS and
-                    target.__module__ != 'enum' and
-                    # make sure this enum type actually has values
-                    len([en for en in target]) > 0
-                )
-            except TypeError:
-                pass
+            return (
+                target not in IGNORED_ENUMS and
+                target.__module__ != 'enum' and
+                # make sure this enum type actually has values
+                list(target)
+            )
         return False
+
+    @abstractmethod
+    def visit(
+        self,
+        enum: Type[Enum],  # type: ignore
+                           # pylint: disable=arguments-renamed
+        is_last: bool,
+        is_final: bool
+    ) -> Generator[Optional[str], None, None]:
+        """
+        Visit and transpile the given Enum class. Deriving classes must
+        implement this function.
+
+        :param enum: The enum class being transpiled
+        :param is_last: True if this is the last enum to be transpiled at this
+            level.
+        :param is_final: True if this is the last enum to be transpiled at all.
+        :yield: transpiled javascript lines
+        """
 
 
 class EnumClassWriter(EnumTranspiler):  # pylint: disable=R0902
@@ -162,7 +175,7 @@ class EnumClassWriter(EnumTranspiler):  # pylint: disable=R0902
         builtins = copy(self.builtins_)
         if self.include_properties_:
             if (
-                hasattr([en for en in enum][0], 'label') and
+                hasattr(list(enum)[0], 'label') and
                 'label' not in builtins and
                 'label' not in self.exclude_properties_
             ):
@@ -327,17 +340,18 @@ class EnumClassWriter(EnumTranspiler):  # pylint: disable=R0902
 
     def visit(
             self,
-            enum: Type[Enum],
+            enum: Type[Enum],  # type: ignore
+                               # pylint: disable=arguments-renamed
             is_last: bool,
-            final: bool
-    ) -> Generator[str, None, None]:
+            is_final: bool  # pylint: disable=unused-argument
+    ) -> Generator[Optional[str], None, None]:
         """
         Transpile the enum in sections.
 
         :param enum: The enum class being transpiled
         :param is_last: True if this is the last enum to be transpiled at this
             level.
-        :param final: True if this is the last enum to be transpiled at all.
+        :param is_final: True if this is the last enum to be transpiled at all.
         :yield: transpiled javascript lines
         """
         self.class_name = enum
@@ -366,7 +380,7 @@ class EnumClassWriter(EnumTranspiler):  # pylint: disable=R0902
     def declaration(  # pylint: disable=W0613
             self,
             enum: Type[Enum]
-    ) -> Generator[str, None, None]:
+    ) -> Generator[Optional[str], None, None]:
         """
         Transpile the class declaration.
 
@@ -375,7 +389,10 @@ class EnumClassWriter(EnumTranspiler):  # pylint: disable=R0902
         """
         yield f'{"export " if self.export_ else ""}class {self.class_name} {{'
 
-    def enumerations(self, enum: Type[Enum]) -> Generator[str, None, None]:
+    def enumerations(
+            self,
+            enum: Type[Enum]
+    ) -> Generator[Optional[str], None, None]:
         """
         Transpile the enumeration value instances as static member on the class
 
@@ -396,7 +413,7 @@ class EnumClassWriter(EnumTranspiler):  # pylint: disable=R0902
     def static_properties(
             self,
             enum: Type[Enum]
-    ) -> Generator[str, None, None]:
+    ) -> Generator[Optional[str], None, None]:
         """
         Transpile any classproperties as static members on the class.
 
@@ -409,7 +426,7 @@ class EnumClassWriter(EnumTranspiler):  # pylint: disable=R0902
     def constructor(  # pylint: disable=W0613
             self,
             enum: Type[Enum]
-    ) -> Generator[str, None, None]:
+    ) -> Generator[Optional[str], None, None]:
         """
         Transpile the constructor for the enum instances.
 
@@ -432,7 +449,7 @@ class EnumClassWriter(EnumTranspiler):  # pylint: disable=R0902
     def to_string(  # pylint: disable=W0613
             self,
             enum: Type[Enum]
-    ) -> Generator[str, None, None]:
+    ) -> Generator[Optional[str], None, None]:
         """
         Transpile the toString() method that converts enum instances to
         strings.
@@ -446,7 +463,7 @@ class EnumClassWriter(EnumTranspiler):  # pylint: disable=R0902
         self.outdent()
         yield '}'
 
-    def getter(self, enum: Type[Enum]) -> Generator[str, None, None]:
+    def getter(self, enum: Type[Enum]) -> Generator[Optional[str], None, None]:
         """
         Transpile the get() method that converts values and properties into
         instances of the Enum type.
@@ -472,7 +489,7 @@ class EnumClassWriter(EnumTranspiler):  # pylint: disable=R0902
             self,
             enum: Type[Enum],
             prop: str
-    ) -> Generator[str, None, None]:
+    ) -> Generator[Optional[str], None, None]:
         """
         Transpile the switch statement to map values of the given property to
         enumeration instance values.
@@ -491,7 +508,10 @@ class EnumClassWriter(EnumTranspiler):  # pylint: disable=R0902
         self.outdent()
         yield '}'
 
-    def iterator(self, enum: Type[Enum]) -> Generator[str, None, None]:
+    def iterator(
+            self,
+            enum: Type[Enum]
+    ) -> Generator[Optional[str], None, None]:
         """
         Transpile the iterator for iterating through enum value instances.
 

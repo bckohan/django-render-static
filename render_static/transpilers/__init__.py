@@ -16,6 +16,7 @@ from typing import (
     Hashable,
     List,
     Optional,
+    Set,
     Type,
     Union,
 )
@@ -91,7 +92,11 @@ class _TargetTreeNode:
     children: List['_TargetTreeNode']
     transpile = False
 
-    def __init__(self, target=None, transpile=False):
+    def __init__(
+        self,
+        target: Optional[TranspilerTarget] = None,
+        transpile: bool = False
+    ):
         self.target = target
         self.children = []
         self.transpile = transpile
@@ -105,23 +110,20 @@ class _TargetTreeNode:
         if child.transpile or child.children:
             self.children.append(child)
 
-    def __repr__(self):
-        def add_branch(branch, level=0):
-            rstr = ''
-            level += 1
-            for child in branch.children:
-                rstr += f'{"  "*level}' \
-                        f'{"[transpile] " if child.transpile else ""}' \
-                        f'{child.target}\n'
-                rstr += add_branch(child, level)
-            level -= 1
-            return rstr
-        return f'{self.target}\n' + add_branch(self)
-
 
 class CodeWriter:
+    """
+    A base class that provides basic code writing functionality. This class
+    implements a simple indentation/newline scheme that deriving classes may
+    use.
 
-    rendered_: str = ''
+    :param level: The level to start indentation at
+    :param indent: The indent string to use
+    :param prefix: A prefix string to add to each line
+    :param kwargs: Any additional configuration parameters
+    """
+
+    rendered_: str
     level_: int = 0
     prefix_: str = ''
     indent_: str = '\t'
@@ -132,14 +134,15 @@ class CodeWriter:
         level: int = level_,
         indent: Optional[str] = indent_,
         prefix: str = prefix_,
-        **kwargs
+        **kwargs  # pylint: disable=unused-argument
     ) -> None:
+        self.rendered_ = ''
         self.level_ = level
         self.indent_ = indent or ''
         self.prefix_ = prefix or ''
         self.nl_ = self.nl_ if self.indent_ else ''  # pylint: disable=C0103
 
-    def write_line(self, line: str) -> None:
+    def write_line(self, line: Optional[str]) -> None:
         """
         Writes a line to the rendered code file, respecting
         indentation/newline configuration for this generator.
@@ -195,6 +198,7 @@ class Transpiler(CodeWriter, metaclass=ABCMeta):
 
     @property
     def target(self):
+        """The python artifact that is the target to transpile."""
         return self.target_
 
     @property
@@ -232,7 +236,7 @@ class Transpiler(CodeWriter, metaclass=ABCMeta):
         assert callable(self.to_javascript), 'To_javascript is not callable!'
 
     @abstractmethod
-    def include_target(self, target:  Union[Type[Any], ModuleType]):
+    def include_target(self, target:  TranspilerTarget):
         """
         Deriving transpilers must implement this method to filter targets
         (modules or classes) in and out of transpilation. Transpilers are
@@ -243,7 +247,10 @@ class Transpiler(CodeWriter, metaclass=ABCMeta):
         """
         return True
 
-    def transpile(self, targets: TranspilerTargets) -> str:
+    def transpile(  # pylint: disable=too-many-branches
+            self,
+            targets: TranspilerTargets
+    ) -> str:
         """
         Generate and return javascript as a string given the targets. This
         method iterates over the list of given targets, imports any strings
@@ -256,7 +263,7 @@ class Transpiler(CodeWriter, metaclass=ABCMeta):
         :return: The rendered JavaScript string
         """
         root = _TargetTreeNode()
-        deduplicate_set = set()
+        deduplicate_set: Set[Hashable] = set()
 
         def walk_class(cls: _TargetTreeNode):
             for name, cls_member in vars(cls.target).items():
@@ -332,13 +339,13 @@ class Transpiler(CodeWriter, metaclass=ABCMeta):
         ):
             is_final = final and not branch.children
             if branch.target:
-                for ln in self.enter_parent(branch.target, is_last, is_final):
-                    self.write_line(ln)
+                for stm in self.enter_parent(branch.target, is_last, is_final):
+                    self.write_line(stm)
 
             if branch.transpile:
                 self.target_ = branch.target
-                for ln in self.visit(branch.target, is_last, is_final):
-                    self.write_line(ln)
+                for stm in self.visit(branch.target, is_last, is_final):
+                    self.write_line(stm)
 
             if branch.children:
                 for idx, child in enumerate(branch.children):
@@ -349,8 +356,8 @@ class Transpiler(CodeWriter, metaclass=ABCMeta):
                     )
 
             if branch.target:
-                for ln in self.exit_parent(branch.target, is_last, is_final):
-                    self.write_line(ln)
+                for stm in self.exit_parent(branch.target, is_last, is_final):
+                    self.write_line(stm)
 
         for line in self.start_visitation():
             self.write_line(line)
@@ -364,10 +371,20 @@ class Transpiler(CodeWriter, metaclass=ABCMeta):
 
     def enter_parent(
             self,
-            parent: Union[ModuleType, Type[Any]],
+            parent: ResolvedTranspilerTarget,
             is_last: bool,
             is_final: bool
-    ) -> Generator[str, None, None]:
+    ) -> Generator[Optional[str], None, None]:
+        """
+        Enter and visit a target, pushing it onto the parent stack.
+
+        :param parent: The target, class or module to transpile.
+        :param is_last: True if this is the last target that will be visited at
+            this level.
+        :param is_final: False if this is the last target that will be visited
+            at all.
+        :yield: javascript lines, writes nothing by default
+        """
         self.parents_.append(parent)
         if isinstance(parent, ModuleType):
             yield from self.enter_module(parent, is_last, is_final)
@@ -376,10 +393,20 @@ class Transpiler(CodeWriter, metaclass=ABCMeta):
 
     def exit_parent(
             self,
-            parent: Union[ModuleType, Type[Any]],
+            parent: ResolvedTranspilerTarget,
             is_last: bool,
             is_final: bool
-    ) -> Generator[str, None, None]:
+    ) -> Generator[Optional[str], None, None]:
+        """
+        Exit a target, removing it from the parent stack.
+
+        :param parent: The target, class or module that was just transpiled.
+        :param is_last: True if this is the last target that will be visited at
+            this level.
+        :param is_final: False if this is the last target that will be visited
+            at all.
+        :yield: javascript lines, writes nothing by default
+        """
         del self.parents_[-1]
         if isinstance(parent, ModuleType):
             yield from self.exit_module(parent, is_last, is_final)
@@ -388,53 +415,89 @@ class Transpiler(CodeWriter, metaclass=ABCMeta):
 
     def enter_module(
             self,
-            module: ModuleType,
-            is_last: bool,
-            is_final: bool
-    ) -> Generator[str, None, None]:
-        yield
+            module: ModuleType,  # pylint: disable=unused-argument
+            is_last: bool,  # pylint: disable=unused-argument
+            is_final: bool  # pylint: disable=unused-argument
+    ) -> Generator[Optional[str], None, None]:
+        """
+        Transpile a module.
+
+        :param module: The module to transpile
+        :param is_last: True if this is the last target at this level to
+            transpile.
+        :param is_final: True if this is the last target at all to transpile.
+        :yield: javascript lines, writes nothing by default
+        """
+        yield None
 
     def exit_module(
             self,
-            module: ModuleType,
-            is_last: bool,
-            is_final: bool
-    ) -> Generator[str, None, None]:
-        yield
+            module: ModuleType,  # pylint: disable=unused-argument
+            is_last: bool,  # pylint: disable=unused-argument
+            is_final: bool  # pylint: disable=unused-argument
+    ) -> Generator[Optional[str], None, None]:
+        """
+        Close transpilation of a module.
+
+        :param module: The module that was just transpiled
+        :param is_last: True if this is the last target at this level to
+            transpile.
+        :param is_final: True if this is the last target at all to transpile.
+        :yield: javascript lines, writes nothing by default
+        """
+        yield None
 
     def enter_class(
             self,
-            cls: Type[Any],
-            is_last: bool,
-            is_final: bool
-    ) -> Generator[str, None, None]:
-        yield
+            cls: Type[Any],  # pylint: disable=unused-argument
+            is_last: bool,  # pylint: disable=unused-argument
+            is_final: bool  # pylint: disable=unused-argument
+    ) -> Generator[Optional[str], None, None]:
+        """
+        Transpile a class.
+
+        :param cls: The class to transpile
+        :param is_last: True if this is the last target at this level to
+            transpile.
+        :param is_final: True if this is the last target at all to transpile.
+        :yield: javascript lines, writes nothing by default
+        """
+        yield None
 
     def exit_class(
             self,
-            cls: Type[Any],
-            is_last: bool,
-            is_final: bool
-    ) -> Generator[str, None, None]:
-        yield
+            cls: Type[Any],  # pylint: disable=unused-argument
+            is_last: bool,  # pylint: disable=unused-argument
+            is_final: bool  # pylint: disable=unused-argument
+    ) -> Generator[Optional[str], None, None]:
+        """
+        Close transpilation of a class.
 
-    def start_visitation(self) -> Generator[str, None, None]:
+        :param cls: The class that was just transpiled
+        :param is_last: True if this is the last target at this level to
+            transpile.
+        :param is_final: True if this is the last target at all to transpile.
+        :yield: javascript lines, writes nothing by default
+        """
+        yield None
+
+    def start_visitation(self) -> Generator[Optional[str], None, None]:
         """
         Begin transpilation - called before visit(). Override this function
         to do any initial code generation.
 
         :yield: javascript lines, writes nothing by default
         """
-        yield
+        yield None
 
-    def end_visitation(self) -> Generator[str, None, None]:
+    def end_visitation(self) -> Generator[Optional[str], None, None]:
         """
         End transpilation - called after all visit() calls have completed.
         Override this function to do any wrap up code generation.
 
         :yield: javascript lines, writes nothing by default
         """
-        yield
+        yield None
 
     @abstractmethod
     def visit(
@@ -442,7 +505,7 @@ class Transpiler(CodeWriter, metaclass=ABCMeta):
         target: ResolvedTranspilerTarget,
         is_last: bool,
         is_final: bool
-    ) -> Generator[str, None, None]:
+    ) -> Generator[Optional[str], None, None]:
         """
         Deriving transpilers must implement this method.
 
@@ -450,11 +513,10 @@ class Transpiler(CodeWriter, metaclass=ABCMeta):
             a module or an installed Django app.
         :param is_last: True if this is the last target that will be visited at
             this level.
-        :param is_final: True if this is the last target that will be visited at
-            all.
+        :param is_final: True if this is the last target that will be visited
+            at all.
         :yield: lines of javascript
         """
-        yield
 
     def to_js(self, value: Any):
         """

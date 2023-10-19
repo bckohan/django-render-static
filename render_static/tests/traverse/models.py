@@ -43,5 +43,5 @@ class ExampleModel:
         def uri(self):
             return f'mapbox://styles/mapbox/{self.slug}-v{self.version}'
 
-        def __str__(self):
-            return self.uri
+
+not_a_define = None

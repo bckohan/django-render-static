@@ -80,8 +80,7 @@ templatetags.django\_static\_templates
 .. automodule:: render_static.templatetags.render_static
 
     .. autofunction:: split
-    .. autofunction:: classes_to_js
-    .. autofunction:: modules_to_js
+    .. autofunction:: defines_to_js
     .. autofunction:: urls_to_js
     .. autofunction:: enums_to_js
 
@@ -130,27 +129,16 @@ transpilers
    .. autofunction:: to_js_datetime
 
 
-.. _transpilers_classes_to_js:
+.. _transpilers_defines_to_js:
 
-transpilers.classes_to_js
+transpilers.defines_to_js
 ----------------------------------------------------------------
 
 
-.. automodule:: render_static.transpilers.classes_to_js
+.. automodule:: render_static.transpilers.defines_to_js
 
    .. autoclass:: PythonClassVisitor
    .. autoclass:: DefaultClassWriter
-
-
-.. _transpilers_modules_to_js:
-
-transpilers.modules_to_js
-----------------------------------------------------------------
-
-.. automodule:: render_static.transpilers.modules_to_js
-
-   .. autoclass:: PythonModuleVisitor
-   .. autoclass:: DefaultModuleWriter
 
 
 .. _transpilers_urls_to_js:
