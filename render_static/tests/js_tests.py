@@ -553,7 +553,7 @@ class URLJavascriptMixin:
         'OPTIONS': {
             'loaders': [
                 ('render_static.loaders.StaticLocMemLoader', {
-                    'urls.js': 'var urls = {\n{% urls_to_js transpiler="render_static.SimpleURLWriter" es5=True%}};'
+                    'urls.js': 'var urls = {\n{% urls_to_js transpiler="render_static.SimpleURLWriter" %}};'
                 })
             ],
             'builtins': ['render_static.templatetags.render_static']
@@ -609,7 +609,7 @@ class URLSToJavascriptTest(URLJavascriptMixin, BaseTestCase):
         Test es6 url class.
         """
         self.class_mode = ClassURLWriter.class_name_
-        self.test_full_url_dump(es5=False)
+        self.test_full_url_dump()
         self.class_mode = None
 
     @override_settings(STATIC_TEMPLATES={
@@ -631,7 +631,7 @@ class URLSToJavascriptTest(URLJavascriptMixin, BaseTestCase):
         """
         self.class_mode = ClassURLWriter.class_name_
         self.legacy_args = True
-        self.test_full_url_dump(es5=False)
+        self.test_full_url_dump()
         self.class_mode = None
         self.legacy_args = False
 
@@ -666,7 +666,7 @@ class URLSToJavascriptTest(URLJavascriptMixin, BaseTestCase):
             'OPTIONS': {
                 'loaders': [
                     ('render_static.loaders.StaticLocMemLoader', {
-                        'urls.js': '{% urls_to_js transpiler="render_static.ClassURLWriter" es5=True%}'
+                        'urls.js': '{% urls_to_js transpiler="render_static.ClassURLWriter" %}'
                     })
                 ],
                 'builtins': ['render_static.templatetags.render_static']
@@ -678,7 +678,7 @@ class URLSToJavascriptTest(URLJavascriptMixin, BaseTestCase):
         Test ES5 classes.
         """
         self.class_mode = ClassURLWriter.class_name_
-        self.test_full_url_dump(es5=True)
+        self.test_full_url_dump()
         self.class_mode = None
 
     @override_settings(STATIC_TEMPLATES={
@@ -687,7 +687,7 @@ class URLSToJavascriptTest(URLJavascriptMixin, BaseTestCase):
             'OPTIONS': {
                 'loaders': [
                     ('render_static.loaders.StaticLocMemLoader', {
-                        'urls.js': '{% urls_to_js transpiler="render_static.ClassURLWriter" es5=True%}'
+                        'urls.js': '{% urls_to_js transpiler="render_static.ClassURLWriter" %}'
                     })
                 ],
                 'builtins': ['render_static.templatetags.render_static']
@@ -700,7 +700,7 @@ class URLSToJavascriptTest(URLJavascriptMixin, BaseTestCase):
         """
         self.class_mode = ClassURLWriter.class_name_
         self.legacy_args = True
-        self.test_full_url_dump(es5=True)
+        self.test_full_url_dump()
         self.class_mode = None
         self.legacy_args = False
 
@@ -721,7 +721,7 @@ class URLSToJavascriptTest(URLJavascriptMixin, BaseTestCase):
         """
         Test ES6 classes.
         """
-        self.test_full_url_dump(es5=False)
+        self.test_full_url_dump()
 
     @override_settings(STATIC_TEMPLATES={
         'ENGINES': [{
@@ -741,16 +741,11 @@ class URLSToJavascriptTest(URLJavascriptMixin, BaseTestCase):
         Test legacy argument signature - args specified individually on url() calls in javascript.
         """
         self.legacy_args = True
-        self.test_full_url_dump(es5=False)
+        self.test_full_url_dump()
         self.legacy_args = False
 
-    def test_full_url_dump_legacy_args(self, es5=True):
-        self.legacy_args = True
-        self.test_full_url_dump(es5=False)
-        self.legacy_args = False
-
-    def test_full_url_dump(self, es5=True):
-        self.es5_mode = es5
+    def test_full_url_dump(self):
+        self.es5_mode = False
         self.url_js = None
 
         call_command('renderstatic', 'urls.js')
@@ -907,7 +902,6 @@ class URLSToJavascriptTest(URLJavascriptMixin, BaseTestCase):
                         'urls.js': 'var urls = {\n'
                                    '{% urls_to_js '
                                         'transpiler="render_static.SimpleURLWriter" '
-                                        'es5=True '
                                         'include=include '
                                         'exclude=exclude '
                                    '%}};'
@@ -935,7 +929,7 @@ class URLSToJavascriptTest(URLJavascriptMixin, BaseTestCase):
         }
     })
     def test_filtering(self):
-        self.es5_mode = True
+        self.es5_mode = False
         self.url_js = None
 
         call_command('renderstatic', 'urls.js')
@@ -1002,7 +996,6 @@ class URLSToJavascriptTest(URLJavascriptMixin, BaseTestCase):
                         'urls.js': 'var urls = {\n'
                                    '{% urls_to_js '
                                         'transpiler="render_static.SimpleURLWriter" '
-                                        'es5=True '
                                         'include=include '
                                         'exclude=exclude '
                                    '%}};'
@@ -1025,7 +1018,7 @@ class URLSToJavascriptTest(URLJavascriptMixin, BaseTestCase):
         }
     })
     def test_filtering_excl_only(self):
-        self.es5_mode = True
+        self.es5_mode = False
         self.url_js = None
 
         call_command('renderstatic', 'urls.js')
@@ -1819,145 +1812,6 @@ class URLSToJavascriptParametersTest(URLJavascriptMixin, BaseTestCase):
                 'loaders': [
                     ('render_static.loaders.StaticLocMemLoader', {
                         'urls.js': '{% urls_to_js '
-                                   'es5=True '
-                                   'raise_on_not_found=False '
-                                   'indent=None '
-                                   'include=include '
-                                   '%}',
-                        'urls2.js': '{% urls_to_js '
-                                   'es5=True '
-                                   'raise_on_not_found=True '
-                                   'indent="" '
-                                   'include=include '
-                                   '%}',
-                        'urls3.js': 'var urls = {\n{% urls_to_js '
-                                   'es5=True '
-                                   'transpiler="render_static.SimpleURLWriter" '
-                                   'raise_on_not_found=False '
-                                   'indent=None '
-                                   'include=include '
-                                   '%}}\n',
-                        'urls4.js': 'var urls = {\n{% urls_to_js '
-                                    'transpiler="render_static.SimpleURLWriter" '
-                                    'es5=True '
-                                    'raise_on_not_found=True '
-                                    'indent="" '
-                                    'include=include '
-                                    '%}};\n',
-                        'urls3_export.mjs': '{% urls_to_js '
-                                   'es5=True '
-                                   'raise_on_not_found=False '
-                                   'indent="\t" '
-                                   'include=include '
-                                   'export_class=True '
-                                   '%}\n',
-                    })
-                ],
-                'builtins': ['render_static.templatetags.render_static']
-            },
-        }],
-        'templates': {
-            'urls.js': {'context': {'include': ['path_tst', 're_path_unnamed']}},
-            'urls2.js': {'context': {'include': ['path_tst', 're_path_unnamed']}},
-            'urls3.js': {'context': {'include': ['path_tst', 're_path_unnamed']}},
-            'urls4.js': {'context': {'include': ['path_tst', 're_path_unnamed']}},
-            'urls3_export.mjs': {'context': {'include': ['path_tst', 're_path_unnamed']}}
-        }
-    })
-    def test_class_parameters_es5(self):
-
-        self.es6_mode = False
-        self.class_mode = ClassURLWriter.class_name_
-        call_command('renderstatic')
-        js_ret = self.get_url_from_js(
-            'doest_not_exist',
-            js_generator=URLJavascriptMixin.TestJSGenerator(
-                class_mode=self.class_mode,
-                catch=False
-            )
-        )
-        self.assertFalse('TypeError' in js_ret)
-        self.compare('path_tst')
-        self.compare('path_tst', {'arg1': 1})
-        self.compare('path_tst', {'arg1': 12, 'arg2': 'xo'})
-
-        up2 = GLOBAL_STATIC_DIR/'urls2.js'
-        js_ret2 = self.get_url_from_js(
-            'doest_not_exist',
-            url_path=up2,
-            js_generator=URLJavascriptMixin.TestJSGenerator(
-                class_mode=self.class_mode,
-                catch=False
-            )
-        )
-        self.assertTrue('TypeError' in js_ret2)
-
-        js_ret2_1 = self.get_url_from_js(
-            'path_tst',
-            kwargs={'arg1': 12, 'arg2': 'xo', 'invalid': 0},
-            url_path=up2,
-            js_generator=URLJavascriptMixin.TestJSGenerator(
-                class_mode=self.class_mode,
-                catch=False
-            )
-        )
-        self.assertTrue('TypeError' in js_ret2_1)
-        self.compare('path_tst', url_path=up2)
-        self.compare('path_tst', {'arg1': 1}, url_path=up2)
-        self.compare('path_tst', {'arg1': 12, 'arg2': 'xo'}, url_path=up2)
-
-        self.class_mode = None
-
-        up3 = GLOBAL_STATIC_DIR/'urls3.js'
-        js_ret3 = self.get_url_from_js(
-            'path_tst',
-            kwargs={'arg1': 12, 'arg2': 'xo', 'invalid': 0},
-            url_path=up3,
-            js_generator=URLJavascriptMixin.TestJSGenerator(catch=False)
-        )
-        self.assertFalse('TypeError' in js_ret3)
-        self.compare('path_tst', url_path=up3)
-        self.compare('path_tst', {'arg1': 1}, url_path=up3)
-        self.compare('path_tst', {'arg1': 12, 'arg2': 'xo'}, url_path=up3)
-
-        up4 = GLOBAL_STATIC_DIR/'urls4.js'
-        js_ret4 = self.get_url_from_js(
-            'path_tst',
-            kwargs={'arg1': 12, 'arg2': 'xo', 'invalid': 0},
-            url_path=up4,
-            js_generator=URLJavascriptMixin.TestJSGenerator(catch=False)
-        )
-        self.assertTrue('TypeError' in js_ret4)
-        self.compare('path_tst', url_path=up4)
-        self.compare('path_tst', {'arg1': 1}, url_path=up4)
-        self.compare('path_tst', {'arg1': 12, 'arg2': 'xo'}, url_path=up4)
-
-        up3_exprt = GLOBAL_STATIC_DIR / 'urls3_export.mjs'
-        generator = URLJavascriptMixin.TestJSGenerator(
-            class_mode=ClassURLWriter.class_name_,
-            catch=False
-        )
-        js_ret3_exprt = self.get_url_from_js(
-            'path_tst',
-            kwargs={'arg1': 12, 'arg2': 'xo'},
-            url_path=up3_exprt,
-            js_generator=generator
-        )
-        self.assertFalse('TypeError' in js_ret3_exprt)
-        generator.rendered_ = ''
-        self.compare('path_tst', js_generator=generator, url_path=up3_exprt)
-        generator.rendered_ = ''
-        self.compare('path_tst', {'arg1': 1}, js_generator=generator, url_path=up3_exprt)
-        generator.rendered_ = ''
-        self.compare('path_tst', {'arg1': 12, 'arg2': 'xo'}, js_generator=generator, url_path=up3_exprt)
-
-    @override_settings(STATIC_TEMPLATES={
-        'ENGINES': [{
-            'BACKEND': 'render_static.backends.StaticDjangoTemplates',
-            'OPTIONS': {
-                'loaders': [
-                    ('render_static.loaders.StaticLocMemLoader', {
-                        'urls.js': '{% urls_to_js '
                                    'raise_on_not_found=False '
                                    'indent=None '
                                    'include=include '
@@ -2119,7 +1973,7 @@ class DjangoJSReverseTest(URLJavascriptMixin, BaseTestCase):
     def setUp(self):
         self.clear_placeholder_registries()
 
-    def test_js_reverse_urls(self, es6=True):
+    def test_js_reverse_urls(self):
         self.es5_mode = False
         self.url_js = None
         self.class_mode = ClassURLWriter.class_name_
@@ -2159,7 +2013,7 @@ class DjangoJSReversePrecedenceTest(URLJavascriptMixin, BaseTestCase):
     def setUp(self):
         self.clear_placeholder_registries()
 
-    def test_js_reverse_urls(self, es6=True):
+    def test_js_reverse_urls(self):
         self.es5_mode = False
         self.url_js = None
         self.class_mode = ClassURLWriter.class_name_
@@ -2204,7 +2058,7 @@ class URLBugsTestCases(URLJavascriptMixin, BaseTestCase):
     def setUp(self):
         self.clear_placeholder_registries()
 
-    def test_bug_65_compiles(self, es5=False):
+    def test_bug_65_compiles(self):
         """
         Tests: https://github.com/bckohan/django-render-static/issues/65
         Just test that urls_to_js spits out code that compiles now.
@@ -2233,7 +2087,7 @@ class URLBugsTestCases(URLJavascriptMixin, BaseTestCase):
         {'url_param': 2, 'kwarg_param': '2'}: /prefix_int/2/postfix_int/2
         {'url_param': 4, 'kwarg_param': 1}: /prefix_int/4/postfix_int/1
         """
-        self.es6_mode = not es5
+        self.es6_mode = True
         self.url_js = None
         self.class_mode = ClassURLWriter.class_name_
 
@@ -2274,25 +2128,6 @@ class URLBugsTestCases(URLJavascriptMixin, BaseTestCase):
                 ''
             )
 
-    @override_settings(
-        ROOT_URLCONF='render_static.tests.urls_bug_65',
-        STATIC_TEMPLATES={
-            'ENGINES': [{
-                'BACKEND': 'render_static.backends.StaticDjangoTemplates',
-                'OPTIONS': {
-                    'loaders': [
-                        ('render_static.loaders.StaticLocMemLoader', {
-                            'urls.js': '{% urls_to_js es5=True %}'
-                        })
-                    ],
-                    'builtins': ['render_static.templatetags.render_static']
-                },
-            }],
-            'templates': {'urls.js': {'context': {}}}
-        }
-    )
-    def test_bug_65_compiles_es5(self):
-        self.test_bug_65_compiles(es5=True)
 
     # def tearDown(self):
     #     pass
@@ -2434,25 +2269,6 @@ class TestDefaultNamespaces(URLJavascriptMixin, BaseTestCase):
 
     def test_es6_default_namespace(self):
         self.es6_mode = True
-        self.url_js = None
-        self.class_mode = ClassURLWriter.class_name_
-        self.do_test()
-
-    @override_settings(
-        STATIC_TEMPLATES={
-            'templates': {
-                'spa/urls.js': {
-                    'context': {
-                        'include': ['spa1', 'spa2'],
-                        'es5': True
-                    },
-                    'dest': str(GLOBAL_STATIC_DIR / 'urls.js')
-                }
-            }
-        }
-    )
-    def test_es5_default_namespace(self):
-        self.es5_mode = True
         self.url_js = None
         self.class_mode = ClassURLWriter.class_name_
         self.do_test()

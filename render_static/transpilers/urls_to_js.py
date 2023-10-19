@@ -261,23 +261,16 @@ class Substitute:
     def __init__(self, arg_or_kwarg: Union[str, int]) -> None:
         self.arg_ = arg_or_kwarg
 
-    def to_str(self, es5: bool = False) -> str:
+    def to_str(self) -> str:
         """
         Converts a _Substitution object placeholder into JavaScript code that
         substitutes the positional or named arguments in the string.
 
-        :param es5: If true, generate ES5 compliant code
         :return: The JavaScript as a string
         """
         if isinstance(self.arg, int):
-            return (
-                f'"+args[{self.arg}].toString()+"' if es5
-                else f'${{args[{self.arg}]}}'
-            )
-        return (
-            f'"+kwargs["{self.arg}"].toString()+"' if es5
-            else f'${{kwargs["{self.arg}"]}}'
-        )
+            return f'${{args[{self.arg}]}}'
+        return f'${{kwargs["{self.arg}"]}}'
 
 
 class BaseURLTranspiler(Transpiler):
@@ -794,7 +787,7 @@ class URLTreeVisitor(BaseURLTranspiler):
         """
         return ''.join([
             comp if isinstance(comp, str) else
-            comp.to_str(es5=self.es5_) for comp in path
+            comp.to_str() for comp in path
         ])
 
 
@@ -896,16 +889,10 @@ class SimpleURLWriter(URLTreeVisitor):
         :param qname: The fully qualified path name being reversed
         :yield: LoC for the start out of the JavaScript reversal function
         """
-        if self.es5_:
-            yield f'"{qname.split(":")[-1]}": function(options, args) {{'
-            self.indent()
-            yield 'var kwargs = ((options.kwargs || null) || options) || {};'
-            yield 'args = ((options.args || null) || args) || [];'
-        else:
-            yield f'"{qname.split(":")[-1]}": (options={{}}, args=[]) => {{'
-            self.indent()
-            yield 'const kwargs = ((options.kwargs || null) || options) || {};'
-            yield 'args = ((options.args || null) || args) || [];'
+        yield f'"{qname.split(":")[-1]}": (options={{}}, args=[]) => {{'
+        self.indent()
+        yield 'const kwargs = ((options.kwargs || null) || options) || {};'
+        yield 'args = ((options.args || null) || args) || [];'
 
     def exit_path_group(
             self,
@@ -952,31 +939,21 @@ class SimpleURLWriter(URLTreeVisitor):
             nargs = len([
                 comp for comp in path if isinstance(comp, Substitute)
             ])
-            quote = '"' if self.es5_ else '`'
+            quote = '`'
             yield f'if (args.length === {nargs})'
             self.indent()
             yield f'return {quote}/{self.path_join(path).lstrip("/")}{quote};'
             self.outdent()
         else:
             opts_str = ",".join([f"'{param}'" for param in kwargs])
-            if self.es5_:
-                yield (
-                    f'if (Object.keys(kwargs).length '
-                    f'=== {len(kwargs)} && [{opts_str}].every('
-                    'function(value) { return kwargs.hasOwnProperty(value);}))'
-                )
-                self.indent()
-                yield f'return "/{self.path_join(path).lstrip("/")}";'
-                self.outdent()
-            else:
-                yield (
-                    f'if (Object.keys(kwargs).length === {len(kwargs)} && '
-                    f'[{opts_str}].every(value => '
-                    f'kwargs.hasOwnProperty(value)))'
-                )
-                self.indent()
-                yield f'return `/{self.path_join(path).lstrip("/")}`;'
-                self.outdent()
+            yield (
+                f'if (Object.keys(kwargs).length === {len(kwargs)} && '
+                f'[{opts_str}].every(value => '
+                f'kwargs.hasOwnProperty(value)))'
+            )
+            self.indent()
+            yield f'return `/{self.path_join(path).lstrip("/")}`;'
+            self.outdent()
 
 
 class ClassURLWriter(URLTreeVisitor):
@@ -1044,285 +1021,147 @@ class ClassURLWriter(URLTreeVisitor):
 
         :yield: JavaScript LoC for the reversal class
         """
-        if self.es5_:
-            yield f'{self.class_name_} = function(options=null) {{'
-            self.indent()
-            yield 'this.options = options || {};'
-            yield 'if (this.options.hasOwnProperty("namespace")) {'
-            self.indent()
-            yield 'this.namespace = this.options.namespace;'
-            yield 'if (!this.namespace.endsWith(":")) {'
-            self.indent()
-            yield 'this.namespace += ":";'
-            self.outdent()
-            yield '}'
-            self.outdent()
-            yield '} else {'
-            self.indent()
-            yield 'this.namespace = "";'
-            self.outdent()
-            yield '}'
-            self.outdent()
-            yield '};'
-            yield ''
-            yield f'{self.class_name_}.prototype = {{'
-            self.indent()
-            yield 'match: function(kwargs, args, expected, defaults={}) {'
-            self.indent()
-            yield 'if (defaults) {'
-            yield 'let kwargsCopy = {};'
-            yield 'for (const [key, val] of Object.entries(kwargs)) {'
-            self.indent()
-            yield 'kwargsCopy[key] = val;'
-            self.outdent()
-            yield '}'
-            yield 'kwargs = kwargsCopy;'
-            self.indent()
-            yield 'for (const [key, val] of Object.entries(defaults)) {'
-            self.indent()
-            yield 'if (kwargs.hasOwnProperty(key)) {'
-            self.indent()
-            if (
-                DJANGO_VERSION[0] >= 4 and DJANGO_VERSION[1] >= 1
-            ):  # pragma: no cover
-                # see es6 code for comment
-                yield (
-                    'if (kwargs[key] !== val && '
-                    'kwargs[key].toString() !== val.toString() '
-                    '&& !expected.includes(key)) '
-                    '{ return false; }'
-                )
-            else:  # pragma: no cover
-                yield 'if (kwargs[key] !== val) { return false; }'
 
+        yield (
+            f'{"export " if self.export_class_ else ""}'
+            f'class {self.class_name_} {{'
+        )
+        self.indent()
+        yield ''
+        yield 'constructor(options=null) {'
+        self.indent()
+        yield 'this.options = options || {};'
+        yield 'if (this.options.hasOwnProperty("namespace")) {'
+        self.indent()
+        yield 'this.namespace = this.options.namespace;'
+        yield 'if (!this.namespace.endsWith(":")) {'
+        self.indent()
+        yield 'this.namespace += ":";'
+        self.outdent()
+        yield '}'
+        self.outdent()
+        yield '} else {'
+        self.indent()
+        yield 'this.namespace = "";'
+        self.outdent()
+        yield '}'
+        self.outdent()
+        yield '}'
+        yield ''
+        yield 'match(kwargs, args, expected, defaults={}) {'
+        self.indent()
+        yield 'if (defaults) {'
+        self.indent()
+        yield 'kwargs = Object.assign({}, kwargs);'
+        yield 'for (const [key, val] of Object.entries(defaults)) {'
+        self.indent()
+        yield 'if (kwargs.hasOwnProperty(key)) {'
+        self.indent()
+        if (
+            DJANGO_VERSION[0] >= 4 and DJANGO_VERSION[1] >= 1
+        ):  # pragma: no cover
+            # there was a change in Django 4.1 that seems to coerce kwargs
+            # given to the default kwarg type of the same name if one
+            # exists for the purposes of reversal. Thus 1 will == '1'
+            # In javascript we attempt string conversion and hope for the
+            # best. In 4.1 given kwargs will also override default kwargs
+            # for kwargs the reversal is expecting. This seems to have
+            # been a byproduct of the differentiation of captured_kwargs
+            # and extra_kwargs - that this wasn't caught in Django's CI is
+            # evidence that previous behavior wasn't considered spec.
             yield (
-                'if (!expected.includes(key)) '
-                '{ delete kwargs[key]; }'
+                'if (kwargs[key] !== val && '
+                'kwargs[key].toString() !== val.toString() '
+                '&& !expected.includes(key)) '
+                '{ return false; }'
             )
-            self.outdent()
-            yield '}'
-            self.outdent()
-            yield '}'
-            self.outdent()
-            yield '}'
-            yield 'if (Array.isArray(expected)) {'
-            self.indent()
+        else:  # pragma: no cover
+            yield 'if (kwargs[key] !== val) { return false; }'
+        yield (
+            'if (!expected.includes(key)) '
+            '{ delete kwargs[key]; }'
+        )
+        self.outdent()
+        yield '}'
+        self.outdent()
+        yield '}'
+        self.outdent()
+        yield '}'
+        yield 'if (Array.isArray(expected)) {'
+        self.indent()
+        yield (
+            'return Object.keys(kwargs).length === expected.length && '
+            'expected.every(value => kwargs.hasOwnProperty(value));'
+        )
+        self.outdent()
+        yield '} else if (expected) {'
+        self.indent()
+        yield 'return args.length === expected;'
+        self.outdent()
+        yield '} else {'
+        self.indent()
+        yield 'return Object.keys(kwargs).length === 0 && ' \
+              'args.length === 0;'
+        self.outdent()
+        yield '}'
+        self.outdent()
+        yield '}'
+        yield ''
+        yield 'reverse(qname, options={}, args=[], query={}) {'
+        self.indent()
+        yield 'if (this.namespace) {'
+        self.indent()
+        yield (
+            'qname = `${this.namespace}'
+            '${qname.replace(this.namespace, "")}`;'
+        )
+        self.outdent()
+        yield '}'
+        yield 'const kwargs = ((options.kwargs || null) || options) || {};'
+        yield 'args = ((options.args || null) || args) || [];'
+        yield 'query = ((options.query || null) || query) || {};'
+        yield 'let url = this.urls;'
+        yield "for (const ns of qname.split(':')) {"
+        self.indent()
+        yield 'if (ns && url) { url = url.hasOwnProperty(ns) ? ' \
+              'url[ns] : null; }'
+        self.outdent()
+        yield '}'
+        yield 'if (url) {'
+        self.indent()
+        yield 'let pth = url(kwargs, args);'
+        yield 'if (typeof pth === "string") {'
+        self.indent()
+        yield 'if (Object.keys(query).length !== 0) {'
+        self.indent()
+        yield 'const params = new URLSearchParams();'
+        yield 'for (const [key, value] of Object.entries(query)) {'
+        self.indent()
+        yield "if (value === null || value === '') continue;"
+        yield 'if (Array.isArray(value)) value.forEach(element => ' \
+              'params.append(key, element));'
+        yield 'else params.append(key, value);'
+        self.outdent()
+        yield '}'
+        yield 'const qryStr = params.toString();'
+        yield r"if (qryStr) return `${pth.replace(/\/+$/, '')}?${qryStr}`;"
+        self.outdent()
+        yield '}'
+        yield 'return pth;'
+        self.outdent()
+        yield '}'
+        self.outdent()
+        yield '}'
+        if self.raise_on_not_found_:
             yield (
-                'return (Object.keys(kwargs).length === expected.length && '
-                'expected.every(function(value) { '
-                'return kwargs.hasOwnProperty(value); }))'
+                'throw new TypeError('
+                '`No reversal available for parameters at path: '
+                '${qname}`);'
             )
-            self.outdent()
-            yield '} else if (expected) {'
-            self.indent()
-            yield 'return args.length === expected;'
-            self.outdent()
-            yield '} else {'
-            self.indent()
-            yield 'return Object.keys(kwargs).length === 0 && ' \
-                  'args.length === 0;'
-            self.outdent()
-            yield '}'
-            self.outdent()
-            yield '},'
-            yield 'reverse: function(qname, options, args, query) {'
-            self.indent()
-            yield 'if (this.namespace) {'
-            self.indent()
-            yield (
-                'qname = `${this.namespace}'
-                '${qname.replace(this.namespace, "")}`;'
-            )
-            self.outdent()
-            yield '}'
-            yield 'const kwargs = ((options.kwargs || null) || options) || {};'
-            yield 'args = ((options.args || null) || args) || [];'
-            yield 'query = ((options.query || null) || query) || {};'
-            yield 'let url = this.urls;'
-            yield 'var params = new URLSearchParams();'
-            yield "qname.split(':').forEach(function(ns) {"
-            self.indent()
-            yield 'if (ns && url) { url = url.hasOwnProperty(ns) ? ' \
-                  'url[ns] : null; }'
-            self.outdent()
-            yield '});'
-            yield 'if (url) {'
-            self.indent()
-            yield 'let pth = url.call(this, kwargs, args);'
-            yield 'if (typeof pth === "string") {'
-            self.indent()
-            yield 'if (Object.keys(query).length !== 0) {'
-            self.indent()
-            yield 'var qryStr = Object.keys(query).map(function(key) {'
-            self.indent()
-            yield 'var val = query[key];'
-            yield "if (val === null || val === '') return '';"
-            yield 'if (Array.isArray(val)) {'
-            self.indent()
-            yield 'var lst = [];'
-            yield "val.forEach(function(element) {" \
-                  "lst.push(key + '=' + element);});"
-            yield "return lst.join('&');"
-            self.outdent()
-            yield '}'
-            yield "return key + '=' + val;"
-            self.outdent()
-            yield "}).join('&');"
-            yield r"if (qryStr) return pth.replace(/\/+$/, '')+'?'+qryStr;"
-            self.outdent()
-            yield '}'
-            yield 'return pth;'
-            self.outdent()
-            yield '}'
-            self.outdent()
-            yield '}'
-            if self.raise_on_not_found_:
-                yield 'throw new TypeError("No reversal available for ' \
-                      'parameters at path: "+qname);'
-            self.outdent()
-            yield '},'
-            yield 'urls: {'
-        else:
-            yield (
-                f'{"export " if self.export_class_ else ""}'
-                f'class {self.class_name_} {{'
-            )
-            self.indent()
-            yield ''
-            yield 'constructor(options=null) {'
-            self.indent()
-            yield 'this.options = options || {};'
-            yield 'if (this.options.hasOwnProperty("namespace")) {'
-            self.indent()
-            yield 'this.namespace = this.options.namespace;'
-            yield 'if (!this.namespace.endsWith(":")) {'
-            self.indent()
-            yield 'this.namespace += ":";'
-            self.outdent()
-            yield '}'
-            self.outdent()
-            yield '} else {'
-            self.indent()
-            yield 'this.namespace = "";'
-            self.outdent()
-            yield '}'
-            self.outdent()
-            yield '}'
-            yield ''
-            yield 'match(kwargs, args, expected, defaults={}) {'
-            self.indent()
-            yield 'if (defaults) {'
-            self.indent()
-            yield 'kwargs = Object.assign({}, kwargs);'
-            yield 'for (const [key, val] of Object.entries(defaults)) {'
-            self.indent()
-            yield 'if (kwargs.hasOwnProperty(key)) {'
-            self.indent()
-            if (
-                DJANGO_VERSION[0] >= 4 and DJANGO_VERSION[1] >= 1
-            ):  # pragma: no cover
-                # there was a change in Django 4.1 that seems to coerce kwargs
-                # given to the default kwarg type of the same name if one
-                # exists for the purposes of reversal. Thus 1 will == '1'
-                # In javascript we attempt string conversion and hope for the
-                # best. In 4.1 given kwargs will also override default kwargs
-                # for kwargs the reversal is expecting. This seems to have
-                # been a byproduct of the differentiation of captured_kwargs
-                # and extra_kwargs - that this wasn't caught in Django's CI is
-                # evidence that previous behavior wasn't considered spec.
-                yield (
-                    'if (kwargs[key] !== val && '
-                    'kwargs[key].toString() !== val.toString() '
-                    '&& !expected.includes(key)) '
-                    '{ return false; }'
-                )
-            else:  # pragma: no cover
-                yield 'if (kwargs[key] !== val) { return false; }'
-            yield (
-                'if (!expected.includes(key)) '
-                '{ delete kwargs[key]; }'
-            )
-            self.outdent()
-            yield '}'
-            self.outdent()
-            yield '}'
-            self.outdent()
-            yield '}'
-            yield 'if (Array.isArray(expected)) {'
-            self.indent()
-            yield (
-                'return Object.keys(kwargs).length === expected.length && '
-                'expected.every(value => kwargs.hasOwnProperty(value));'
-            )
-            self.outdent()
-            yield '} else if (expected) {'
-            self.indent()
-            yield 'return args.length === expected;'
-            self.outdent()
-            yield '} else {'
-            self.indent()
-            yield 'return Object.keys(kwargs).length === 0 && ' \
-                  'args.length === 0;'
-            self.outdent()
-            yield '}'
-            self.outdent()
-            yield '}'
-            yield ''
-            yield 'reverse(qname, options={}, args=[], query={}) {'
-            self.indent()
-            yield 'if (this.namespace) {'
-            self.indent()
-            yield (
-                'qname = `${this.namespace}'
-                '${qname.replace(this.namespace, "")}`;'
-            )
-            self.outdent()
-            yield '}'
-            yield 'const kwargs = ((options.kwargs || null) || options) || {};'
-            yield 'args = ((options.args || null) || args) || [];'
-            yield 'query = ((options.query || null) || query) || {};'
-            yield 'let url = this.urls;'
-            yield "for (const ns of qname.split(':')) {"
-            self.indent()
-            yield 'if (ns && url) { url = url.hasOwnProperty(ns) ? ' \
-                  'url[ns] : null; }'
-            self.outdent()
-            yield '}'
-            yield 'if (url) {'
-            self.indent()
-            yield 'let pth = url(kwargs, args);'
-            yield 'if (typeof pth === "string") {'
-            self.indent()
-            yield 'if (Object.keys(query).length !== 0) {'
-            self.indent()
-            yield 'const params = new URLSearchParams();'
-            yield 'for (const [key, value] of Object.entries(query)) {'
-            self.indent()
-            yield "if (value === null || value === '') continue;"
-            yield 'if (Array.isArray(value)) value.forEach(element => ' \
-                  'params.append(key, element));'
-            yield 'else params.append(key, value);'
-            self.outdent()
-            yield '}'
-            yield 'const qryStr = params.toString();'
-            yield r"if (qryStr) return `${pth.replace(/\/+$/, '')}?${qryStr}`;"
-            self.outdent()
-            yield '}'
-            yield 'return pth;'
-            self.outdent()
-            yield '}'
-            self.outdent()
-            yield '}'
-            if self.raise_on_not_found_:
-                yield (
-                    'throw new TypeError('
-                    '`No reversal available for parameters at path: '
-                    '${qname}`);'
-                )
-            self.outdent()
-            yield '}'
-            yield ''
-            yield 'urls = {'
+        self.outdent()
+        yield '}'
+        yield ''
+        yield 'urls = {'
 
     def close_visit(self) -> Generator[Optional[str], None, None]:
         """
@@ -1333,9 +1172,6 @@ class ClassURLWriter(URLTreeVisitor):
         yield '}'
         self.outdent()
         yield '};'
-        if self.export_class_:
-            if self.es5_:
-                yield f'exports.{self.class_name_} = {self.class_name_};'
 
     def enter_namespace(
             self,
@@ -1376,14 +1212,8 @@ class ClassURLWriter(URLTreeVisitor):
         :param qname: The fully qualified path name being reversed
         :yield: LoC for the start out of the JavaScript reversal function
         """
-        if self.es5_:
-            yield f'"{qname.split(":")[-1]}": function(kwargs, args) {{'
-            self.indent()
-            yield 'kwargs = kwargs || {};'
-            yield 'args = args || [];'
-        else:
-            yield f'"{qname.split(":")[-1]}": (kwargs={{}}, args=[]) => {{'
-            self.indent()
+        yield f'"{qname.split(":")[-1]}": (kwargs={{}}, args=[]) => {{'
+        self.indent()
 
     def exit_path_group(
             self,
@@ -1416,7 +1246,7 @@ class ClassURLWriter(URLTreeVisitor):
         :param defaults: Any default kwargs specified on the path definition
         :yield: The JavaScript lines of code
         """
-        quote = '"' if self.es5_ else '`'
+        quote = '`'
         if len(path) == 1:  # there are no substitutions
             if defaults:
                 yield f'if (this.match(kwargs, args, [], {defaults})) ' \

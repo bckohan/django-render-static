@@ -190,7 +190,6 @@ class Transpiler(CodeWriter, metaclass=ABCMeta):
         above.
     """
 
-    es5_: bool = False
     to_javascript_: Callable = to_js  # pylint: disable=used-before-assignment
 
     parents_: List[Union[ModuleType, Type[Any]]]
@@ -219,14 +218,6 @@ class Transpiler(CodeWriter, metaclass=ABCMeta):
         **kwargs
     ) -> None:
         super().__init__(**kwargs)
-        self.es5_ = kwargs.pop('es5', self.es5_)
-        if self.es5_:
-            warn(
-                'Transpilation to ES5 is no longer supported and will be '
-                'removed in a future version.',
-                DeprecationWarning,
-                stacklevel=2
-            )
         self.to_javascript = (
             to_javascript
             if callable(to_javascript)
