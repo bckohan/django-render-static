@@ -1183,7 +1183,10 @@ class ClassURLWriter(URLTreeVisitor):
             yield '},'
             yield 'urls: {'
         else:
-            yield f'class {self.class_name_} {{'
+            yield (
+                f'{"export " if self.export_class_ else ""}'
+                f'class {self.class_name_} {{'
+            )
             self.indent()
             yield ''
             yield 'constructor(options=null) {'
@@ -1333,8 +1336,6 @@ class ClassURLWriter(URLTreeVisitor):
         if self.export_class_:
             if self.es5_:
                 yield f'exports.{self.class_name_} = {self.class_name_};'
-            else:
-                yield f'export {{ {self.class_name_} }};'
 
     def enter_namespace(
             self,

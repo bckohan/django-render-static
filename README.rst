@@ -29,10 +29,10 @@
 django-render-static
 #######################
 
-Use Django's dynamic templates to render static files that are collected
-during the ``collectstatic`` routine and likely served above Django on the stack.
+Use Django's template engines to render static files that are collected
+during the ``collectstatic`` routine and likely served above Django at runtime.
 Files rendered by django-render-static are immediately available to participate
-in the normal static file pipeline.
+in the normal static file collection pipeline.
 
 For example, a frequently occurring pattern that violates the DRY principle is the presence of
 defines, or enum like structures in server side Python code that are simply replicated in client
@@ -42,7 +42,7 @@ side code keeps the stack bone DRY.
 `django-render-static` includes Python to Javascript transpilers for:
     - Django's `reverse` function (`urls_to_js`)
     - PEP 435 style Python enumerations (`enums_to_js`)
-    - Pain data structures in Python classes and modules
+    - Plain data define-like structures in Python classes and modules
       (`defines_to_js`)
 
 You can report bugs and discuss features on the
@@ -142,9 +142,7 @@ And your defines.js template might look like this:
 
 .. code:: js+django
 
-    const defines = {
-        {% defines_to_js modules="examples.models" %}
-    };
+    {% defines_to_js modules="examples.models" %}
 
 
 If someone wanted to use your defines template to generate a JavaScript version of your Python
@@ -205,6 +203,7 @@ we might define a simple color enumeration like so:
     class ExampleModel(models.Model):
 
         class Color(TextChoices, s('rgb'), s('hex', case_fold=True)):
+
             # name   value   label       rgb       hex
             RED   =   'R',   'Red',   (1, 0, 0), 'ff0000'
             GREEN =   'G',   'Green', (0, 1, 0), '00ff00'
