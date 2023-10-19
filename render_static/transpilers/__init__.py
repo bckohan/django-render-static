@@ -8,12 +8,12 @@ from abc import ABCMeta, abstractmethod
 from datetime import date, datetime
 from enum import Enum
 from types import ModuleType
+from collections.abc import Hashable
 from typing import (
     Any,
     Callable,
     Collection,
     Generator,
-    Hashable,
     List,
     Optional,
     Set,
