@@ -72,7 +72,6 @@ jobs:
     - uses: actions/setup-node@v3
       with:
         node-version: 18
-    - uses: nanasess/setup-chromedriver@v2
     - name: Set up Python ${{ matrix.python-version }}
       uses: actions/setup-python@v4
       with:
