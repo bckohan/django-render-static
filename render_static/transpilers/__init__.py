@@ -190,6 +190,15 @@ class Transpiler(CodeWriter, metaclass=ABCMeta):
         above.
     """
 
+    def to_js(self, value: Any):
+        """
+        Return the javascript transpilation of the given value.
+
+        :param value: The value to transpile
+        :return: A valid javascript code that represents the value
+        """
+        return self.to_javascript(value)
+
     es5_: bool = False
     to_javascript_: Callable = to_js
 
@@ -517,12 +526,3 @@ class Transpiler(CodeWriter, metaclass=ABCMeta):
             at all.
         :yield: lines of javascript
         """
-
-    def to_js(self, value: Any):
-        """
-        Return the javascript transpilation of the given value.
-
-        :param value: The value to transpile
-        :return: A valid javascript code that represents the value
-        """
-        return self.to_javascript(value)
