@@ -990,7 +990,7 @@ class ClassURLWriter(URLTreeVisitor):
         * *raise_on_not_found*
             Raise a TypeError if no reversal for a url pattern is found,
             default: True
-        * *export_class*
+        * *export*
             The generated JavaScript file will include an export statement
             for the generated class.
             default: False
@@ -1001,7 +1001,7 @@ class ClassURLWriter(URLTreeVisitor):
 
     class_name_ = 'URLResolver'
     raise_on_not_found_ = True
-    export_class_ = False
+    export_ = False
 
     def __init__(self, **kwargs) -> None:
         super().__init__(**kwargs)
@@ -1010,7 +1010,7 @@ class ClassURLWriter(URLTreeVisitor):
             'raise_on_not_found',
             self.raise_on_not_found_
         )
-        self.export_class_ = kwargs.pop('export_class', self.export_class_)
+        self.export_ = kwargs.pop('export', self.export_)
 
     def class_jdoc(self) -> Generator[Optional[str], None, None]:
         """
@@ -1104,7 +1104,7 @@ class ClassURLWriter(URLTreeVisitor):
         """
         yield from self.class_jdoc()
         yield (
-            f'{"export " if self.export_class_ else ""}'
+            f'{"export " if self.export_ else ""}'
             f'class {self.class_name_} {{'
         )
         self.indent()

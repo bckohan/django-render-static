@@ -84,7 +84,7 @@ looks like this:
 
 .. code-block:: htmldjango
 
-    {% urls_to_js export_class=True include=include %}
+    {% urls_to_js export=True include=include %}
 
 It expects a context that has an include variable containing a list of namespaces
 to include. Lets say the project including our app has a

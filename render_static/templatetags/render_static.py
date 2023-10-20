@@ -121,47 +121,24 @@ def urls_to_js(  # pylint: disable=R0913,R0915
 
         {% urls_to_js %}
 
-    The generated javascript would look like (without the log statements):
+    You can now reverse code in the javascript like this:
 
     .. code-block::
 
-        var urls = {
-            "my_url": function(kwargs={}, args=[]) {
-                if (Object.keys(kwargs).length === 0)
-                    return "/my/url/";
-                if (Object.keys(kwargs).length === 1 && ['arg1'].every(
-                    value => kwargs.hasOwnProperty(value))
-                )
-                    return `/url/with/arg/${kwargs["arg1"]}`;
-                throw new TypeError(
-                    "No reversal available for parameters at path: "
-                    "other:detail"
-                );
-            },
-            "other": {
-                "detail": function(kwargs={}, args=[]) {
-                    if (Object.keys(kwargs).length === 1 && ['id'].every(
-                        value => kwargs.hasOwnProperty(value))
-                    )
-                        return `/sub/detail/${kwargs["id"]}`;
-                    throw new TypeError(
-                        "No reversal available for parameters at path: "
-                        "other:detail"
-                    );
-                },
-            },
-        };
-
+        const urls = URLResolver():
 
         # /my/url/
-        console.log(urls.my_url());
+        console.log(urls.reverse('my_url));
 
         # /url/with/arg/143
-        console.log(urls.my_url({'arg1': 143}));
+        console.log(urls.reverse('my_url', {kwargs: {'arg1': 143}}));
 
         # /sub/detail/aaaaaaaa-aaaa-aaaa-aaaa-aaaaaaaaaaaa
-        console.log(urls.other.detail(
-            {'id': 'aaaaaaaa-aaaa-aaaa-aaaa-aaaaaaaaaaaa'})
+        console.log(
+            urls.reverse(
+                'other:detail',
+                {kwargs: {'id': 'aaaaaaaa-aaaa-aaaa-aaaa-aaaaaaaaaaaa'}}
+            )
         );
 
 

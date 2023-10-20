@@ -98,7 +98,16 @@ URL reverse functions
 You'd like to be able to call something like `reverse` on path names from your client JavaScript
 code the same way you do from Python Django code. You don't want to expose your admin paths though.
 
-Your settings file might look like:
+`django-render-static` comes bundled with a urls template ready to use. You can see if your URLs
+will generate out of the box by running:
+
+.. code-block:: console
+
+        $> ./manage.py renderstatic render_static/urls.js --dest ./urls.js
+
+If this fails, you may need to add some :ref:`placeholders`.
+
+The output can be more customized as well. For example your settings file might look like:
 
 .. code-block:: python
 
@@ -118,7 +127,7 @@ Your settings file might look like:
                 'loaders': [
                     ('render_static.loaders.StaticLocMemLoader', {
                         'urls.js': (
-                            '{% urls_to_js exclude=exclude export_class=True %}'
+                            '{% urls_to_js exclude=exclude export=True %}'
                         )
                     })
                  ]

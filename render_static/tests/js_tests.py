@@ -1832,7 +1832,7 @@ class URLSToJavascriptParametersTest(URLJavascriptMixin, BaseTestCase):
                                            'raise_on_not_found=False '
                                            'indent="\t" '
                                            'include=include '
-                                           'export_class=True '
+                                           'export=True '
                                            '%}\n',
                     })
                 ],
