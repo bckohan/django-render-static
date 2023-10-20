@@ -184,7 +184,10 @@ Then urls.js will look like this:
                 }
             }
             if (Array.isArray(expected)) {
-                return Object.keys(kwargs).length === expected.length && expected.every(value => kwargs.hasOwnProperty(value));
+                return (
+                    Object.keys(kwargs).length === expected.length &&
+                    expected.every(value => kwargs.hasOwnProperty(value));
+                );
             } else if (expected) {
                 return args.length === expected;
             } else {

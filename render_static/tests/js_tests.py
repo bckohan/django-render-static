@@ -404,10 +404,9 @@ class URLJavascriptMixin:
         catch = True
         module = False
 
-        def __init__(self, class_mode=None, catch=True, legacy_args=False, default_ns=None, module=False, **kwargs):
+        def __init__(self, class_mode=None, catch=True, default_ns=None, module=False, **kwargs):
             self.class_mode = class_mode
             self.catch = catch
-            self.legacy_args = legacy_args
             self.default_ns = default_ns
             self.module = module
             super().__init__(**kwargs)

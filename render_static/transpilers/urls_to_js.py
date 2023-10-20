@@ -1107,7 +1107,7 @@ class ClassURLWriter(URLTreeVisitor):
         self.outdent()
         yield '}'
         yield ''
-        yield 'reverse(qname, options={}, args=[], query={}) {'
+        yield 'reverse(qname, options={}) {'
         self.indent()
         yield 'if (this.namespace) {'
         self.indent()
@@ -1117,9 +1117,9 @@ class ClassURLWriter(URLTreeVisitor):
         )
         self.outdent()
         yield '}'
-        yield 'const kwargs = ((options.kwargs || null) || options) || {};'
-        yield 'args = ((options.args || null) || args) || [];'
-        yield 'query = ((options.query || null) || query) || {};'
+        yield 'const kwargs = options.kwargs || {};'
+        yield 'const args = options.args || [];'
+        yield 'const query = options.query || {};'
         yield 'let url = this.urls;'
         yield "for (const ns of qname.split(':')) {"
         self.indent()

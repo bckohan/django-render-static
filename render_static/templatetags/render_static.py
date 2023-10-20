@@ -119,9 +119,7 @@ def urls_to_js(  # pylint: disable=R0913,R0915
 
     .. code-block::
 
-        var urls =  {
-            {% urls_to_js %}
-        };
+        {% urls_to_js %}
 
     The generated javascript would look like (without the log statements):
 

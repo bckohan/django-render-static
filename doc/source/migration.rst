@@ -46,3 +46,21 @@ Command Changes
 
 The `render_static` command has been removed and renamed to :ref:`renderstatic`.
 To upgrade simply replace any calls to render_static with :ref:`renderstatic`.
+
+
+urls_to_js Changes
+~~~~~~~~~~~~~~~~~~
+
+* urls_to_js no longer supports ES5 output, instead by default it now
+  transpiles to an es6 class.
+* urls_to_js excludes admin urls by default, to include them set excludes
+* kwargs, args and query values must now be specified as part of the options
+  parameter on reverse():
+
+    ..code-block:: javascript
+
+        // version 1.x
+        urls.reverse('my_app:my_view', {id: 1}, [1], {page: 1})
+
+        // version 2.x
+        urls.reverse('my_app:my_view', {kwargs: {id: 1}, args: [1], query: {page: 1}})

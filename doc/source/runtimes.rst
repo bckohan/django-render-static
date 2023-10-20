@@ -56,7 +56,7 @@ users might include multiple copies of your SPA at different url paths.
 
 When you incur a deployment time dependency on your end users - you should take
 care to think about how it may be used and provide instructions and a
-reasonable default template configuration. Below is a a notional directory
+reasonable default template configuration. Below is a notional directory
 layout and template configuration for a reusable app relying on `urls_to_js`
 that could be included multiple times in a specific Django deployment.
 
@@ -84,7 +84,7 @@ looks like this:
 
 .. code-block:: htmldjango
 
-    {% urls_to_js visitor="render_static.ClassURLWriter" include=include %}
+    {% urls_to_js export_class=True include=include %}
 
 It expects a context that has an include variable containing a list of namespaces
 to include. Lets say the project including our app has a
@@ -115,14 +115,14 @@ generate the urls.js file using the following settings:
         ]
 
         STATIC_TEMPLATES={
-            'templates': {
-                'spa/urls.js': {
+            'templates': [
+                ('spa/urls.js', {
                     'context': {
                         'include': ['spa1', 'spa2']
                     },
                     'dest': str(LOCAL_STATIC_DIR / 'urls.js')
-                }
-            }
+                })
+            ]
         }
 
 Here we setup a local static file directory first so our urls.js file will
@@ -173,18 +173,16 @@ context like this:
 Our template file needs to pull in the generated url resolver and instantiate
 it with this default namespace:
 
-.. code-block:: htmldjango
+.. code-block:: html+django
 
     {% load static %}
     <html>
         <head>
-            <script src="{% static 'spa/urls.js' %}"></script>
-            <script>
-                var spa = {
-                    urls: new URLResolver({namespace: '{{namespace}}'})
-                }
+            <script type="module">
+                import { URLResolver } from "{% static 'spa/urls.js' %}";
+                const urls = new URLResolver({namespace: '{{namespace}}'});
             </script>
         </head>
 
-        <!-- now we can use spa.urls.reverse('qry') and it will resolve to the correct url -->
+        <!-- now we can use urls.reverse('qry') and it will resolve to the correct url -->
 

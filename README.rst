@@ -271,19 +271,11 @@ Transpiling URL reversal
 ------------------------
 
 You'd like to be able to call something like `reverse` on path names from your client JavaScript
-code the same way you do from Python Django code. You don't want to expose your admin paths though.
+code the same way you do from Python Django code.
 
 Your settings file might look like:
 
 .. code:: python
-
-    from pathlib import Path
-
-    BASE_DIR = Path(__file__).parent
-
-    STATICFILES_DIRS = [
-        BASE_DIR / 'transpiled'
-    ]
 
     STATIC_TEMPLATES={
         'ENGINES': [{
@@ -291,22 +283,13 @@ Your settings file might look like:
             'OPTIONS': {
                 'loaders': [
                     ('render_static.loaders.StaticLocMemLoader', {
-                        'urls.js': (
-                            '{% urls_to_js exclude=exclude %}'
-                        )
+                        'urls.js': '{% urls_to_js %}'
                     })
                 ],
                 'builtins': ['render_static.templatetags.render_static']
             },
         }],
-        'templates': [
-            ('urls.js', {
-                'dest': BASE_DIR / 'transpiled' / 'urls.js',
-                'context': {
-                    'exclude':['admin']
-                }
-            })
-        ]
+        'templates': ['urls.js']
     }
 
 
@@ -332,89 +315,11 @@ If your root urls.py looks like this:
     ]
 
 
-Then urls.js will look like this:
-
-.. code:: javascript
-
-    class URLResolver {
-
-        constructor(options=null) {
-            this.options = options || {};
-            if (this.options.hasOwnProperty("namespace")) {
-                this.namespace = this.options.namespace;
-                if (!this.namespace.endsWith(":")) {
-                    this.namespace += ":";
-                }
-            } else {
-                this.namespace = "";
-            }
-        }
-
-        match(kwargs, args, expected, defaults={}) {
-            if (defaults) {
-                kwargs = Object.assign({}, kwargs);
-                for (const [key, val] of Object.entries(defaults)) {
-                    if (kwargs.hasOwnProperty(key)) {
-                        if (kwargs[key] !== val) { return false; }
-                        if (!expected.includes(key)) { delete kwargs[key]; }
-                    }
-                }
-            }
-            if (Array.isArray(expected)) {
-                return Object.keys(kwargs).length === expected.length && expected.every(value => kwargs.hasOwnProperty(value));
-            } else if (expected) {
-                return args.length === expected;
-            } else {
-                return Object.keys(kwargs).length === 0 && args.length === 0;
-            }
-        }
-
-        reverse(qname, options={}, args=[], query={}) {
-            if (this.namespace) {
-                qname = `${this.namespace}${qname.replace(this.namespace, "")}`;
-            }
-            const kwargs = ((options.kwargs || null) || options) || {};
-            args = ((options.args || null) || args) || [];
-            query = ((options.query || null) || query) || {};
-            let url = this.urls;
-            for (const ns of qname.split(':')) {
-                if (ns && url) { url = url.hasOwnProperty(ns) ? url[ns] : null; }
-            }
-            if (url) {
-                let pth = url(kwargs, args);
-                if (typeof pth === "string") {
-                    if (Object.keys(query).length !== 0) {
-                        const params = new URLSearchParams();
-                        for (const [key, value] of Object.entries(query)) {
-                            if (value === null || value === '') continue;
-                            if (Array.isArray(value)) value.forEach(element => params.append(key, element));
-                            else params.append(key, value);
-                        }
-                        const qryStr = params.toString();
-                        if (qryStr) return `${pth.replace(/\/+$/, '')}?${qryStr}`;
-                    }
-                    return pth;
-                }
-            }
-            throw new TypeError(`No reversal available for parameters at path: ${qname}`);
-        }
-
-        urls = {
-            "different": (kwargs={}, args=[]) => {
-                if (this.match(kwargs, args, ['arg1','arg2'])) { return `/different/${kwargs["arg1"]}/${kwargs["arg2"]}`; }
-            },
-            "simple": (kwargs={}, args=[]) => {
-                if (this.match(kwargs, args, ['arg1'])) { return `/simple/${kwargs["arg1"]}`; }
-                if (this.match(kwargs, args)) { return "/simple"; }
-            },
-        }
-    };
-
-
-
 So you can now fetch paths like this:
 
 .. code:: javascript
+
+    import { URLResolver } from '/static/urls.js';
 
     // /different/143/emma
     const urls = new URLResolver();
