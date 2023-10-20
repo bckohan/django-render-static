@@ -39,6 +39,7 @@ release = render_static.__version__
 extensions = [
     'sphinx_rtd_theme',
     'sphinx.ext.autodoc',
+    'sphinx.ext.viewcode',
     'sphinxarg.ext',
     'sphinx.ext.todo'
 ]

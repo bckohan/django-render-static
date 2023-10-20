@@ -540,8 +540,8 @@ class Jinja2URLTestCases(URLJavascriptMixin, BaseTestCase):
     def setUp(self):
         self.clear_placeholder_registries()
 
-    def test_urls_to_js(self, es5=False):
-        self.es6_mode = not es5
+    def test_urls_to_js(self):
+        self.es6_mode = True
         self.url_js = None
         self.class_mode = ClassURLWriter.class_name_
 
@@ -565,37 +565,6 @@ class Jinja2URLTestCases(URLJavascriptMixin, BaseTestCase):
                 reverse(name, kwargs=kwargs),
                 self.get_url_from_js(name, kwargs)
             )
-
-    @override_settings(
-        INSTALLED_APPS=[
-            'render_static.tests.chain',
-            'render_static.tests.spa',
-            'render_static',
-            'django.contrib.auth',
-            'django.contrib.contenttypes',
-            'django.contrib.sessions',
-            'django.contrib.sites',
-            'django.contrib.messages',
-            'django.contrib.staticfiles',
-            'django.contrib.admin'
-        ],
-        ROOT_URLCONF='render_static.tests.urls_bug_13',
-        STATIC_TEMPLATES={
-            'ENGINES': [{
-                'BACKEND': 'render_static.backends.StaticJinja2Templates',
-                'OPTIONS': {
-                    'loader': StaticDictLoader({
-                        'urls.js': (
-                            '{{ urls_to_js(es5=True) }}'
-                        )
-                    })
-                }
-            }],
-            'templates': {'urls.js': {'context': {}}}
-        }
-    )
-    def test_urls_to_js_es5(self):
-        self.test_urls_to_js(es5=True)
 
 
 @override_settings(STATIC_TEMPLATES={

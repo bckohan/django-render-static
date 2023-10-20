@@ -109,14 +109,6 @@ placeholders
    .. autofunction:: resolve_unnamed_placeholders
 
 
-.. _javascript:
-
-javascript
-----------------------------------------------------------------
-
-
-
-
 .. _transpilers:
 
 transpilers
@@ -124,9 +116,10 @@ transpilers
 
 .. automodule:: render_static.transpilers
 
-   .. autoclass:: JavaScriptGenerator
    .. autofunction:: to_js
    .. autofunction:: to_js_datetime
+   .. autoclass:: CodeWriter
+   .. autoclass:: Transpiler
 
 
 .. _transpilers_defines_to_js:
@@ -137,8 +130,7 @@ transpilers.defines_to_js
 
 .. automodule:: render_static.transpilers.defines_to_js
 
-   .. autoclass:: PythonClassVisitor
-   .. autoclass:: DefaultClassWriter
+   .. autoclass:: DefaultDefineTranspiler
 
 
 .. _transpilers_urls_to_js:
@@ -163,7 +155,7 @@ transpilers.enums_to_js
 
 .. automodule:: render_static.transpilers.enums_to_js
 
-   .. autoclass:: EnumVisitor
+   .. autoclass:: EnumTranspiler
    .. autoclass:: EnumClassWriter
 
 

@@ -1,4 +1,4 @@
-{% urls_to_js exclude=exclude %}
+{% urls_to_js %}
 
 // /different/143/emma
 const urls = new URLResolver();

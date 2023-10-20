@@ -83,8 +83,7 @@ def urls_to_js(  # pylint: disable=R0913,R0915
         indent: str = '\t',
         depth: int = 0,
         include: Optional[Iterable[str]] = None,
-        exclude: Optional[Iterable[str]] = None,
-        es5: bool = False,
+        exclude: Optional[Iterable[str]] = ('admin',),
         **kwargs
 ) -> str:
     """
@@ -215,17 +214,14 @@ def urls_to_js(  # pylint: disable=R0913,R0915
     :param exclude: A list of path names to exclude, namespaces without path
         names will be treated as every path under the namespace.
         Default: exclude nothing
-    :param es5: if True, dump es5 valid javascript, if False javascript will
-        be es6
     :param kwargs: Extra kwargs that will be passed to the visitor class on
-        construction. All visitors are passed indent, depth, and es5.
+        construction. All visitors are passed indent, and depth.
     :return: A javascript object containing functions that generate urls with
         and without parameters
     """
 
     kwargs['depth'] = depth
     kwargs['indent'] = indent
-    kwargs['es5'] = es5
     kwargs['include'] = include
     kwargs['exclude'] = exclude
 

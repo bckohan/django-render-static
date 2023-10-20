@@ -387,7 +387,6 @@ class DefinesToJavascriptTest(StructureDiff, BaseTestCase):
 class URLJavascriptMixin:
 
     url_js = None
-    es5_mode = False
     class_mode = None
     legacy_args = False
 
@@ -745,7 +744,6 @@ class URLSToJavascriptTest(URLJavascriptMixin, BaseTestCase):
         self.legacy_args = False
 
     def test_full_url_dump(self):
-        self.es5_mode = False
         self.url_js = None
 
         call_command('renderstatic', 'urls.js')
@@ -929,7 +927,6 @@ class URLSToJavascriptTest(URLJavascriptMixin, BaseTestCase):
         }
     })
     def test_filtering(self):
-        self.es5_mode = False
         self.url_js = None
 
         call_command('renderstatic', 'urls.js')
@@ -1018,7 +1015,6 @@ class URLSToJavascriptTest(URLJavascriptMixin, BaseTestCase):
         }
     })
     def test_filtering_excl_only(self):
-        self.es5_mode = False
         self.url_js = None
 
         call_command('renderstatic', 'urls.js')
@@ -1974,7 +1970,6 @@ class DjangoJSReverseTest(URLJavascriptMixin, BaseTestCase):
         self.clear_placeholder_registries()
 
     def test_js_reverse_urls(self):
-        self.es5_mode = False
         self.url_js = None
         self.class_mode = ClassURLWriter.class_name_
 
@@ -2014,7 +2009,6 @@ class DjangoJSReversePrecedenceTest(URLJavascriptMixin, BaseTestCase):
         self.clear_placeholder_registries()
 
     def test_js_reverse_urls(self):
-        self.es5_mode = False
         self.url_js = None
         self.class_mode = ClassURLWriter.class_name_
         call_command('renderstatic', 'urls.js')

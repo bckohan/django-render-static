@@ -18,10 +18,7 @@ from typing import (
 )
 
 from django.db.models import IntegerChoices, TextChoices
-from render_static.transpilers import (
-    Transpiler,
-    TranspilerTarget,
-)
+from render_static.transpilers import Transpiler, TranspilerTarget
 
 try:
     from django.utils.decorators import classproperty  # pylint: disable=C0412

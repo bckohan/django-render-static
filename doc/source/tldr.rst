@@ -47,9 +47,7 @@ And your defines.js template might look like this:
 
 .. code-block:: js+django
 
-    var defines = {
-        {{ "my_app.defines.Defines"|split|defines_to_js }}
-    };
+    {% defines_to_js defines="my_app.defines.Defines" %}
 
 
 If someone wanted to use your defines template to generate a JavaScript version of your Python
@@ -58,9 +56,9 @@ class their settings file might look like this:
 .. code-block:: python
 
     STATIC_TEMPLATES = {
-        'templates': {
-            'my_app/defines.js': {}
-        }
+        'templates': [
+            ('my_app/defines.js', {})
+        ]
     }
 
 And then of course they would call :ref:`renderstatic` before `collectstatic`::
@@ -118,22 +116,21 @@ Your settings file might look like:
                 'loaders': [
                     ('render_static.loaders.StaticLocMemLoader', {
                         'urls.js': (
-                            '{% urls_to_js visitor="render_static.ClassURLWriter" '
-                            'exclude=exclude %}'
+                            '{% urls_to_js exclude=exclude export_class=True %}'
                         )
                     })
                  ],
                 'builtins': ['render_static.templatetags.render_static']
             },
         }],
-        'templates': {
-            'urls.js': {
+        'templates': [
+            ('urls.js', {
                 'dest': BASE_DIR / 'more_static' / 'urls.js',
                 'context': {
                     'exclude': ['admin']
                 }
-            }
-        }
+            })
+        ]
     }
 
 
@@ -162,25 +159,32 @@ Then urls.js will look like this:
 
 .. code-block:: javascript
 
-    class URLResolver {
+    export class URLResolver {
 
         constructor(options=null) {
             this.options = options || {};
             if (this.options.hasOwnProperty("namespace")) {
                 this.namespace = this.options.namespace;
                 if (!this.namespace.endsWith(":")) {
-                    this.namespace += ':';
+                    this.namespace += ":";
                 }
             } else {
                 this.namespace = "";
             }
         }
 
-        match(kwargs, args, expected) {
+        match(kwargs, args, expected, defaults={}) {
+            if (defaults) {
+                kwargs = Object.assign({}, kwargs);
+                for (const [key, val] of Object.entries(defaults)) {
+                    if (kwargs.hasOwnProperty(key)) {
+                        if (kwargs[key] !== val) { return false; }
+                        if (!expected.includes(key)) { delete kwargs[key]; }
+                    }
+                }
+            }
             if (Array.isArray(expected)) {
-                return Object.keys(kwargs).length === expected.length && expected.every(
-                    value => kwargs.hasOwnProperty(value)
-                );
+                return Object.keys(kwargs).length === expected.length && expected.every(value => kwargs.hasOwnProperty(value));
             } else if (expected) {
                 return args.length === expected;
             } else {
@@ -190,7 +194,7 @@ Then urls.js will look like this:
 
         reverse(qname, options={}, args=[], query={}) {
             if (this.namespace) {
-                qname = `${this.namespace}${qname.replace(this.namespace+":", "")}`;
+                qname = `${this.namespace}${qname.replace(this.namespace, "")}`;
             }
             const kwargs = ((options.kwargs || null) || options) || {};
             args = ((options.args || null) || args) || [];
@@ -205,12 +209,9 @@ Then urls.js will look like this:
                     if (Object.keys(query).length !== 0) {
                         const params = new URLSearchParams();
                         for (const [key, value] of Object.entries(query)) {
-                            if (value === null || value === '')
-                                continue;
-                            if (Array.isArray(value))
-                                value.forEach(element => params.append(key, element));
-                            else
-                                params.append(key, value);
+                            if (value === null || value === '') continue;
+                            if (Array.isArray(value)) value.forEach(element => params.append(key, element));
+                            else params.append(key, value);
                         }
                         const qryStr = params.toString();
                         if (qryStr) return `${pth.replace(/\/+$/, '')}?${qryStr}`;
@@ -222,21 +223,22 @@ Then urls.js will look like this:
         }
 
         urls = {
-            "simple": (kwargs={}, args=[]) => {
-                if (this.match(kwargs, args)) { return "/simple/"; }
-                if (this.match(kwargs, args, ['arg1'])) { return `/simple/${kwargs["arg1"]}`; }
-            },
             "different": (kwargs={}, args=[]) => {
-                if (this.match(kwargs, args, ['arg1','arg2'])) {
-                    return `/different/${kwargs["arg1"]}/${kwargs["arg2"]}`;
-                }
+                if (this.match(kwargs, args, ['arg1','arg2'])) { return `/different/${kwargs["arg1"]}/${kwargs["arg2"]}`; }
+            },
+            "simple": (kwargs={}, args=[]) => {
+                if (this.match(kwargs, args, ['arg1'])) { return `/simple/${kwargs["arg1"]}`; }
+                if (this.match(kwargs, args)) { return "/simple"; }
             },
         }
     };
 
+
 So you can now fetch paths like this:
 
 .. code-block:: javascript
+
+    import { URLResolver } from "./urls.js";
 
     // /different/143/emma
     const urls = new URLResolver();

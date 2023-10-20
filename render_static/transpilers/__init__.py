@@ -5,10 +5,10 @@ Base transpiler components.
 import json
 import numbers
 from abc import ABCMeta, abstractmethod
+from collections.abc import Hashable
 from datetime import date, datetime
 from enum import Enum
 from types import ModuleType
-from collections.abc import Hashable
 from typing import (
     Any,
     Callable,

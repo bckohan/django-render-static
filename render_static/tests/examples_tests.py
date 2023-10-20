@@ -148,9 +148,7 @@ class TestReadmeEnum(BaseTestCase):
             'OPTIONS': {
                 'loaders': [
                     ('render_static.loaders.StaticLocMemLoader', {
-                        'urls.js': (
-                            '{% urls_to_js exclude=exclude %}'
-                        )
+                        'urls.js': '{% urls_to_js %}'
                     }),
                     'render_static.loaders.StaticAppDirectoriesBatchLoader'
                 ],
@@ -158,17 +156,8 @@ class TestReadmeEnum(BaseTestCase):
             },
         }],
         'templates': [
-            ('urls.js', {
-                'dest': TRANSPILED_DIR / 'urls.js',
-                'context': {
-                    'exclude': ['admin']
-                }
-            }),
-            ('examples/readme_url_usage.js', {
-                'context': {
-                    'exclude': ['admin']
-                }
-            })
+            ('urls.js', {'dest': TRANSPILED_DIR / 'urls.js'}),
+            'examples/readme_url_usage.js'
         ]
     }
 )

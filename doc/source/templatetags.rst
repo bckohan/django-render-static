@@ -28,6 +28,28 @@ context. The first argument is the string to split and the second is the separat
     {{ "my_app.mod.Class, my_app.mod.OtherClass"|split:"," }}
 
 
+.. _tags:
+
+Tags
+----
+
+Tags on the ``StaticDjangoTemplates`` backend are django template tags using the
+{% %} syntax. Using the ``StaticJinja2Templates`` backend these tags are global
+functions. For example, in Django templates ``urls_to_js`` might be called like so:
+
+.. code-block:: js+django
+
+    {% urls_to_js visitor="render_static.ClassURLWriter" exclude=exclude %}
+
+And the equivalent call in Jinja2 would be:
+
+.. code-block:: js+django
+
+    {{ urls_to_js(exclude=exclude) }}
+
+..
+
+
 .. _defines_to_js:
 
 ``defines_to_js``
@@ -95,27 +117,6 @@ The generated source would look like:
     parent classes and add them to the JavaScript.
 
 
-.. _tags:
-
-Tags
-----
-
-Tags on the ``StaticDjangoTemplates`` backend are django template tags using the
-{% %} syntax. Using the ``StaticJinja2Templates`` backend these tags are global
-functions. For example, in Django templates ``urls_to_js`` might be called like so:
-
-.. code-block:: js+django
-
-    {% urls_to_js visitor="render_static.ClassURLWriter" exclude=exclude %}
-
-And the equivalent call in Jinja2 would be:
-
-.. code-block:: js+django
-
-    {{ urls_to_js(exclude=exclude) }}
-
-..
-
 .. _urls_to_js:
 
 ``urls_to_js``
@@ -162,9 +163,9 @@ are included (everything else is by default excluded).
 
 .. note::
 
-    When implementing custom URL visitors, any additional named arguments passed to the ``urls_to_js``
-    tag will be passed as kwargs to the URL visitor when this tag instantiates it. These parameters
-    are meant to provide configuration toggles for the generated JavaScript.
+    When implementing custom URL visitors, any additional named arguments passed to the
+    ``urls_to_js`` tag will be passed as kwargs to the URL visitor when this tag instantiates
+    it. These parameters are meant to provide configuration toggles for the generated JavaScript.
 
 .. warning::
 
