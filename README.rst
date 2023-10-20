@@ -34,10 +34,10 @@ during the ``collectstatic`` routine and likely served above Django at runtime.
 Files rendered by django-render-static are immediately available to participate
 in the normal static file collection pipeline.
 
-For example, a frequently occurring pattern that violates the DRY principle is the presence of
-defines, or enum like structures in server side Python code that are simply replicated in client
-side JavaScript. Single-sourcing these structures by transpiling client side code from the server
-side code keeps the stack bone DRY.
+For example, a frequently occurring pattern that violates the `DRY principle <https://en.wikipedia.org/wiki/Don%27t_repeat_yourself>`_
+is the presence of defines, or enum like structures in server side Python code that are simply replicated in client
+side JavaScript. Single-sourcing these structures by transpiling client side code from the server side code keeps
+the stack bone DRY.
 
 `django-render-static` includes Python to Javascript transpilers for:
     - Django's `reverse` function (`urls_to_js`)
