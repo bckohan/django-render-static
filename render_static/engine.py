@@ -225,13 +225,7 @@ class StaticTemplateEngine:
             configurations
         """
         if not self.config_:
-            if not hasattr(settings, 'STATIC_TEMPLATES'):
-                raise ImproperlyConfigured(
-                    'No STATIC_TEMPLATES configuration directive in settings!'
-                )
-
-            self.config_ = settings.STATIC_TEMPLATES if \
-                settings.STATIC_TEMPLATES is not None else {}
+            self.config_ = getattr(settings, 'STATIC_TEMPLATES', {}) or {}
 
         unrecognized_keys = [
             key for key in self.config_.keys() if key not in [

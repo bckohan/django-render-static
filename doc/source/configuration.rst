@@ -27,14 +27,14 @@ settings:
         'context': {
             # define a global context dictionary that will be used to render all templates
         },
-        'templates' {
-            'app/js/defines.js': {
+        'templates' [
+            ('app/js/defines.js', {
                 'context': {
                     'defines': 'app.defines.DefinesClass'
                 }
-            },
-            'urls.js': {}
-        }
+            }),
+            ('urls.js', {})
+        ]
       }
 
 The ``STATIC_TEMPLATES`` setting closely mirrors the ``TEMPLATES`` setting by defining which
@@ -48,12 +48,12 @@ more details.
 Minimal Configuration
 ---------------------
 
-To run `renderstatic`, ``STATIC_TEMPLATES`` must be defined in settings. If it's an empty
+To run `renderstatic`, If ``STATIC_TEMPLATES`` is not defined in settings. Or, if it's an empty
 dictionary (or None):
 
 .. code-block:: python
 
-    STATIC_TEMPALTES = {}
+    STATIC_TEMPLATES = {}
 
 
 then the default engine and loaders will be used which is equivalent to:
@@ -211,7 +211,7 @@ locations. For example, the following would render one template three times:
 ~~~~~~~~
 
 Override the default destination where a template will be rendered. Templates loaded from ``DIRS``
-instead of apps do not have a default destination and must be provided one here. When rendering a
+instead of apps do not have a default destination and must be provided here. When rendering a
 single template, if the ``dest`` parameter is not an existing directory, it will be assumed to be
 the full path including the file name where the template will be rendered. When rendering in batch
 mode, ``dest`` will be treated as a directory and created if it does not exist.
@@ -286,12 +286,12 @@ And our settings file might look like:
                 'loader': StaticFileSystemBatchLoader()
             },
         }],
-        'templates': {
-            'urls.js': {
+        'templates': [
+            ('urls.js', {
                 'dest': BASE_DIR / 'more_static' / 'urls.js',
                 'context': {
                     'exclude': ['admin']
                 }
-            }
-        }
+            )
+        ]
     }

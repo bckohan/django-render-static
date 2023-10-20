@@ -1,0 +1,1 @@
+{% urls_to_js transpiler=transpiler|default:'render_static.transpilers.urls_to_js.ClassURLWriter' url_conf=url_conf ident=indent|default:'\t' depth=depth|default:0 include=include exclude=exclude|default:'admin'|split:',' export_class=export_class|default:False %}

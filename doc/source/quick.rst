@@ -1,5 +1,8 @@
 .. _ref-usage:
 
+.. _django-enum: http://pypi.python.org/pypi/django-enum
+.. _enum-properties: http://pypi.python.org/pypi/enum-properties
+
 ===============
 Quick Reference
 ===============
@@ -198,7 +201,7 @@ Then urls.js will look like this:
          * @param {string[]} expected - An array of expected arguments.
          * @param {Object.<string, string>} defaults - An object mapping default arguments to their values.
          */
-        #match(kwargs, args, expected, defaults={}) {
+        match(kwargs, args, expected, defaults={}) {
             if (defaults) {
                 kwargs = Object.assign({}, kwargs);
                 for (const [key, val] of Object.entries(defaults)) {
@@ -265,11 +268,11 @@ Then urls.js will look like this:
 
         urls = {
             "different": (kwargs={}, args=[]) => {
-                if (this.#match(kwargs, args, ['arg1','arg2'])) { return `/different/${kwargs["arg1"]}/${kwargs["arg2"]}`; }
+                if (this.match(kwargs, args, ['arg1','arg2'])) { return `/different/${kwargs["arg1"]}/${kwargs["arg2"]}`; }
             },
             "simple": (kwargs={}, args=[]) => {
-                if (this.#match(kwargs, args, ['arg1'])) { return `/simple/${kwargs["arg1"]}`; }
-                if (this.#match(kwargs, args)) { return "/simple"; }
+                if (this.match(kwargs, args, ['arg1'])) { return `/simple/${kwargs["arg1"]}`; }
+                if (this.match(kwargs, args)) { return "/simple"; }
             },
         }
     };
@@ -308,3 +311,83 @@ So you can now fetch paths like this:
     The JavaScript URL resolution is guaranteed to produce the same paths as Django's reversal
     mechanism. If it does not, this is a bug and we kindly ask
     `you to report it <https://github.com/bckohan/django-render-static/issues>`_.
+
+
+Transpiling Enumerations
+------------------------
+
+Say instead of the usual choices tuple you're using PEP 435 style python
+enumerations as model fields using django-enum_ and enum-properties_. For example
+we might define a simple color enumeration like so:
+
+.. code:: python
+
+    from django.db import models
+    from django_enum import EnumField, TextChoices
+    from enum_properties import p, s
+
+    class ExampleModel(models.Model):
+
+        class Color(TextChoices, s('rgb'), s('hex', case_fold=True)):
+
+            # name   value   label       rgb       hex
+            RED   =   'R',   'Red',   (1, 0, 0), 'ff0000'
+            GREEN =   'G',   'Green', (0, 1, 0), '00ff00'
+            BLUE  =   'B',   'Blue',  (0, 0, 1), '0000ff'
+
+        color = EnumField(Color, null=True, default=None)
+
+If we define an enum.js template that looks like this:
+
+.. code:: js+django
+
+    {% enums_to_js enums="examples.models.ExampleModel.Color" %}
+
+It will contain a javascript class transpilation of the Color enum that looks
+like this:
+
+.. code:: javascript
+
+    class Color {
+
+        static RED = new Color("R", "RED", "Red", [1, 0, 0], "ff0000");
+        static GREEN = new Color("G", "GREEN", "Green", [0, 1, 0], "00ff00");
+        static BLUE = new Color("B", "BLUE", "Blue", [0, 0, 1], "0000ff");
+
+        constructor (value, name, label, rgb, hex) {
+            this.value = value;
+            this.name = name;
+            this.label = label;
+            this.rgb = rgb;
+            this.hex = hex;
+        }
+
+        toString() {
+            return this.value;
+        }
+
+        static get(value) {
+            switch(value) {
+                case "R":
+                    return Color.RED;
+                case "G":
+                    return Color.GREEN;
+                case "B":
+                    return Color.BLUE;
+            }
+            throw new TypeError(`No Color enumeration maps to value ${value}`);
+        }
+
+        static [Symbol.iterator]() {
+            return [Color.RED, Color.GREEN, Color.BLUE][Symbol.iterator]();
+        }
+    }
+
+We can now use our enumeration like so:
+
+.. code:: javascript
+
+    Color.BLUE === Color.get('B');
+    for (const color of Color) {
+        console.log(color);
+    }

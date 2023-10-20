@@ -239,10 +239,9 @@ class ConfigTestCase(TestCase):
 
     def test_no_settings(self):
         """
-        If no STATIC_TEMPLATES setting is present we should raise.
+        Change in v2 - this no longer raises when STATIC_TEMPLATES setting is not present
         """
-        engine = StaticTemplateEngine()
-        self.assertRaises(ImproperlyConfigured, lambda: engine.config)
+        StaticTemplateEngine()
 
     @override_settings(
         STATIC_ROOT=None,
@@ -1118,7 +1117,8 @@ class GenerateNothing(BaseTestCase):
         self.generate_nothing()
 
     def test_missing_settings_raises(self):
-        self.assertRaises(ImproperlyConfigured, lambda: call_command('renderstatic'))
+        # change in v2 - this no longer throws an exception
+        call_command('renderstatic')
 
 
 class TestContextResolution(BaseTestCase):
