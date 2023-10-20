@@ -1,10 +1,10 @@
 .. _ref-usage:
 
-=====
-TL/DR
-=====
+===============
+Quick Reference
+===============
 
-First go back to the install page and install `django-render-static` if you haven't!
+First go back to the :doc:`installation` page and install `django-render-static` if you haven't!
 
 Generating Javascript Defines
 -----------------------------
@@ -56,9 +56,7 @@ class their settings file might look like this:
 .. code-block:: python
 
     STATIC_TEMPLATES = {
-        'templates': [
-            ('my_app/defines.js', {})
-        ]
+        'templates': ['my_app/defines.js']
     }
 
 And then of course they would call :ref:`renderstatic` before `collectstatic`::
@@ -109,6 +107,7 @@ Your settings file might look like:
         BASE_DIR / 'more_static'
     ]
 
+    # since its so small, we just specify our template inline in the settings file
     STATIC_TEMPLATES = {
         'ENGINES': [{
             'BACKEND': 'render_static.backends.StaticDjangoTemplates',
@@ -119,16 +118,12 @@ Your settings file might look like:
                             '{% urls_to_js exclude=exclude export_class=True %}'
                         )
                     })
-                 ],
-                'builtins': ['render_static.templatetags.render_static']
+                 ]
             },
         }],
         'templates': [
             ('urls.js', {
-                'dest': BASE_DIR / 'more_static' / 'urls.js',
-                'context': {
-                    'exclude': ['admin']
-                }
+                'dest': BASE_DIR / 'more_static' / 'urls.js'
             })
         ]
     }
@@ -159,8 +154,29 @@ Then urls.js will look like this:
 
 .. code-block:: javascript
 
+    /**
+     * A url resolver class that provides an interface very similar to Django's
+     * reverse() function. This interface is nearly identical to reverse() with
+     * a few caveats:
+     *
+     *  - Python type coercion is not available, so care should be taken to pass
+     *      in argument inputs that are in the expect string format.
+     *  - Not all reversal behavior can be replicated but these are corner cases
+     *      that are not likely to be correct url specification to begin with.
+     *  - The reverse function also supports a query option to include url query
+     *      parameters in the reversed url.
+     *
+     * @class
+     */
     export class URLResolver {
 
+        /**
+         * Instantiate this url resolver.
+         *
+         * @param {Object} options - The options object.
+         * @param {string} options.namespace - When provided, namespace will
+         *     prefix all reversed paths with the given namespace.
+         */
         constructor(options=null) {
             this.options = options || {};
             if (this.options.hasOwnProperty("namespace")) {
@@ -173,7 +189,16 @@ Then urls.js will look like this:
             }
         }
 
-        match(kwargs, args, expected, defaults={}) {
+        /**
+         * Given a set of args and kwargs and an expected set of arguments and
+         * a default mapping, return True if the inputs work for the given set.
+         *
+         * @param {Object} kwargs - The object holding the reversal named arguments.
+         * @param {string[]} args - The array holding the positional reversal arguments.
+         * @param {string[]} expected - An array of expected arguments.
+         * @param {Object.<string, string>} defaults - An object mapping default arguments to their values.
+         */
+        #match(kwargs, args, expected, defaults={}) {
             if (defaults) {
                 kwargs = Object.assign({}, kwargs);
                 for (const [key, val] of Object.entries(defaults)) {
@@ -195,13 +220,26 @@ Then urls.js will look like this:
             }
         }
 
-        reverse(qname, options={}, args=[], query={}) {
+        /**
+         * Reverse a Django url. This method is nearly identical to Django's
+         * reverse function, with an additional option for URL parameters. See
+         * the class docstring for caveats.
+         *
+         * @param {string} qname - The name of the url to reverse. Namespaces
+         *   are supported using `:` as a delimiter as with Django's reverse.
+         * @param {Object} options - The options object.
+         * @param {string} options.kwargs - The object holding the reversal named arguments.
+         * @param {string[]} options.args - The array holding the reversal positional arguments.
+         * @param {Object.<string, string|string[]>} options.query - URL query parameters to add
+         *    to the end of the reversed url.
+         */
+        reverse(qname, options={}) {
             if (this.namespace) {
                 qname = `${this.namespace}${qname.replace(this.namespace, "")}`;
             }
-            const kwargs = ((options.kwargs || null) || options) || {};
-            args = ((options.args || null) || args) || [];
-            query = ((options.query || null) || query) || {};
+            const kwargs = options.kwargs || {};
+            const args = options.args || [];
+            const query = options.query || {};
             let url = this.urls;
             for (const ns of qname.split(':')) {
                 if (ns && url) { url = url.hasOwnProperty(ns) ? url[ns] : null; }
@@ -227,11 +265,11 @@ Then urls.js will look like this:
 
         urls = {
             "different": (kwargs={}, args=[]) => {
-                if (this.match(kwargs, args, ['arg1','arg2'])) { return `/different/${kwargs["arg1"]}/${kwargs["arg2"]}`; }
+                if (this.#match(kwargs, args, ['arg1','arg2'])) { return `/different/${kwargs["arg1"]}/${kwargs["arg2"]}`; }
             },
             "simple": (kwargs={}, args=[]) => {
-                if (this.match(kwargs, args, ['arg1'])) { return `/simple/${kwargs["arg1"]}`; }
-                if (this.match(kwargs, args)) { return "/simple"; }
+                if (this.#match(kwargs, args, ['arg1'])) { return `/simple/${kwargs["arg1"]}`; }
+                if (this.#match(kwargs, args)) { return "/simple"; }
             },
         }
     };

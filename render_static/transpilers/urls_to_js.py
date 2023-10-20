@@ -1012,6 +1012,87 @@ class ClassURLWriter(URLTreeVisitor):
         )
         self.export_class_ = kwargs.pop('export_class', self.export_class_)
 
+    def class_jdoc(self) -> Generator[Optional[str], None, None]:
+        """
+        The docstring for the class.
+        :yield: The JavaScript jdoc comment lines
+        """
+        for comment_line in """
+        /**
+         * A url resolver class that provides an interface very similar to 
+         * Django's reverse() function. This interface is nearly identical to 
+         * reverse() with a few caveats:
+         *
+         *  - Python type coercion is not available, so care should be taken to
+         *      pass in argument inputs that are in the expect string format.
+         *  - Not all reversal behavior can be replicated but these are corner 
+         *      cases that are not likely to be correct url specification to 
+         *      begin with.
+         *  - The reverse function also supports a query option to include url
+         *      query parameters in the reversed url.
+         *
+         * @class
+         */""".split('\n'):
+            yield comment_line[8:]
+
+    def constructor_jdoc(self) -> Generator[Optional[str], None, None]:
+        """
+        The docstring for the constructor.
+        :yield: The JavaScript jdoc comment lines
+        """
+        for comment_line in """
+        /**
+         * Instantiate this url resolver.
+         *
+         * @param {Object} options - The options object.
+         * @param {string} options.namespace - When provided, namespace will
+         *     prefix all reversed paths with the given namespace.
+         */""".split('\n'):
+            yield comment_line[8:]
+
+    def match_jdoc(self) -> Generator[Optional[str], None, None]:
+        """
+        The docstring for the match function.
+        :yield: The JavaScript jdoc comment lines
+        """
+        for comment_line in """
+        /**
+         * Given a set of args and kwargs and an expected set of arguments and
+         * a default mapping, return True if the inputs work for the given set.
+         *
+         * @param {Object} kwargs - The object holding the reversal named 
+         *     arguments.
+         * @param {string[]} args - The array holding the positional reversal 
+         *     arguments.
+         * @param {string[]} expected - An array of expected arguments.
+         * @param {Object.<string, string>} defaults - An object mapping 
+         *     default arguments to their values.
+         */""".split('\n'):
+            yield comment_line[8:]
+
+    def reverse_jdoc(self) -> Generator[Optional[str], None, None]:
+        """
+        The docstring for the reverse function.
+        :yield: The JavaScript jdoc comment lines
+        """
+        for comment_line in """
+        /**
+         * Reverse a Django url. This method is nearly identical to Django's
+         * reverse function, with an additional option for URL parameters. See
+         * the class docstring for caveats.
+         *
+         * @param {string} qname - The name of the url to reverse. Namespaces
+         *   are supported using `:` as a delimiter as with Django's reverse.
+         * @param {Object} options - The options object.
+         * @param {string} options.kwargs - The object holding the reversal 
+         *   named arguments.
+         * @param {string[]} options.args - The array holding the reversal 
+         *   positional arguments.
+         * @param {Object.<string, string|string[]>} options.query - URL query
+         *   parameters to add to the end of the reversed url.
+         */""".split('\n'):
+            yield comment_line[8:]
+
     def init_visit(  # pylint: disable=R0915
             self
     ) -> Generator[Optional[str], None, None]:
@@ -1021,13 +1102,14 @@ class ClassURLWriter(URLTreeVisitor):
 
         :yield: JavaScript LoC for the reversal class
         """
-
+        yield from self.class_jdoc()
         yield (
             f'{"export " if self.export_class_ else ""}'
             f'class {self.class_name_} {{'
         )
         self.indent()
         yield ''
+        yield from self.constructor_jdoc()
         yield 'constructor(options=null) {'
         self.indent()
         yield 'this.options = options || {};'
@@ -1048,7 +1130,8 @@ class ClassURLWriter(URLTreeVisitor):
         self.outdent()
         yield '}'
         yield ''
-        yield 'match(kwargs, args, expected, defaults={}) {'
+        yield from self.match_jdoc()
+        yield '#match(kwargs, args, expected, defaults={}) {'
         self.indent()
         yield 'if (defaults) {'
         self.indent()
@@ -1107,6 +1190,7 @@ class ClassURLWriter(URLTreeVisitor):
         self.outdent()
         yield '}'
         yield ''
+        yield from self.reverse_jdoc()
         yield 'reverse(qname, options={}) {'
         self.indent()
         yield 'if (this.namespace) {'
@@ -1249,10 +1333,10 @@ class ClassURLWriter(URLTreeVisitor):
         quote = '`'
         if len(path) == 1:  # there are no substitutions
             if defaults:
-                yield f'if (this.match(kwargs, args, [], {defaults})) ' \
+                yield f'if (this.#match(kwargs, args, [], {defaults})) ' \
                       f'{{ return "/{str(path[0]).lstrip("/")}"; }}'
             else:
-                yield f'if (this.match(kwargs, args)) ' \
+                yield f'if (this.#match(kwargs, args)) ' \
                       f'{{ return "/{str(path[0]).lstrip("/")}"; }}'
         elif len(kwargs) == 0:
             nargs = len([
@@ -1262,7 +1346,7 @@ class ClassURLWriter(URLTreeVisitor):
             # Django reverse does not allow mixing args and kwargs in calls
             # to reverse
             yield (
-                f'if (this.match(kwargs, args, {nargs})) {{'
+                f'if (this.#match(kwargs, args, {nargs})) {{'
                 f' return {quote}/{self.path_join(path).lstrip("/")}'
                 f'{quote}; }}'
             )
@@ -1270,14 +1354,14 @@ class ClassURLWriter(URLTreeVisitor):
             opts_str = ",".join([f"'{param}'" for param in kwargs])
             if defaults:
                 yield (
-                    f'if (this.match(kwargs, args, [{opts_str}], {defaults}))'
+                    f'if (this.#match(kwargs, args, [{opts_str}], {defaults}))'
                     f' {{'
                     f' return {quote}/{self.path_join(path).lstrip("/")}'
                     f'{quote}; }}'
                 )
             else:
                 yield (
-                    f'if (this.match(kwargs, args, [{opts_str}])) {{'
+                    f'if (this.#match(kwargs, args, [{opts_str}])) {{'
                     f' return {quote}/{self.path_join(path).lstrip("/")}'
                     f'{quote}; }}'
                 )

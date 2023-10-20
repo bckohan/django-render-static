@@ -26,7 +26,6 @@ except ImportError:
     from django.utils.functional import classproperty
 
 EXAMPLE_STATIC_DIR = Path(__file__).parent / 'examples' / 'static' / 'examples'
-TRANSPILED_DIR = Path(__file__).parent / 'transpiled'
 
 node_version = None
 if shutil.which('node'):  # pragma: no cover
@@ -139,9 +138,6 @@ class TestReadmeEnum(BaseTestCase):
 
 @override_settings(
     ROOT_URLCONF='render_static.tests.examples.urls',
-    STATICFILES_DIRS=[
-        TRANSPILED_DIR
-    ],
     STATIC_TEMPLATES={
         'ENGINES': [{
             'BACKEND': 'render_static.backends.StaticDjangoTemplates',
@@ -151,12 +147,11 @@ class TestReadmeEnum(BaseTestCase):
                         'urls.js': '{% urls_to_js %}'
                     }),
                     'render_static.loaders.StaticAppDirectoriesBatchLoader'
-                ],
-                'builtins': ['render_static.templatetags.render_static']
+                ]
             },
         }],
         'templates': [
-            ('urls.js', {'dest': TRANSPILED_DIR / 'urls.js'}),
+            'urls.js',
             'examples/readme_url_usage.js'
         ]
     }
@@ -176,11 +171,12 @@ class TestReadmeURLs(URLJavascriptMixin, BaseTestCase):
         """
         Test es6 url class.
         """
+        from django.conf import settings
         self.es6_mode = True
         self.url_js = None
         self.class_mode = ClassURLWriter.class_name_
 
-        transpiled = TRANSPILED_DIR / 'urls.js'
+        transpiled = settings.STATIC_ROOT / 'urls.js'
 
         call_command('renderstatic', 'urls.js')
         for name, kwargs in [

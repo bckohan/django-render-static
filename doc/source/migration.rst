@@ -53,14 +53,48 @@ urls_to_js Changes
 
 * urls_to_js no longer supports ES5 output, instead by default it now
   transpiles to an es6 class.
-* urls_to_js excludes admin urls by default, to include them set excludes
+* urls_to_js excludes admin urls by default, to include them set exclude to None
 * kwargs, args and query values must now be specified as part of the options
   parameter on reverse():
 
-    ..code-block:: javascript
+    .. code-block:: javascript
 
         // version 1.x
         urls.reverse('my_app:my_view', {id: 1}, [1], {page: 1})
 
         // version 2.x
         urls.reverse('my_app:my_view', {kwargs: {id: 1}, args: [1], query: {page: 1}})
+
+
+STATIC_TEMPLATES
+~~~~~~~~~~~~~~~~
+
+The ``templates`` parameter on ``STATIC_TEMPLATES`` may remain a dictionary,
+but will now also accept a sequence. This allows a single template to be rendered
+multiple times with different contexts. Specifying ``templates`` as a list of
+tuples is now preferred:
+
+    .. code-block:: python
+
+        STATIC_TEMPLATES={
+            'ENGINES': [{
+                'BACKEND': 'render_static.backends.StaticDjangoTemplates',
+                'OPTIONS': {
+                    'loaders': [
+                        ('render_static.loaders.StaticLocMemLoader', {
+                            'urls.js': '{% urls_to_js exclude=exclude %}'
+                        })
+                    ]
+                },
+            }],
+
+            # 1.x
+            'templates': {
+                'urls.js': {'context': {'exclude': ['admin']}}
+            }
+
+            # 2.x
+            'templates': [
+                ('urls.js', {'context': {'exclude': ['admin']}})
+            ]
+        }

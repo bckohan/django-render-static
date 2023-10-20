@@ -10,8 +10,10 @@ in the normal static file collection pipeline.
 For example, a frequently occurring pattern that violates the
 `DRY principle <https://en.wikipedia.org/wiki/Don%27t_repeat_yourself>`_ is the
 presence of defines, or enum like structures in server side Python code that are
-simply replicated in client side JavaScript. Single-sourcing these structures by
-transpiling client side code from the server side code keeps the stack bone DRY.
+simply replicated in client side JavaScript. Another example might be rebuilding
+Django URLs from arguments in a `Single Page Application <https://en.wikipedia.org/wiki/Single-page_application>`_.
+Single-sourcing these structures by transpiling client side code from the server
+side code keeps the stack bone DRY.
 
 `django-render-static` includes Python to Javascript transpilers for:
     - Django's `reverse` function (`urls_to_js`)
@@ -19,6 +21,11 @@ transpiling client side code from the server side code keeps the stack bone DRY.
     - Plain data define-like structures in Python classes and modules
       (`defines_to_js`)
 
+
+`django-render-static` also formalizes the concept of a packaged-time or deployment-time
+static file rendering step. It piggybacks off the existing templating engines and configurations
+and should therefore be familiar to Django developers. It supports both standard Django templating
+and Jinja templates and allows contexts to specified in python, json or YAML.
 
 You can report bugs and discuss features on the
 `issues page <https://github.com/bckohan/django-render-static/issues>`_.
@@ -31,7 +38,7 @@ encouraged! Especially additional template tags and filters!
    :caption: Contents:
 
    installation
-   tldr
+   quick
    configuration
    runtimes
    templatetags
