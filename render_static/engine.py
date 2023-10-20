@@ -447,7 +447,7 @@ class StaticTemplateEngine:
 
             dest /= template.template.name
         elif batch or Path(dest).is_dir():
-            dest /= template.template.name
+            dest = Path(dest) / template.template.name
 
         os.makedirs(str(Path(dest if dest else '').parent), exist_ok=True)
 
