@@ -8,6 +8,7 @@ v2.0.0
 **This is a major version upgrade - please see migration guide for instructions
 on how to migration from version 1.x to 2.x.**
 
+* Implemented `Include render_static filters and tags in engine be default. <https://github.com/bckohan/django-render-static/issues/113>`_
 * Implemented `Exclude admin urls by default from urls_to_js output <https://github.com/bckohan/django-render-static/issues/112>`_
 * Implemented `Remove multi-arg call style from url reverse() <https://github.com/bckohan/django-render-static/issues/96>`_
 * Implemented `Test re_path nested arguments <https://github.com/bckohan/django-render-static/issues/93>`_

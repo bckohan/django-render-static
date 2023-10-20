@@ -40,6 +40,10 @@ class StaticDjangoTemplates(DjangoTemplates):
         params = params.copy()
         options = params.pop('OPTIONS').copy()
         loaders = options.get('loaders', None)
+        options.setdefault(
+            'builtins',
+            ['render_static.templatetags.render_static']
+        )
         self.app_dirname = options.pop('app_dir', self.app_dirname)
         if loaders is None:
             loaders = ['render_static.loaders.StaticFilesystemLoader']

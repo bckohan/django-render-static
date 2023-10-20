@@ -285,8 +285,7 @@ Your settings file might look like:
                     ('render_static.loaders.StaticLocMemLoader', {
                         'urls.js': '{% urls_to_js %}'
                     })
-                ],
-                'builtins': ['render_static.templatetags.render_static']
+                ]
             },
         }],
         'templates': ['urls.js']
@@ -321,9 +320,10 @@ So you can now fetch paths like this:
 
     import { URLResolver } from '/static/urls.js';
 
-    // /different/143/emma
     const urls = new URLResolver();
-    urls.reverse('different', {'arg1': 143, 'arg2': 'emma'});
+
+    // /different/143/emma
+    urls.reverse('different', {kwargs: {'arg1': 143, 'arg2': 'emma'}});
 
     // reverse also supports query parameters
     // /different/143/emma?intarg=0&listarg=A&listarg=B&listarg=C
