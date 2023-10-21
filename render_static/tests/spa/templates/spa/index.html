@@ -1,0 +1,35 @@
+{% load static %}
+<html>
+    <head>
+        <script src="{% static 'spa/urls.js' %}"></script>
+        <script>
+            var spa = {
+                urls: new URLResolver({namespace: '{{namespace}}'})
+            }
+        </script>
+    </head>
+    <body>
+        <div id="qry-result"></div>
+        <div id="qry-result-arg"></div>
+    </body>
+    <script>
+        document.getElementById('qry-result').innerHTML = spa.urls.reverse('qry');
+        const xhr = new XMLHttpRequest();
+        xhr.onreadystatechange = function() {
+            if (xhr.readyState === 4) {
+                document.getElementById('qry-result').innerHTML = xhr.responseText;
+            }
+        };
+        xhr.open('GET', spa.urls.reverse('qry'));
+        xhr.send();
+
+        const xhr2 = new XMLHttpRequest();
+        xhr2.onreadystatechange = function() {
+            if (xhr2.readyState === 4) {
+                document.getElementById('qry-result-arg').innerHTML = xhr2.responseText;
+            }
+        };
+        xhr2.open('GET', spa.urls.reverse('qry', {kwargs: {arg: 5}}));
+        xhr2.send();
+    </script>
+</html>

@@ -14,15 +14,15 @@ Installation
 
        INSTALLED_APPS = [
            'render_static',
+           ...
        ]
 
 3. Add a ``STATIC_TEMPLATES`` configuration directive to your settings file::
 
         STATIC_TEMPLATES = {
-            'templates' : {
-                'path/to/template': {
-                    'context' { 'variable': 'value' }
-                }
+            'templates' : [
+                ('path/to/template', {'context' { 'variable': 'value' }})
+            ]
         }
 
 4. Run ``renderstatic`` preceding every run of ``collectstatic`` ::

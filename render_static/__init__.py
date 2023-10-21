@@ -6,29 +6,31 @@ r"""
 /_/ |_|\___/_/ /_/\__,_/\___/_/      /____/\__/\__,_/\__/_/\___/
 
 """
+from datetime import datetime
+
 from .context import resolve_context
 from .resource import resource
-from .url_tree import ClassURLWriter, SimpleURLWriter, URLTreeVisitor
+from .transpilers.defines_to_js import DefaultDefineTranspiler
+from .transpilers.enums_to_js import EnumClassWriter
+from .transpilers.urls_to_js import ClassURLWriter, SimpleURLWriter
 
-VERSION = (1, 1, 6)
+VERSION = (2, 0, 0)
 
 __title__ = 'Django Render Static'
 __version__ = '.'.join(str(i) for i in VERSION)
 __author__ = 'Brian Kohan'
 __license__ = 'MIT'
-__copyright__ = 'Copyright 2020-2023 Brian Kohan'
-
-
-default_app_config = 'render_static.apps.RenderStaticConfig'  # pylint: disable=C0103
+__copyright__ = f'Copyright 2020-{datetime.now().year} Brian Kohan'
 
 
 class Jinja2DependencyNeeded:  # pylint: disable=R0903
     """
-    Jinja2 is an optional dependency - lazy fail if its use is attempted without it being
-    present on the python path.
+    Jinja2 is an optional dependency - lazy fail if its use is attempted
+    without it being present on the python path.
     """
 
     def __init__(self, *args, **kwargs):
         raise ImportError(  # pragma: no cover
-            'To use the Jinja2 backend you must install the Jinja2 python package.'
+            'To use the Jinja2 backend you must install the Jinja2 python '
+            'package.'
         )

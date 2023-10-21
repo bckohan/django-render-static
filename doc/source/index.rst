@@ -2,19 +2,30 @@
 Introduction
 ============
 
-Use Django's dynamic templates to render static files. That is, files that are collected
-during the ``collectstatic`` routine and likely served above Django on the stack. Static
-templates should be rendered preceding any run of ``collectstatic``.
+Use Django's template engines to render static files that are collected
+during the ``collectstatic`` routine and likely served above Django at runtime.
+Files rendered by django-render-static are immediately available to participate
+in the normal static file collection pipeline.
 
-For example, a frequently occurring pattern that violates the DRY principle is the presence of
-defines, or enum like structures in server side Python code that are simply replicated in client
-side JavaScript. Single-sourcing these structures by generating client side code from the server
-side code maintains DRYness.
+For example, a frequently occurring pattern that violates the
+`DRY principle <https://en.wikipedia.org/wiki/Don%27t_repeat_yourself>`_ is the
+presence of defines, or enum like structures in server side Python code that are
+simply replicated in client side JavaScript. Another example might be rebuilding
+Django URLs from arguments in a `Single Page Application <https://en.wikipedia.org/wiki/Single-page_application>`_.
+Single-sourcing these structures by transpiling client side code from the server
+side code keeps the stack bone DRY.
 
-`django-render-static` includes builtins for:
-    - Replicating Django's `reverse` function in JavaScript (:ref:`urls_to_js`)
-    - Auto-translating Python class and module structures into JavaScript
-      (:ref:`modules_to_js`, :ref:`classes_to_js`)
+`django-render-static` includes Python to Javascript transpilers for:
+    - Django's `reverse` function (`urls_to_js`)
+    - PEP 435 style Python enumerations (`enums_to_js`)
+    - Plain data define-like structures in Python classes and modules
+      (`defines_to_js`)
+
+
+`django-render-static` also formalizes the concept of a package-time or deployment-time
+static file rendering step. It piggybacks off the existing templating engines and configurations
+and should therefore be familiar to Django developers. It supports both standard Django templating
+and Jinja templates and allows contexts to be specified in python, json or YAML.
 
 You can report bugs and discuss features on the
 `issues page <https://github.com/bckohan/django-render-static/issues>`_.
@@ -27,9 +38,12 @@ encouraged! Especially additional template tags and filters!
    :caption: Contents:
 
    installation
-   tldr
+   quick
    configuration
+   runtimes
    templatetags
    commands
    reference
    changelog
+   migration
+

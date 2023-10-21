@@ -80,10 +80,9 @@ templatetags.django\_static\_templates
 .. automodule:: render_static.templatetags.render_static
 
     .. autofunction:: split
-    .. autofunction:: to_js
-    .. autofunction:: classes_to_js
-    .. autofunction:: modules_to_js
+    .. autofunction:: defines_to_js
     .. autofunction:: urls_to_js
+    .. autofunction:: enums_to_js
 
 .. _exceptions:
 
@@ -110,22 +109,36 @@ placeholders
    .. autofunction:: resolve_unnamed_placeholders
 
 
-.. _javascript:
+.. _transpilers:
 
-javascript
+transpilers
 ----------------------------------------------------------------
 
-.. automodule:: render_static.javascript
+.. automodule:: render_static.transpilers
 
-   .. autoclass:: JavaScriptGenerator
+   .. autofunction:: to_js
+   .. autofunction:: to_js_datetime
+   .. autoclass:: CodeWriter
+   .. autoclass:: Transpiler
 
 
-.. _url_tree:
+.. _transpilers_defines_to_js:
 
-url_tree
+transpilers.defines_to_js
 ----------------------------------------------------------------
 
-.. automodule:: render_static.url_tree
+
+.. automodule:: render_static.transpilers.defines_to_js
+
+   .. autoclass:: DefaultDefineTranspiler
+
+
+.. _transpilers_urls_to_js:
+
+transpilers.urls_to_js
+----------------------------------------------------------------
+
+.. automodule:: render_static.transpilers.urls_to_js
 
    .. autoclass:: URLTreeVisitor
    .. autoclass:: SimpleURLWriter
@@ -133,6 +146,17 @@ url_tree
    .. autoclass:: Substitute
    .. autofunction:: normalize_ns
    .. autofunction:: build_tree
+
+
+.. _transpilers_enums_to_js:
+
+transpilers.enums_to_js
+----------------------------------------------------------------
+
+.. automodule:: render_static.transpilers.enums_to_js
+
+   .. autoclass:: EnumTranspiler
+   .. autoclass:: EnumClassWriter
 
 
 .. _context:
@@ -153,4 +177,5 @@ resource
 .. automodule:: render_static.resource
 
    .. autofunction:: resource
+
 

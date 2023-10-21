@@ -2,6 +2,7 @@ from pathlib import Path
 
 SECRET_KEY = 'psst'
 SITE_ID = 1
+USE_TZ = False
 
 DATABASES = {
     'default': {
@@ -42,6 +43,8 @@ MIDDLEWARE = (
 )
 
 INSTALLED_APPS = (
+    'render_static.tests.examples',
+    'render_static.tests.enum_app',
     'render_static.tests.app1',
     'render_static.tests.app2',
     'render_static.tests.app3',

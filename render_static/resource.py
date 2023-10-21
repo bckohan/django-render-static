@@ -26,10 +26,12 @@ else:
         @singledispatch
         def need_install(*args, **kwargs):
             """
-            On platforms <3.9, the importlib_resources backport needs to be available to use
-            resources.
+            On platforms <3.9, the importlib_resources backport needs to be
+            available to use resources.
             """
-            raise ImportError('Install importlib_resources to enable resources.')
+            raise ImportError(
+                'Install importlib_resources to enable resources.'
+            )
         files = need_install
         as_file = need_install
 

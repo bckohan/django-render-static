@@ -1,13 +1,13 @@
 [tool.poetry]
 name = "django-render-static"
-version = "1.1.6"
-description = "Use Django's template engine to render static files at deployment time. Extend Django's url reverse mechanism to JavaScript."
+version = "2.0.0"
+description = "Use Django's template engine to render static files at deployment or package time. Includes transpilers for extending Django's url reversal and enums to JavaScript."
 authors = ["Brian Kohan <bckohan@gmail.com>"]
 license = "MIT"
 readme = "README.rst"
 repository = "https://github.com/bckohan/django-render-static"
 homepage = "https://django-render-static.readthedocs.io"
-keywords = ["django", "static", "templates", "javascript", "url", "reverse", "defines"]
+keywords = ["django", "static", "templates", "javascript", "url", "reverse", "defines", "transpiler", "transpile", "enum"]
 classifiers = [
     "Environment :: Console",
     "Framework :: Django",
@@ -15,6 +15,7 @@ classifiers = [
     "Topic :: Software Development :: Libraries :: Python Modules",
     "Development Status :: 5 - Production/Stable",
     "Framework :: Django :: 3.2",
+    "Framework :: Django :: 4.0",
     "Framework :: Django :: 4.1",
     "Framework :: Django :: 4.2",
     "Intended Audience :: Developers",
@@ -26,6 +27,7 @@ classifiers = [
     "Programming Language :: Python :: 3.9",
     "Programming Language :: Python :: 3.10",
     "Programming Language :: Python :: 3.11",
+    "Programming Language :: Python :: 3.12",
     "Topic :: Internet :: WWW/HTTP",
     "Topic :: Internet :: WWW/HTTP :: Site Management",
     "Topic :: Software Development :: Libraries",
@@ -43,28 +45,40 @@ exclude = ["render_static/tests"]
 [tool.poetry.dependencies]
 python = ">=3.7,<4.0"
 Django = ">=3.2,<5.0"
-
+#Django = [
+#    { version = "<4.0.0", python = ">=3.7,<=3.10" },
+#    { version = ">4.0.0,<4.1.0", python = ">=3.8,<3.11" },
+#    { version = ">4.1.0", python = ">=3.8" }
+#]
+importlib-resources = { version = ">=1.3.0,<6.0.0", python = "<3.9" }
 Jinja2 = { version = ">=2.9,<4.0", optional = true }
-importlib-resources = { version = ">=1.3.0,<6.0.0", optional = true }
 PyYAML = { version = ">=5.1,<7.0", optional = true }
 
 [tool.poetry.group.dev.dependencies]
+django-enum = "^1.1.0"
+enum-properties = "^1.1.1"
 pytest = "^7.0"
 pytest-django = "^4.1.0"
-Sphinx = "^5.0.2"
+Sphinx = [
+    { version = "<7.0", markers = "python_version < '3.9'" },
+    { version = "^7.0", markers = "python_version >= '3.9'" },
+]
+sphinx-js = [
+    { version = "<3.0", markers = "python_version < '3.8'" },
+    { version = "^3.0", markers = "python_version >= '3.8'" },
+]
 sphinx-rtd-theme = "^1.1.1"
 mypy = ">=0.991,<1.5"
 isort = "^5.6.4"
 doc8 = "^0.11.0"
 darglint = "^1.5.7"
-pytest-cov = ">=3,<5"
+pytest-cov = "^4.0.0"
 pylint = [
-    { version = "<2.14", python = "<3.7.2" },
-    { version = "^2.14", python = ">=3.7.2" }
+    { version = "<3.0", markers = "python_version <= '3.7'" },
+    { version = "^3.0", markers = "python_version > '3.7'" },
 ]
 sphinx-argparse = "^0.3.0"
-Js2Py = "^0.74"
-deepdiff = ">=5.2.3,<7.0.0"
+deepdiff = "^5.2.3"
 safety = "^2.0.0"
 readme-renderer = ">=34,<38"
 pygount = "^1.2.4"
@@ -74,13 +88,15 @@ importlib-metadata = [
     { version = "<5.0", python = "<=3.7" },
     { version = ">=5.0", python = ">3.7" },
 ]
+selenium = "^4.7.2"
+python-dateutil = "^2.8.2"
+ipdb = "^0.13.13"
 
 [build-system]
 requires = ["poetry-core>=1.0.0"]
 build-backend = "poetry.core.masonry.api"
 
 [tool.poetry.extras]
-resources = ["importlib-resources"]
 yaml = ["PyYAML"]
 jinja2 = ["Jinja2"]
-all = ["importlib-resources", "PyYAML", "Jinja2"]
+all = ["PyYAML", "Jinja2"]

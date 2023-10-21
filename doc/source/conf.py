@@ -39,8 +39,10 @@ release = render_static.__version__
 extensions = [
     'sphinx_rtd_theme',
     'sphinx.ext.autodoc',
+    'sphinx.ext.viewcode',
     'sphinxarg.ext',
-    'sphinx.ext.todo'
+    'sphinx.ext.todo',
+    'sphinx_js'
 ]
 
 # Add any paths that contain templates here, relative to this directory.
@@ -65,3 +67,5 @@ html_theme = 'sphinx_rtd_theme'
 html_static_path = []
 
 todo_include_todos = True
+
+js_source_path = str(Path(__file__).parent.parent.parent / 'render_static' / 'tests' / 'examples' / 'static' / 'examples')

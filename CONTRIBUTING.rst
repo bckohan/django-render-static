@@ -62,7 +62,7 @@ or warnings where justified is acceptable:
     poetry run doc8 -q doc
     poetry check
     poetry run pip check
-    poetry run safety check --full-report
+    poetry export --without-hashes --format=requirements.txt | poetry run safety check --stdin
     poetry run python -m readme_renderer ./README.rst
 
 

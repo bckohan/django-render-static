@@ -1,8 +1,9 @@
 """
-Provide wrappers for the standard template loaders to adapt them for use by the static engine.
-These loaders should be used instead of the standard ones, even though some are just renamed.
-This will allow app user code to be updated transparently if these loaders need to be
-adapted to work with Django Static Templates in the future.
+Provide wrappers for the standard template loaders to adapt them for use by the
+static engine. These loaders should be used instead of the standard ones, even
+though some are just renamed. This will allow app user code to be updated
+transparently if these loaders need to be adapted to work with Django Static
+Templates in the future.
 """
 
 from glob import glob
@@ -37,10 +38,11 @@ class StaticFilesystemLoader(FilesystemLoader):
 
 class StaticFilesystemBatchLoader(StaticFilesystemLoader, BatchLoaderMixin):
     """
-    A loader that enables glob pattern selectors to load batches of templates from the file system.
+    A loader that enables glob pattern selectors to load batches of templates
+    from the file system.
 
-    Yields batches of template names in order of preference, where preference is defined by the
-    order directories are listed in.
+    Yields batches of template names in order of preference, where preference
+    is defined by the order directories are listed in.
     """
 
 
@@ -54,10 +56,11 @@ class StaticAppDirectoriesLoader(AppDirLoader):
     """
     Extension of ``django.template.loaders.app_directories.Loader``
 
-    Searches application directories based on the engine's configured app directory name.
-    This loader extends the standard AppDirLoader to provide an extended Origin type that contains
-    the AppConfig of the app where the template was found. This information may be used later to
-    determine where the template should be rendered to disk.
+    Searches application directories based on the engine's configured app
+    directory name. This loader extends the standard AppDirLoader to provide an
+    extended Origin type that contains the AppConfig of the app where the
+    template was found. This information may be used later to determine where
+    the template should be rendered to disk.
     """
 
     def get_dirs(self) -> Tuple[Tuple[Path, AppConfig], ...]:
@@ -68,7 +71,10 @@ class StaticAppDirectoriesLoader(AppDirLoader):
         template_dirs = [
             (Path(app_config.path) / self.engine.app_dirname, app_config)
             for app_config in apps.get_app_configs()
-            if app_config.path and (Path(app_config.path) / self.engine.app_dirname).is_dir()
+            if (
+                app_config.path and
+                (Path(app_config.path) / self.engine.app_dirname).is_dir()
+            )
         ]
         return tuple(template_dirs)
 
@@ -77,7 +83,8 @@ class StaticAppDirectoriesLoader(AppDirLoader):
             template_name: str
     ) -> Generator[Union[AppOrigin, List[AppOrigin]], None, None]:
         """
-        Yield the origins of all the templates from apps that match the given template name.
+        Yield the origins of all the templates from apps that match the given
+        template name.
 
         :param template_name: The name of the template to resolve
         :return: Yielded AppOrigins for the found templates.
@@ -100,18 +107,23 @@ class StaticAppDirectoriesLoader(AppDirLoader):
 
 class StaticAppDirectoriesBatchLoader(StaticAppDirectoriesLoader):
     """
-    A loader that enables glob pattern selectors to load batches of templates from app directories.
+    A loader that enables glob pattern selectors to load batches of templates
+    from app directories.
 
-    Yields batches of template names in order of preference, where preference is defined by the
-    precedence of Django apps.
+    Yields batches of template names in order of preference, where preference
+    is defined by the precedence of Django apps.
     """
-    def select_templates(self, selector: str) -> Generator[List[str], None, None]:
+    def select_templates(
+            self,
+            selector: str
+    ) -> Generator[List[str], None, None]:
         """
         Yields template names matching the selector pattern.
 
         :param selector: A glob pattern, or file name
         """
-        for template_dir, app_config in self.get_dirs():  # pylint: disable=W0612
+        for template_dir, app_config in \
+                self.get_dirs():  # pylint: disable=W0612
             try:
                 pattern = safe_join(template_dir, selector)
             except SuspiciousFileOperation:
@@ -119,4 +131,7 @@ class StaticAppDirectoriesBatchLoader(StaticAppDirectoriesLoader):
                 # (it might be inside another one, so this isn't fatal).
                 continue
 
-            yield [relpath(str(file), str(template_dir)) for file in glob(pattern, recursive=True)]
+            yield [
+                relpath(str(file), str(template_dir))
+                for file in glob(pattern, recursive=True)
+            ]
