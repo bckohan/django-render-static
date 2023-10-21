@@ -10,6 +10,11 @@ build:
   os: ubuntu-22.04
   tools:
     python: "3.11"
+    nodejs: "18"
+  jobs:
+    post_install:
+      # Install any other extra dependencies to build the docs
+      - npm install -g jsdoc
 
 # Build documentation in the docs/ directory with Sphinx
 sphinx:
