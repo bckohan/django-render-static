@@ -42,7 +42,7 @@ extensions = [
     'sphinx.ext.viewcode',
     'sphinxarg.ext',
     'sphinx.ext.todo',
-    'sphinx_js'
+    # 'sphinx_js'
 ]
 
 # Add any paths that contain templates here, relative to this directory.
@@ -68,4 +68,7 @@ html_static_path = []
 
 todo_include_todos = True
 
-js_source_path = str(Path(__file__).parent.parent.parent / 'render_static' / 'tests' / 'examples' / 'static' / 'examples')
+# js_source_path = (
+#   str(Path(__file__).parent.parent.parent / 'render_static' / 'tests' /
+#   'examples' / 'static' / 'examples'
+# )
