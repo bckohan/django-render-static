@@ -79,7 +79,7 @@ Which would look like this:
 
 .. code-block:: javascript
 
-    var defines = {
+    const defines = {
         Defines: {
             DEFINE1: 'D1'
             DEFINE2: 'D2'

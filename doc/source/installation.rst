@@ -14,6 +14,7 @@ Installation
 
        INSTALLED_APPS = [
            'render_static',
+           ...
        ]
 
 3. Add a ``STATIC_TEMPLATES`` configuration directive to your settings file::

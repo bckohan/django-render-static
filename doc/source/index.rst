@@ -22,10 +22,10 @@ side code keeps the stack bone DRY.
       (`defines_to_js`)
 
 
-`django-render-static` also formalizes the concept of a packaged-time or deployment-time
+`django-render-static` also formalizes the concept of a package-time or deployment-time
 static file rendering step. It piggybacks off the existing templating engines and configurations
 and should therefore be familiar to Django developers. It supports both standard Django templating
-and Jinja templates and allows contexts to specified in python, json or YAML.
+and Jinja templates and allows contexts to be specified in python, json or YAML.
 
 You can report bugs and discuss features on the
 `issues page <https://github.com/bckohan/django-render-static/issues>`_.

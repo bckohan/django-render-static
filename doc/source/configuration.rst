@@ -49,14 +49,7 @@ Minimal Configuration
 ---------------------
 
 To run `renderstatic`, If ``STATIC_TEMPLATES`` is not defined in settings. Or, if it's an empty
-dictionary (or None):
-
-.. code-block:: python
-
-    STATIC_TEMPLATES = {}
-
-
-then the default engine and loaders will be used which is equivalent to:
+dictionary (or None) then the default engine and loaders will be used which is equivalent to:
 
 .. code-block:: python
 
