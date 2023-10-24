@@ -2,6 +2,11 @@
 Change Log
 ==========
 
+v2.0.1
+======
+* Fixed `enums_to_js allows 'name' property through even if it is excluded. <https://github.com/bckohan/django-render-static/issues/120>`_
+
+
 v2.0.0
 ======
 
