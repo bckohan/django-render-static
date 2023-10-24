@@ -3,7 +3,6 @@ Transpiler tools for PEP 435 style python enumeration classes.
 """
 import sys
 from abc import abstractmethod
-from copy import copy
 from enum import Enum, Flag, IntEnum, IntFlag
 from typing import (
     Any,
