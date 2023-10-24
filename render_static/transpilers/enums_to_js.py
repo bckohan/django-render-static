@@ -169,7 +169,10 @@ class EnumClassWriter(EnumTranspiler):  # pylint: disable=R0902
 
         :param enum: The enum class being transpiled
         """
-        builtins = copy(self.builtins_)
+        builtins = [
+            bltin for bltin in self.builtins_
+            if bltin not in self.exclude_properties_
+        ]
         if self.include_properties_:
             if (
                 hasattr(list(enum)[0], 'label') and

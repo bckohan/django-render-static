@@ -70,7 +70,7 @@ class EnumTests(EnumTranspiler):
             [prop for prop in self.properties_ if hasattr(enum, prop)]
             if self.properties_ else []
         )
-        for param in ['value', 'name']:  # pragma: no cover
+        for param in ['value']:  # pragma: no cover
             if param not in properties:
                 properties.insert(0, param)
 

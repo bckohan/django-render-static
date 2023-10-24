@@ -2318,7 +2318,7 @@ class EnumComparator:
                 [prop for prop in properties if hasattr(cls, prop)]
                 if properties else []
             )
-            for param in ['value', 'name']:  # pragma: no cover
+            for param in ['value']:  # pragma: no cover
                 if param not in properties:
                     properties.insert(0, param)
 
@@ -2629,13 +2629,12 @@ class EnumGeneratorTest(EnumComparator, BaseTestCase):
         STATIC_TEMPLATES={
             'context': {
                 'include_properties': True,
-                'exclude_properties': ['uri', 'version'],
+                'exclude_properties': ['uri', 'version', 'name'],
                 'properties': True,
                 'test_properties': [
                     'slug',
                     'label',
-                    'value',
-                    'name'
+                    'value'
                 ],
                 'symmetric_properties': False
             },
@@ -2656,13 +2655,13 @@ class EnumGeneratorTest(EnumComparator, BaseTestCase):
             js_file=ENUM_STATIC_DIR / 'enum_app/test.js',
             enum_classes=[EnumTester.MapBoxStyle],
             class_properties=False,
-            properties=['slug', 'label', 'value', 'name']
+            properties=['slug', 'label', 'value']
         )
         contents = get_content(ENUM_STATIC_DIR / 'enum_app/test.js')
         self.assertNotIn('uri', contents)
         self.assertNotIn('version', contents)
+        self.assertNotIn('name', contents)
         self.assertIn('this.value = ', contents)
-        self.assertIn('this.name = ', contents)
         self.assertIn('this.slug = ', contents)
         self.assertIn('this.label = ', contents)
 
