@@ -2,6 +2,11 @@
 Change Log
 ==========
 
+v2.0.2
+======
+* Fixed `Dependency bug, for python < 3.9 importlib_resource req should simply be >=1.3 <https://github.com/bckohan/django-render-static/issues/123>`_
+
+
 v2.0.1
 ======
 * Fixed `enums_to_js allows 'name' property through even if it is excluded. <https://github.com/bckohan/django-render-static/issues/120>`_
