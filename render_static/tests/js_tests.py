@@ -9,6 +9,7 @@ import uuid
 from datetime import date
 from enum import Enum
 from os import makedirs
+from pathlib import Path
 from time import perf_counter
 
 import pytest
@@ -215,8 +216,8 @@ class StructureDiff:
 })
 class DefinesToJavascriptTest(StructureDiff, BaseTestCase):
 
-    def tearDown(self):
-        pass
+    # def tearDown(self):
+    #     pass
 
     def test_classes_to_js(self):
         call_command('renderstatic', 'defines1.js')
@@ -560,8 +561,8 @@ class URLJavascriptMixin:
 })
 class URLSToJavascriptTest(URLJavascriptMixin, BaseTestCase):
 
-    def tearDown(self):
-        pass
+    # def tearDown(self):
+    #     pass
 
     def setUp(self):
         self.clear_placeholder_registries()
@@ -3046,3 +3047,49 @@ class EnumGeneratorTest(EnumComparator, BaseTestCase):
 
     #def tearDown(self):
     #    pass
+
+
+@override_settings(
+    ROOT_URLCONF='render_static.tests.urls_default_args',
+    STATIC_TEMPLATES={
+        'ENGINES': [{
+            'BACKEND': 'render_static.backends.StaticDjangoTemplates',
+            'OPTIONS': {
+                'loaders': [
+                    ('render_static.loaders.StaticLocMemLoader', {
+                        'urls.js': '{% urls_to_js %}'
+                    })
+                ],
+                'builtins': ['render_static.templatetags.render_static']
+            },
+        }]
+    }
+)
+class SitemapURLSToJavascriptTest(URLJavascriptMixin, BaseTestCase):
+
+    # def tearDown(self):
+    #     pass
+
+    def setUp(self):
+        self.clear_placeholder_registries()
+
+    def test_sitemap_url_generation(self):
+        """
+        Test class code with legacy arguments specified individually - may be deprecated in 2.0
+        """
+        self.es6_mode = True
+        self.url_js = None
+        self.class_mode = ClassURLWriter.class_name_
+        call_command('renderstatic', 'urls.js')
+        self.assertEqual(self.get_url_from_js('sitemap'), reverse('sitemap'))
+        self.assertNotIn('sitemaps', Path(GLOBAL_STATIC_DIR / 'urls.js').read_text())
+
+        self.assertEqual(self.get_url_from_js('default', kwargs={'def': 'test'}), reverse('default', kwargs={'def': 'test'}))
+
+        self.assertIn('complex_default', Path(GLOBAL_STATIC_DIR / 'urls.js').read_text())
+
+        from render_static.tests.urls_default_args import Default
+        self.assertEqual(
+            self.get_url_from_js('default', kwargs={'def': 'blarg', 'complex_default': {'blog': Default}}),
+            reverse('default', kwargs={'def': 'blarg', 'complex_default': {'blog': Default}})
+        )

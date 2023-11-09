@@ -6,12 +6,14 @@ configuration files.
 """
 
 import itertools
+import json
 import re
 from abc import abstractmethod
 from typing import Any, Dict, Generator, Iterable, List, Optional, Tuple, Union
 
 from django import VERSION as DJANGO_VERSION
 from django.conf import settings
+from django.core.serializers.json import DjangoJSONEncoder
 from django.urls import URLPattern, URLResolver, reverse
 from django.urls.exceptions import NoReverseMatch
 from django.urls.resolvers import RegexPattern, RoutePattern
@@ -386,7 +388,8 @@ class URLTreeVisitor(BaseURLTranspiler):
             endpoint: URLPattern,
             qname: str,
             app_name: Optional[str],
-            route: List[RoutePattern]
+            route: List[RoutePattern],
+            num_patterns: int
     ) -> Generator[Optional[str], None, None]:
         """
         Visit a pattern. Translates the pattern into a path component string
@@ -564,7 +567,7 @@ class URLTreeVisitor(BaseURLTranspiler):
 
                         yield from self.visit_path(
                             path, list(kwargs.keys()),
-                            endpoint.default_args
+                            endpoint.default_args if num_patterns > 1 else None
                         )
 
                     else:
@@ -693,7 +696,7 @@ class URLTreeVisitor(BaseURLTranspiler):
         yield from self.enter_path_group(qname)
         for pattern in reversed(nodes):
             yield from self.visit_pattern(
-                pattern, qname, app_name, route or []
+                pattern, qname, app_name, route or [], num_patterns=len(nodes)
             )
         yield from self.exit_path_group(qname)
 
@@ -945,7 +948,9 @@ class SimpleURLWriter(URLTreeVisitor):
             yield f'return {quote}/{self.path_join(path).lstrip("/")}{quote};'
             self.outdent()
         else:
-            opts_str = ",".join([f"'{param}'" for param in kwargs])
+            opts_str = ",".join(
+                [self.to_javascript(param) for param in kwargs]
+            )
             yield (
                 f'if (Object.keys(kwargs).length === {len(kwargs)} && '
                 f'[{opts_str}].every(value => '
@@ -1093,6 +1098,71 @@ class ClassURLWriter(URLTreeVisitor):
          */""".split('\n'):
             yield comment_line[8:]
 
+
+    def deep_equal(self) -> Generator[Optional[str], None, None]:
+        """
+        The recursive deepEqual function.
+        :yield: The JavaScript jdoc comment lines and deepEqual function.
+        """
+        for comment_line in """
+        /**
+         * Given two values, do a deep equality comparison. If the values are
+         * objects, all keys and values are recursively compared.
+         *
+         * @param {Object} object1 - The first object to compare.
+         * @param {Object} object2 - The second object to compare.
+         */""".split('\n'):
+            yield comment_line[8:]
+        yield 'deepEqual(object1, object2) {'
+        self.indent()
+        yield 'if (!(this.isObject(object1) && this.isObject(object2))) {'
+        self.indent()
+        yield 'return object1 === object2;'
+        self.outdent()
+        yield '}'
+        yield 'const keys1 = Object.keys(object1);'
+        yield 'const keys2 = Object.keys(object2);'
+        yield 'if (keys1.length !== keys2.length) {'
+        self.indent()
+        yield 'return false;'
+        self.outdent()
+        yield '}'
+        yield 'for (let key of keys1) {'
+        self.indent()
+        yield 'const val1 = object1[key];'
+        yield 'const val2 = object2[key];'
+        yield 'const areObjects = this.isObject(val1) && this.isObject(val2);'
+        yield 'if ('
+        self.indent()
+        yield '(areObjects && !deepEqual(val1, val2)) ||'
+        yield '(!areObjects && val1 !== val2)'
+        yield ') { return false; }'
+        self.outdent()
+        yield '}'
+        self.outdent()
+        yield 'return true;'
+        self.outdent()
+        yield '}'
+
+    def is_object(self) -> Generator[Optional[str], None, None]:
+        """
+        The isObject() function.
+        :yield: The JavaScript jdoc comment lines and isObject function.
+        """
+        for comment_line in """
+        /**
+         * Given a variable, return true if it is an object.
+         *
+         * @param {Object} object - The variable to check.
+         */""".split('\n'):
+            yield comment_line[8:]
+        yield 'isObject(object) {'
+        self.indent()
+        yield 'return object != null && typeof object === "object";'
+        self.outdent()
+        yield '}'
+
+
     def init_visit(  # pylint: disable=R0915
             self
     ) -> Generator[Optional[str], None, None]:
@@ -1159,7 +1229,7 @@ class ClassURLWriter(URLTreeVisitor):
                 '{ return false; }'
             )
         else:  # pragma: no cover
-            yield 'if (kwargs[key] !== val) { return false; }'
+            yield 'if (!this.deepEqual(kwargs[key], val)) { return false; }'
         yield (
             'if (!expected.includes(key)) '
             '{ delete kwargs[key]; }'
@@ -1189,6 +1259,10 @@ class ClassURLWriter(URLTreeVisitor):
         yield '}'
         self.outdent()
         yield '}'
+        yield ''
+        yield from self.deep_equal()
+        yield ''
+        yield from self.is_object()
         yield ''
         yield from self.reverse_jdoc()
         yield 'reverse(qname, options={}) {'
@@ -1331,9 +1405,20 @@ class ClassURLWriter(URLTreeVisitor):
         :yield: The JavaScript lines of code
         """
         quote = '`'
+        visitor = self
+        class ArgEncoder(DjangoJSONEncoder):
+            """
+            An encoder that uses the configured to javascript function to
+            convert any unknown types to strings.
+            """
+
+            def default(self, o):
+                return visitor.to_javascript(o).rstrip('"').lstrip('"')
+
+        defaults_str = json.dumps(defaults, cls=ArgEncoder)
         if len(path) == 1:  # there are no substitutions
             if defaults:
-                yield f'if (this.#match(kwargs, args, [], {defaults})) ' \
+                yield f'if (this.#match(kwargs, args, [], {defaults_str})) ' \
                       f'{{ return "/{str(path[0]).lstrip("/")}"; }}'
             else:
                 yield f'if (this.#match(kwargs, args)) ' \
@@ -1351,11 +1436,13 @@ class ClassURLWriter(URLTreeVisitor):
                 f'{quote}; }}'
             )
         else:
-            opts_str = ",".join([f"'{param}'" for param in kwargs])
+            opts_str = ",".join(
+                [self.to_javascript(param) for param in kwargs]
+            )
             if defaults:
                 yield (
-                    f'if (this.#match(kwargs, args, [{opts_str}], {defaults}))'
-                    f' {{'
+                    f'if (this.#match(kwargs, args, [{opts_str}], '
+                    f'{defaults_str})) {{'
                     f' return {quote}/{self.path_join(path).lstrip("/")}'
                     f'{quote}; }}'
                 )
