@@ -1,5 +1,12 @@
+from django.core.serializers.json import DjangoJSONEncoder
 from django.http import JsonResponse
 from django.views import View
+
+
+class DefaultStrEncoder(DjangoJSONEncoder):
+
+    def default(self, obj):
+        return str(obj)
 
 
 class TestView(View):
@@ -16,4 +23,4 @@ class TestView(View):
             'args': list(args),
             'kwargs': {**kwargs},
             'query': query
-        })
+        }, encoder=DefaultStrEncoder)

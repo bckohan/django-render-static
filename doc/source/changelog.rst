@@ -2,6 +2,11 @@
 Change Log
 ==========
 
+v2.0.3
+======
+* Fixed `Invalid URL generation for urls with default arguments. <https://github.com/bckohan/django-render-static/issues/124>`_
+
+
 v2.0.2
 ======
 * Fixed `Dependency bug, for python < 3.9 importlib_resource req should simply be >=1.3 <https://github.com/bckohan/django-render-static/issues/123>`_

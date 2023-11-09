@@ -1,6 +1,6 @@
 [tool.poetry]
 name = "django-render-static"
-version = "2.0.2"
+version = "2.0.3"
 description = "Use Django's template engine to render static files at deployment or package time. Includes transpilers for extending Django's url reversal and enums to JavaScript."
 authors = ["Brian Kohan <bckohan@gmail.com>"]
 license = "MIT"
