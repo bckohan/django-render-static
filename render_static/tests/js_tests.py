@@ -2276,14 +2276,16 @@ class EnumComparator:
             js_file,
             enum_classes,
             class_properties=True,
-            properties=True
+            properties=True,
+            to_string=True
     ):
         for enum in enum_classes:
             self.enum_compare(
                 js_file,
                 enum,
                 class_properties=class_properties,
-                properties=properties
+                properties=properties,
+                to_string=to_string
             )
 
     def enum_compare(
@@ -2291,7 +2293,8 @@ class EnumComparator:
             js_file,
             cls,
             class_properties=True,
-            properties=True
+            properties=True,
+            to_string=True
     ):
         """
         Given a javascript file and a list of classes, evaluate the javascript
@@ -2329,10 +2332,11 @@ class EnumComparator:
                 return value
 
             enum_dict = {
-                'strings': {
+                **({'strings': {
                     en.value.isoformat()
                     if isinstance(en.value, date)
-                    else str(en.value): str(en) for en in cls},
+                    else str(en.value): str(en) for en in cls
+                }} if to_string else {}),
                 **{
                     prop: [
                         to_js_test(getattr(en, prop))
@@ -2554,6 +2558,41 @@ class EnumGeneratorTest(EnumComparator, BaseTestCase):
         )
         self.assertNotIn(
             'class_name',
+            get_content(ENUM_STATIC_DIR / 'enum_app/test.js')
+        )
+    
+    @override_settings(
+        STATIC_TEMPLATES={
+            'context': {
+                'include_properties': True,
+                'class_properties': False,
+                'properties': True,
+                'symmetric_properties': False,
+                'to_string': False
+            },
+            'templates': [
+                ('enum_app/test.js', {
+                    'context': {
+                        'enums': EnumTester.MapBoxStyle
+                    }
+                }),
+            ]
+        }
+    )
+    def test_disable_to_string(self):
+        call_command('renderstatic', 'enum_app/test.js')
+        self.enums_compare(
+            js_file=ENUM_STATIC_DIR / 'enum_app/test.js',
+            enum_classes=[EnumTester.MapBoxStyle],
+            class_properties=False,
+            to_string=False
+        )
+        self.assertNotIn(
+            'class_name',
+            get_content(ENUM_STATIC_DIR / 'enum_app/test.js')
+        )
+        self.assertNotIn(
+            'toString',
             get_content(ENUM_STATIC_DIR / 'enum_app/test.js')
         )
 

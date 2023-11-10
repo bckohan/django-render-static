@@ -117,6 +117,8 @@ class EnumClassWriter(EnumTranspiler):  # pylint: disable=R0902
     :param class_properties: If true, include all Django classproperties as
         static members on the transpiled Enum class. May also be an iterable
         of specific property names to include.
+    :param to_string: If true (default) include a toString() method that
+        returns a string representation of the enum.
     :param kwargs: additional kwargs for the base transpiler classes.
     """
 
@@ -142,6 +144,7 @@ class EnumClassWriter(EnumTranspiler):  # pylint: disable=R0902
 
     str_prop_: Optional[str] = None
     str_is_prop_: bool = False
+    to_string_: bool = True
 
     def to_js(self, value: Any):
         """
@@ -349,6 +352,7 @@ class EnumClassWriter(EnumTranspiler):  # pylint: disable=R0902
             bool,
             Collection[str]
         ] = class_properties_kwarg_,
+        to_string: bool = to_string_,
         **kwargs
     ) -> None:
         super().__init__(**kwargs)
@@ -385,6 +389,7 @@ class EnumClassWriter(EnumTranspiler):  # pylint: disable=R0902
         )
         self.class_properties_kwarg_ = class_properties
         self.class_name_map_ = {}
+        self.to_string_ = to_string
 
     def visit(
             self,
@@ -417,8 +422,9 @@ class EnumClassWriter(EnumTranspiler):  # pylint: disable=R0902
             yield ''
         yield from self.constructor(enum)
         yield ''
-        yield from self.to_string(enum)
-        yield ''
+        if self.to_string_:
+            yield from self.to_string(enum)
+            yield ''
         yield from self.getter()
         yield ''
         yield from self.iterator(enum)
