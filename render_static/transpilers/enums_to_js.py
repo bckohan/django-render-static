@@ -327,7 +327,10 @@ class EnumClassWriter(EnumTranspiler):  # pylint: disable=R0902
     def __init__(  # pylint: disable=R0913
         self,
         class_name: str = class_name_pattern_,
-        on_unrecognized: UnrecognizedBehavior = on_unrecognized_,
+        on_unrecognized: Union[
+            str,
+            UnrecognizedBehavior
+        ] = on_unrecognized_,
         export: bool = export_,
         include_properties: bool = include_properties_,
         symmetric_properties: Union[
@@ -345,9 +348,9 @@ class EnumClassWriter(EnumTranspiler):  # pylint: disable=R0902
         self.class_name_pattern_ = class_name
         raise_on_not_found = kwargs.pop('raise_on_not_found', None)
         self.on_unrecognized_ = (
-            on_unrecognized
-            if isinstance(on_unrecognized, UnrecognizedBehavior) else
             UnrecognizedBehavior[on_unrecognized]
+            if isinstance(on_unrecognized, str) else
+            on_unrecognized
         )
         if raise_on_not_found is not None:
             warnings.warn(
