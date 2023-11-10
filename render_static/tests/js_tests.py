@@ -2664,6 +2664,47 @@ class EnumGeneratorTest(EnumComparator, BaseTestCase):
         self.assertIn('this.slug = ', contents)
         self.assertIn('this.label = ', contents)
 
+
+    @override_settings(
+        STATIC_TEMPLATES={
+            'context': {
+                'include_properties': ['slug', 'label'],
+                'properties': True,
+                'test_properties': [
+                    'slug',
+                    'label',
+                    'value'
+                ],
+                'symmetric_properties': False
+            },
+            'templates': [
+                ('enum_app/test.js', {
+                    'context': {
+                        'enums': [
+                            EnumTester.MapBoxStyle
+                        ]
+                    }
+                }),
+            ]
+        }
+    )
+    def test_include_props_list(self):
+        call_command('renderstatic', 'enum_app/test.js')
+        self.enums_compare(
+            js_file=ENUM_STATIC_DIR / 'enum_app/test.js',
+            enum_classes=[EnumTester.MapBoxStyle],
+            class_properties=False,
+            properties=['slug', 'label', 'value']
+        )
+        contents = get_content(ENUM_STATIC_DIR / 'enum_app/test.js')
+        self.assertNotIn('uri', contents)
+        self.assertNotIn('version', contents)
+        self.assertNotIn('name', contents)
+        self.assertIn('this.value = ', contents)
+        self.assertIn('this.slug = ', contents)
+        self.assertIn('this.label = ', contents)
+
+
     @override_settings(
         STATIC_TEMPLATES={
             'ENGINES': [{

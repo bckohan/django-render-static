@@ -104,7 +104,9 @@ class EnumClassWriter(EnumTranspiler):  # pylint: disable=R0902
         :py:class:`render_static.transpilers.enums_to_js.UnrecognizedBehavior`.
     :param export: If true the classes will be exported - Default: False
     :param include_properties: If true, any python properties present on the
-        enums will be included in the transpiled javascript enums.
+        enums will be included in the transpiled javascript enums. May also
+        be an iterable of property names to include. `value` will always
+        be included.
     :param symmetric_properties: If true, properties that the enums may be
         instantiated from will be automatically determined and included in the
         get() function. If False (default), enums will not be instantiable
@@ -133,7 +135,7 @@ class EnumClassWriter(EnumTranspiler):  # pylint: disable=R0902
     class_properties_kwarg_: Union[bool, Collection[str]] = True
     class_properties_: List[str] = []
 
-    include_properties_: bool = True
+    include_properties_: Union[Collection[str], bool] = True
     builtins_: List[str] = ['value', 'name']
     properties_: List[str] = []
     exclude_properties_: Set[str]
@@ -189,7 +191,7 @@ class EnumClassWriter(EnumTranspiler):  # pylint: disable=R0902
             bltin for bltin in self.builtins_
             if bltin not in self.exclude_properties_
         ]
-        if self.include_properties_:
+        if self.include_properties_ is True:
             if (
                 hasattr(list(enum)[0], 'label') and
                 'label' not in builtins and
@@ -215,6 +217,8 @@ class EnumClassWriter(EnumTranspiler):  # pylint: disable=R0902
                     and prop not in builtins and prop not in props_on_class
                 ]
             ]
+        elif self.include_properties_:
+            self.properties_ = list({*self.include_properties_, 'value'})
         else:
             self.properties_ = builtins
 
@@ -332,7 +336,10 @@ class EnumClassWriter(EnumTranspiler):  # pylint: disable=R0902
             UnrecognizedBehavior
         ] = on_unrecognized_,
         export: bool = export_,
-        include_properties: bool = include_properties_,
+        include_properties: Union[
+            bool,
+            Collection[str]
+        ] = include_properties_,
         symmetric_properties: Union[
             bool,
             Collection[str]
@@ -366,6 +373,11 @@ class EnumClassWriter(EnumTranspiler):  # pylint: disable=R0902
             )
         self.export_ = export
         self.include_properties_ = include_properties
+        self.include_properties_ = (
+            set(include_properties)
+            if isinstance(include_properties, Collection) else
+            include_properties
+        )
         self.symmetric_properties_kwarg_ = symmetric_properties
         self.exclude_properties_ = (
             set(exclude_properties)
