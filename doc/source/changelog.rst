@@ -2,6 +2,11 @@
 Change Log
 ==========
 
+v2.1.0
+======
+* Implemented `Add a pass through getter for enums_to_js transpilation. <https://github.com/bckohan/django-render-static/issues/126>`_
+
+
 v2.0.3
 ======
 * Fixed `Invalid URL generation for urls with default arguments. <https://github.com/bckohan/django-render-static/issues/124>`_

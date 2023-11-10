@@ -155,6 +155,7 @@ transpilers.enums_to_js
 
 .. automodule:: render_static.transpilers.enums_to_js
 
+   .. autoclass:: UnrecognizedBehavior
    .. autoclass:: EnumTranspiler
    .. autoclass:: EnumClassWriter
 

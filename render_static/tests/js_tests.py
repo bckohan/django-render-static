@@ -282,8 +282,6 @@ class DefinesToJavascriptTest(StructureDiff, BaseTestCase):
             self.assertFalse(jf.readline().startswith(' '))
 
     def test_empty_module_to_js(self):
-        # import ipdb
-        # ipdb.set_trace()
         call_command('renderstatic', 'empty_defines.js')
         self.assertEqual(
             self.diff_modules(
@@ -1808,27 +1806,29 @@ class URLSToJavascriptParametersTest(URLJavascriptMixin, BaseTestCase):
                 'loaders': [
                     ('render_static.loaders.StaticLocMemLoader', {
                         'urls.js': '{% urls_to_js '
-                                   'unrecognized_behavior="RETURN_NULL" '
+                                   'raise_on_not_found=False '
                                    'indent=None '
                                    'include=include '
                                    '%}',
                         'urls2.js': '{% urls_to_js '
+                                   'raise_on_not_found=True '
                                    'indent="" '
                                    'include=include '
                                    '%}',
                         'urls3.js': 'var urls = {\n{% urls_to_js '
                                    'transpiler="render_static.SimpleURLWriter" '
-                                   'unrecognized_behavior="RETURN_NULL" '
+                                   'raise_on_not_found=False '
                                    'indent=None '
                                    'include=include '
                                    '%}}\n',
                         'urls4.js': 'var urls = {\n{% urls_to_js '
                                     'transpiler="render_static.SimpleURLWriter" '
+                                    'raise_on_not_found=True '
                                     'indent="" '
                                     'include=include '
                                     '%}};\n',
                         'urls3_export.mjs': '{% urls_to_js '
-                                           'unrecognized_behavior="RETURN_NULL" '
+                                           'raise_on_not_found=False '
                                            'indent="\t" '
                                            'include=include '
                                            'export=True '
@@ -2858,7 +2858,7 @@ class EnumGeneratorTest(EnumComparator, BaseTestCase):
                 'OPTIONS': {
                     'loaders': [
                         ('render_static.loaders.StaticLocMemLoader', {
-                            'enum_app/test.js': '{% enums_to_js enums=enums summetric_properties=True unrecognized_behavior="RETURN_NULL" %}\n'
+                            'enum_app/test.js': '{% enums_to_js enums=enums symmetric_properties=True on_unrecognized="RETURN_NULL" %}\n'
                                              'console.log(JSON.stringify({not_found: AddressRoute.get("Aly")}));'
                         })
                     ],
@@ -2890,7 +2890,107 @@ class EnumGeneratorTest(EnumComparator, BaseTestCase):
                 'OPTIONS': {
                     'loaders': [
                         ('render_static.loaders.StaticLocMemLoader', {
-                            'enum_app/test.js': '{% enums_to_js enums=enums summetric_properties=True unrecognized_behavior="THROW_EXCEPTION" %}\n'
+                            'enum_app/test.js': '{% enums_to_js enums=enums symmetric_properties=True raise_on_not_found=False %}\n'
+                                             'console.log(JSON.stringify({not_found: AddressRoute.get("Aly")}));'
+                        })
+                    ],
+                    'builtins': [
+                        'render_static.templatetags.render_static'
+                    ]
+                },
+            }],
+            'templates': [
+                ('enum_app/test.js', {
+                    'context': {
+                        'enums': [
+                            EnumTester.AddressRoute
+                        ]
+                    }
+                }),
+            ]
+        }
+    )
+    def test_raise_on_not_found_false_deprecated(self):
+        with self.assertWarns(DeprecationWarning):
+            call_command('renderstatic', 'enum_app/test.js')
+        js_dict = self.get_js_structure(GLOBAL_STATIC_DIR / 'enum_app/test.js')
+        self.assertDictEqual(js_dict, {'not_found': None})
+
+    @override_settings(
+        STATIC_TEMPLATES={
+            'ENGINES': [{
+                'BACKEND': 'render_static.backends.StaticDjangoTemplates',
+                'OPTIONS': {
+                    'loaders': [
+                        ('render_static.loaders.StaticLocMemLoader', {
+                            'enum_app/test.js': '{% enums_to_js enums=enums symmetric_properties=True raise_on_not_found=True %}\n'
+                                             'console.log(JSON.stringify({not_found: AddressRoute.get("Aly")}));'
+                        })
+                    ],
+                    'builtins': [
+                        'render_static.templatetags.render_static'
+                    ]
+                },
+            }],
+            'templates': [
+                ('enum_app/test.js', {
+                    'context': {
+                        'enums': [
+                            EnumTester.AddressRoute
+                        ]
+                    }
+                }),
+            ]
+        }
+    )
+    def test_raise_on_not_found_true_deprecated(self):
+        with self.assertWarns(DeprecationWarning):
+            call_command('renderstatic', 'enum_app/test.js')
+        self.assertIn(
+            'TypeError: No AddressRoute enumeration maps to value Aly',
+            run_js_file(GLOBAL_STATIC_DIR / 'enum_app/test.js')
+        )
+
+    @override_settings(
+        STATIC_TEMPLATES={
+            'ENGINES': [{
+                'BACKEND': 'render_static.backends.StaticDjangoTemplates',
+                'OPTIONS': {
+                    'loaders': [
+                        ('render_static.loaders.StaticLocMemLoader', {
+                            'enum_app/test.js': '{% enums_to_js enums=enums on_unrecognized="RETURN_INPUT" %}\n'
+                                             'console.log(JSON.stringify({not_found: AddressRoute.get("Aly")}));'
+                        })
+                    ],
+                    'builtins': [
+                        'render_static.templatetags.render_static'
+                    ]
+                },
+            }],
+            'templates': [
+                ('enum_app/test.js', {
+                    'context': {
+                        'enums': [
+                            EnumTester.AddressRoute
+                        ]
+                    }
+                }),
+            ]
+        }
+    )
+    def test_return_input_on_unrecognized(self):
+        call_command('renderstatic', 'enum_app/test.js')
+        js_dict = self.get_js_structure(GLOBAL_STATIC_DIR / 'enum_app/test.js')
+        self.assertDictEqual(js_dict, {'not_found': 'Aly'})
+
+    @override_settings(
+        STATIC_TEMPLATES={
+            'ENGINES': [{
+                'BACKEND': 'render_static.backends.StaticDjangoTemplates',
+                'OPTIONS': {
+                    'loaders': [
+                        ('render_static.loaders.StaticLocMemLoader', {
+                            'enum_app/test.js': '{% enums_to_js enums=enums symmetric_properties=True on_unrecognized="THROW_EXCEPTION" %}\n'
                                              'try { AddressRoute.get("Aly") } catch (e) {console.log(JSON.stringify({not_found: e instanceof TypeError ? "TypeError" : "Unknown"}));}'
                         })
                     ],
@@ -2922,7 +3022,7 @@ class EnumGeneratorTest(EnumComparator, BaseTestCase):
                 'OPTIONS': {
                     'loaders': [
                         ('render_static.loaders.StaticLocMemLoader', {
-                            'enum_app/test.js': '{% enums_to_js enums=enums summetric_properties=True transpiler="render_static.EnumClassWriter" %}\n'
+                            'enum_app/test.js': '{% enums_to_js enums=enums symmetric_properties=True transpiler="render_static.EnumClassWriter" %}\n'
                                              'try { AddressRoute.get("Aly") } catch (e) {console.log(JSON.stringify({not_found: e instanceof TypeError ? "TypeError" : "Unknown"}));}'
                         })
                     ],
@@ -3043,8 +3143,8 @@ class EnumGeneratorTest(EnumComparator, BaseTestCase):
         self.assertIn('static VALUE1 = new DependentEnum(1, "VALUE1", IndependentEnum.VALUE1, "DependentEnum.VALUE1");', contents)
         self.assertIn('static VALUE2 = new DependentEnum(2, "VALUE2", IndependentEnum.VALUE0, "DependentEnum.VALUE2");', contents)
 
-    #def tearDown(self):
-    #    pass
+    def tearDown(self):
+       pass
 
 
 @override_settings(

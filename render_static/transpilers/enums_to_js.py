@@ -2,6 +2,7 @@
 Transpiler tools for PEP 435 style python enumeration classes.
 """
 import sys
+import warnings
 from abc import abstractmethod
 from enum import Enum, Flag, IntEnum, IntFlag, auto
 from typing import (
@@ -18,7 +19,6 @@ from typing import (
 
 from django.db.models import IntegerChoices, TextChoices
 from render_static.transpilers import Transpiler, TranspilerTarget
-import warnings
 
 try:
     from django.utils.decorators import classproperty  # pylint: disable=C0412
@@ -33,6 +33,13 @@ if sys.version_info >= (3, 11):  # pragma: no cover
 
 
 class UnrecognizedBehavior(Enum):
+    """
+    Enumeration of behaviors when a value cannot be mapped to an enum instance:
+
+        * THROW_EXCEPTION - throw a TypeError
+        * RETURN_NULL - return null
+        * RETURN_INPUT - return the input value
+    """
 
     THROW_EXCEPTION = auto()
     RETURN_NULL = auto()
@@ -91,9 +98,10 @@ class EnumClassWriter(EnumTranspiler):  # pylint: disable=R0902
     :param class_name: A pattern to use to generate class names. This should
         be a string that will be formatted with the class name of each enum.
         The default string '{}' will resolve to the python class name.
-    :param unrecognized_behavior: If the given value cannot be mapped to an
-        enum instance, either throw an exception, return null, or return the
-        input value.
+    :param on_unrecognized: If the given value cannot be mapped to an
+        enum instance, either "THROW_EXCEPTION", "RETURN_NULL", or 
+        "RETURN_INPUT". See 
+        :py:class:`render_static.transpilers.enums_to_js.UnrecognizedBehavior`.
     :param export: If true the classes will be exported - Default: False
     :param include_properties: If true, any python properties present on the
         enums will be included in the transpiled javascript enums.
@@ -114,7 +122,8 @@ class EnumClassWriter(EnumTranspiler):  # pylint: disable=R0902
     class_name_: str
     class_name_map_: Dict[Type[Enum], str] = {}
 
-    unrecognized_behavior_: bool = UnrecognizedBehavior.THROW_EXCEPTION
+    on_unrecognized_: UnrecognizedBehavior = \
+        UnrecognizedBehavior.THROW_EXCEPTION
 
     export_: bool = False
 
@@ -318,7 +327,7 @@ class EnumClassWriter(EnumTranspiler):  # pylint: disable=R0902
     def __init__(  # pylint: disable=R0913
         self,
         class_name: str = class_name_pattern_,
-        unrecognized_behavior: UnrecognizedBehavior = unrecognized_behavior_,
+        on_unrecognized: UnrecognizedBehavior = on_unrecognized_,
         export: bool = export_,
         include_properties: bool = include_properties_,
         symmetric_properties: Union[
@@ -335,14 +344,19 @@ class EnumClassWriter(EnumTranspiler):  # pylint: disable=R0902
         super().__init__(**kwargs)
         self.class_name_pattern_ = class_name
         raise_on_not_found = kwargs.pop('raise_on_not_found', None)
-        self.unrecognized_behavior_ = unrecognized_behavior
+        self.on_unrecognized_ = (
+            on_unrecognized
+            if isinstance(on_unrecognized, UnrecognizedBehavior) else
+            UnrecognizedBehavior[on_unrecognized]
+        )
         if raise_on_not_found is not None:
             warnings.warn(
-                'raise_on_not_found is deprecated, use unrecgonized_behavior instead.',
+                'raise_on_not_found is deprecated, use on_unrecognized '
+                'instead.',
                 DeprecationWarning,
                 stacklevel=2
             )
-            self.unrecognized_behavior_ = (
+            self.on_unrecognized_ = (
                 UnrecognizedBehavior.THROW_EXCEPTION
                 if raise_on_not_found else
                 UnrecognizedBehavior.RETURN_NULL
@@ -496,9 +510,9 @@ class EnumClassWriter(EnumTranspiler):  # pylint: disable=R0902
         for prop in ['value'] + self.symmetric_properties:
             yield from self.prop_getter(enum, prop)
 
-        if self.unrecognized_behavior_ == UnrecognizedBehavior.RETURN_INPUT:
+        if self.on_unrecognized_ is UnrecognizedBehavior.RETURN_INPUT:
             yield 'return value;'
-        elif self.unrecognized_behavior_ == UnrecognizedBehavior.RETURN_NULL:
+        elif self.on_unrecognized_ is UnrecognizedBehavior.RETURN_NULL:
             yield 'return null;'
         else:
             yield f'throw new TypeError(`No {self.class_name} ' \
