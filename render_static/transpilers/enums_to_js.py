@@ -507,6 +507,13 @@ class EnumClassWriter(EnumTranspiler):  # pylint: disable=R0902
         yield 'static get(value) {'
         self.indent()
 
+        yield 'if (value instanceof this) {'
+        self.indent()
+        yield 'return value;'
+        self.outdent()
+        yield '}'
+        yield ''
+
         for prop in ['value'] + self.symmetric_properties:
             yield from self.prop_getter(enum, prop)
 

@@ -3047,6 +3047,38 @@ class EnumGeneratorTest(EnumComparator, BaseTestCase):
 
     @override_settings(
         STATIC_TEMPLATES={
+            'ENGINES': [{
+                'BACKEND': 'render_static.backends.StaticDjangoTemplates',
+                'OPTIONS': {
+                    'loaders': [
+                        ('render_static.loaders.StaticLocMemLoader', {
+                            'enum_app/test.js': '{% enums_to_js enums=enums %}\n'
+                                             'console.log(JSON.stringify({found: AddressRoute.get(AddressRoute.AVENUE)}));'
+                        })
+                    ],
+                    'builtins': [
+                        'render_static.templatetags.render_static'
+                    ]
+                },
+            }],
+            'templates': [
+                ('enum_app/test.js', {
+                    'context': {
+                        'enums': [
+                            EnumTester.AddressRoute
+                        ]
+                    }
+                }),
+            ]
+        }
+    )
+    def test_return_instance(self):
+        call_command('renderstatic', 'enum_app/test.js')
+        js_dict = self.get_js_structure(GLOBAL_STATIC_DIR / 'enum_app/test.js')
+        self.assertEqual(js_dict['found']['value'], 'AVE')
+
+    @override_settings(
+        STATIC_TEMPLATES={
             'templates': [
                 ('enum_app/enum.js', {
                     'context': {
