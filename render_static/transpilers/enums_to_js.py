@@ -3,7 +3,7 @@ Transpiler tools for PEP 435 style python enumeration classes.
 """
 import sys
 from abc import abstractmethod
-from enum import Enum, Flag, IntEnum, IntFlag
+from enum import Enum, Flag, IntEnum, IntFlag, auto
 from typing import (
     Any,
     Collection,
@@ -18,6 +18,7 @@ from typing import (
 
 from django.db.models import IntegerChoices, TextChoices
 from render_static.transpilers import Transpiler, TranspilerTarget
+import warnings
 
 try:
     from django.utils.decorators import classproperty  # pylint: disable=C0412
@@ -29,6 +30,13 @@ IGNORED_ENUMS = {Enum, IntEnum, IntFlag, Flag, TextChoices, IntegerChoices}
 if sys.version_info >= (3, 11):  # pragma: no cover
     from enum import EnumCheck, FlagBoundary, ReprEnum, StrEnum
     IGNORED_ENUMS.update({FlagBoundary, ReprEnum, StrEnum, EnumCheck})
+
+
+class UnrecognizedBehavior(Enum):
+
+    THROW_EXCEPTION = auto()
+    RETURN_NULL = auto()
+    RETURN_INPUT = auto()
 
 
 class EnumTranspiler(Transpiler):
@@ -83,9 +91,9 @@ class EnumClassWriter(EnumTranspiler):  # pylint: disable=R0902
     :param class_name: A pattern to use to generate class names. This should
         be a string that will be formatted with the class name of each enum.
         The default string '{}' will resolve to the python class name.
-    :param raise_on_not_found: If true, in the transpiled javascript throw a
-        TypeError if an Enum instance cannot be mapped to the given value.
-        If false, return null
+    :param unrecognized_behavior: If the given value cannot be mapped to an
+        enum instance, either throw an exception, return null, or return the
+        input value.
     :param export: If true the classes will be exported - Default: False
     :param include_properties: If true, any python properties present on the
         enums will be included in the transpiled javascript enums.
@@ -106,7 +114,7 @@ class EnumClassWriter(EnumTranspiler):  # pylint: disable=R0902
     class_name_: str
     class_name_map_: Dict[Type[Enum], str] = {}
 
-    raise_on_not_found_: bool = True
+    unrecognized_behavior_: bool = UnrecognizedBehavior.THROW_EXCEPTION
 
     export_: bool = False
 
@@ -308,25 +316,37 @@ class EnumClassWriter(EnumTranspiler):  # pylint: disable=R0902
         self.str_prop_ = candidate
 
     def __init__(  # pylint: disable=R0913
-            self,
-            class_name: str = class_name_pattern_,
-            raise_on_not_found: bool = raise_on_not_found_,
-            export: bool = export_,
-            include_properties: bool = include_properties_,
-            symmetric_properties: Union[
-                bool,
-                Collection[str]
-            ] = symmetric_properties_kwarg_,
-            exclude_properties: Optional[Collection[str]] = None,
-            class_properties: Union[
-                bool,
-                Collection[str]
-            ] = class_properties_kwarg_,
-            **kwargs
+        self,
+        class_name: str = class_name_pattern_,
+        unrecognized_behavior: UnrecognizedBehavior = unrecognized_behavior_,
+        export: bool = export_,
+        include_properties: bool = include_properties_,
+        symmetric_properties: Union[
+            bool,
+            Collection[str]
+        ] = symmetric_properties_kwarg_,
+        exclude_properties: Optional[Collection[str]] = None,
+        class_properties: Union[
+            bool,
+            Collection[str]
+        ] = class_properties_kwarg_,
+        **kwargs
     ) -> None:
         super().__init__(**kwargs)
         self.class_name_pattern_ = class_name
-        self.raise_on_not_found_ = raise_on_not_found
+        raise_on_not_found = kwargs.pop('raise_on_not_found', None)
+        self.unrecognized_behavior_ = unrecognized_behavior
+        if raise_on_not_found is not None:
+            warnings.warn(
+                'raise_on_not_found is deprecated, use unrecgonized_behavior instead.',
+                DeprecationWarning,
+                stacklevel=2
+            )
+            self.unrecognized_behavior_ = (
+                UnrecognizedBehavior.THROW_EXCEPTION
+                if raise_on_not_found else
+                UnrecognizedBehavior.RETURN_NULL
+            )
         self.export_ = export
         self.include_properties_ = include_properties
         self.symmetric_properties_kwarg_ = symmetric_properties
@@ -476,11 +496,13 @@ class EnumClassWriter(EnumTranspiler):  # pylint: disable=R0902
         for prop in ['value'] + self.symmetric_properties:
             yield from self.prop_getter(enum, prop)
 
-        if self.raise_on_not_found_:
+        if self.unrecognized_behavior_ == UnrecognizedBehavior.RETURN_INPUT:
+            yield 'return value;'
+        elif self.unrecognized_behavior_ == UnrecognizedBehavior.RETURN_NULL:
+            yield 'return null;'
+        else:
             yield f'throw new TypeError(`No {self.class_name} ' \
                   f'enumeration maps to value ${{value}}`);'
-        else:
-            yield 'return null;'
         self.outdent()
         yield '}'
 

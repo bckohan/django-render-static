@@ -252,6 +252,7 @@ def enums_to_js(
         transpiler: Union[Type[Transpiler], str] = EnumClassWriter,
         indent: str = '\t',
         depth: int = 0,
+        unrecognized_behavior: str = 'THROW_EXCEPTION',
         **kwargs
 ) -> str:
     """
@@ -263,14 +264,19 @@ def enums_to_js(
         class to use for the transpilation.
     :param indent: The indent string to use
     :param depth: The depth of the initial indent
+    :param unrecognized_behavior: The behavior to use when an unrecognized enum
+        value is attempted to be coerced to the enum. Either THROW_EXCEPTION,
+        RETURN_NULL, or RETURN_INPUT.
     :param kwargs: Any other parameters to pass to the configured transpiler.
         See transpiler docs for details.
     :return: SafeString of rendered transpiled code.
     """
+    from render_static.transpilers.enums_to_js import UnrecognizedBehavior
     return transpile(
         targets=enums,
         transpiler=transpiler,
         indent=indent,
         depth=depth,
+        unrecognized_behavior=UnrecognizedBehavior[unrecognized_behavior],
         **kwargs
     )

@@ -1808,29 +1808,27 @@ class URLSToJavascriptParametersTest(URLJavascriptMixin, BaseTestCase):
                 'loaders': [
                     ('render_static.loaders.StaticLocMemLoader', {
                         'urls.js': '{% urls_to_js '
-                                   'raise_on_not_found=False '
+                                   'unrecognized_behavior="RETURN_NULL" '
                                    'indent=None '
                                    'include=include '
                                    '%}',
                         'urls2.js': '{% urls_to_js '
-                                   'raise_on_not_found=True '
                                    'indent="" '
                                    'include=include '
                                    '%}',
                         'urls3.js': 'var urls = {\n{% urls_to_js '
                                    'transpiler="render_static.SimpleURLWriter" '
-                                   'raise_on_not_found=False '
+                                   'unrecognized_behavior="RETURN_NULL" '
                                    'indent=None '
                                    'include=include '
                                    '%}}\n',
                         'urls4.js': 'var urls = {\n{% urls_to_js '
                                     'transpiler="render_static.SimpleURLWriter" '
-                                    'raise_on_not_found=True '
                                     'indent="" '
                                     'include=include '
                                     '%}};\n',
                         'urls3_export.mjs': '{% urls_to_js '
-                                           'raise_on_not_found=False '
+                                           'unrecognized_behavior="RETURN_NULL" '
                                            'indent="\t" '
                                            'include=include '
                                            'export=True '
@@ -1937,8 +1935,8 @@ class URLSToJavascriptParametersTest(URLJavascriptMixin, BaseTestCase):
         self.compare('path_tst', {'arg1': 12, 'arg2': 'xo'}, js_generator=generator, url_path=up3_exprt)
 
     # uncomment to not delete generated js
-    # def tearDown(self):
-    #    pass
+    def tearDown(self):
+       pass
 
 
 @override_settings(
@@ -2860,7 +2858,7 @@ class EnumGeneratorTest(EnumComparator, BaseTestCase):
                 'OPTIONS': {
                     'loaders': [
                         ('render_static.loaders.StaticLocMemLoader', {
-                            'enum_app/test.js': '{% enums_to_js enums=enums summetric_properties=True raise_on_not_found=False %}\n'
+                            'enum_app/test.js': '{% enums_to_js enums=enums summetric_properties=True unrecognized_behavior="RETURN_NULL" %}\n'
                                              'console.log(JSON.stringify({not_found: AddressRoute.get("Aly")}));'
                         })
                     ],
@@ -2892,7 +2890,7 @@ class EnumGeneratorTest(EnumComparator, BaseTestCase):
                 'OPTIONS': {
                     'loaders': [
                         ('render_static.loaders.StaticLocMemLoader', {
-                            'enum_app/test.js': '{% enums_to_js enums=enums summetric_properties=True raise_on_not_found=True %}\n'
+                            'enum_app/test.js': '{% enums_to_js enums=enums summetric_properties=True unrecognized_behavior="THROW_EXCEPTION" %}\n'
                                              'try { AddressRoute.get("Aly") } catch (e) {console.log(JSON.stringify({not_found: e instanceof TypeError ? "TypeError" : "Unknown"}));}'
                         })
                     ],
