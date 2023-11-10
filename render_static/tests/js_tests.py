@@ -2809,7 +2809,7 @@ class EnumGeneratorTest(EnumComparator, BaseTestCase):
         self.assertIn('=== MapBoxStyle.get("Satellite Streets");', content)
         self.assertIn('=== MapBoxStyle.get("satellite-streets");', content)
         self.assertIn('=== MapBoxStyle.get(6);', content)
-        self.assertEqual(content.count('switch(value)'), 4)
+        self.assertEqual(content.count('for (const en of this)'), 4)
 
     @override_settings(
         STATIC_TEMPLATES={
@@ -2849,7 +2849,7 @@ class EnumGeneratorTest(EnumComparator, BaseTestCase):
         self.assertIn('=== MapBoxStyle.get("satellite-streets");', content)
         self.assertIn('=== MapBoxStyle.get("mapbox://styles/mapbox/satellite-streets-v11");', content)
         self.assertIn('=== MapBoxStyle.get(6);', content)
-        self.assertEqual(content.count('switch(value)'), 5)
+        self.assertEqual(content.count('for (const en of this)'), 5)
 
     @override_settings(
         STATIC_TEMPLATES={

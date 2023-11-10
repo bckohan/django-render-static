@@ -407,7 +407,7 @@ class EnumClassWriter(EnumTranspiler):  # pylint: disable=R0902
         yield ''
         yield from self.to_string(enum)
         yield ''
-        yield from self.getter(enum)
+        yield from self.getter()
         yield ''
         yield from self.iterator(enum)
         self.outdent()
@@ -499,7 +499,7 @@ class EnumClassWriter(EnumTranspiler):  # pylint: disable=R0902
         self.outdent()
         yield '}'
 
-    def getter(self, enum: Type[Enum]) -> Generator[Optional[str], None, None]:
+    def getter(self) -> Generator[Optional[str], None, None]:
         """
         Transpile the get() method that converts values and properties into
         instances of the Enum type.
@@ -518,7 +518,7 @@ class EnumClassWriter(EnumTranspiler):  # pylint: disable=R0902
         yield ''
 
         for prop in ['value'] + self.symmetric_properties:
-            yield from self.prop_getter(enum, prop)
+            yield from self.prop_getter(prop)
 
         if self.on_unrecognized_ is UnrecognizedBehavior.RETURN_INPUT:
             yield 'return value;'
@@ -530,11 +530,7 @@ class EnumClassWriter(EnumTranspiler):  # pylint: disable=R0902
         self.outdent()
         yield '}'
 
-    def prop_getter(
-            self,
-            enum: Type[Enum],
-            prop: str
-    ) -> Generator[Optional[str], None, None]:
+    def prop_getter(self, prop: str) -> Generator[Optional[str], None, None]:
         """
         Transpile the switch statement to map values of the given property to
         enumeration instance values.
@@ -543,13 +539,13 @@ class EnumClassWriter(EnumTranspiler):  # pylint: disable=R0902
         :param prop:
         :yield: transpiled javascript lines
         """
-        yield 'switch(value) {'
+        yield 'for (const en of this) {'
         self.indent()
-        for enm in enum:
-            yield f'case {self.to_js(getattr(enm, prop))}:'
-            self.indent()
-            yield f'return {self.class_name}.{enm.name};'
-            self.outdent()
+        yield f'if (en.{prop} === value) {{'
+        self.indent()
+        yield 'return en;'
+        self.outdent()
+        yield '}'
         self.outdent()
         yield '}'
 

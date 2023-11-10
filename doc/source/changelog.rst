@@ -5,6 +5,7 @@ Change Log
 v2.1.0
 ======
 * Implemented `Add a pass through getter for enums_to_js transpilation. <https://github.com/bckohan/django-render-static/issues/126>`_
+* Implemented `enum transpilation should iterate through value properties instead of hardcoding a switch statement. <https://github.com/bckohan/django-render-static/issues/125>`
 * Implemented `Add type check and return to getter on transpiled enum classes.. <https://github.com/bckohan/django-render-static/issues/122>`_
 
 
