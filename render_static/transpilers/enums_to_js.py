@@ -378,6 +378,7 @@ class EnumClassWriter(EnumTranspiler):  # pylint: disable=R0902
     def context(self):
         """The template render context passed to overrides"""
         return {
+            **EnumTranspiler.context.fget(self),  # type: ignore
             'enum': self.enum,
             'class_name': self.class_name,
             'properties': self.properties,

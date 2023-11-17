@@ -383,6 +383,159 @@ class DefinesToJavascriptTest(StructureDiff, BaseTestCase):
     #     pass
 
 
+
+@override_settings(STATIC_TEMPLATES={
+    'ENGINES': [{
+        'BACKEND': 'render_static.backends.StaticDjangoTemplates',
+        'OPTIONS': {
+            'app_dir': 'custom_templates',
+            'loaders': [
+                ('render_static.loaders.StaticLocMemLoader', {
+                    'defines1.js':"""
+{% defines_to_js defines=classes indent="  " %}
+{% override %}
+EXTRA_DEFINE: {
+    'a': 1,
+    'b': 2
+}
+{% endoverride %}
+{% override "ExtendedDefines.DICTIONARY" %}
+null
+{% endoverride %}
+{% enddefines_to_js %}
+console.log(JSON.stringify(defines));
+"""
+                })
+            ],
+            'builtins': ['render_static.templatetags.render_static']
+        },
+    }],
+    'templates': {
+        'defines1.js': {
+            'dest': GLOBAL_STATIC_DIR / 'defines1.js',
+            'context': {
+                'classes': [
+                    defines.MoreDefines,
+                    'render_static.tests.defines.ExtendedDefines'
+                ]
+            }
+        }
+    }
+})
+class DefinesToJavascriptOverrideTest(StructureDiff, BaseTestCase):
+
+    def tearDown(self):
+        pass
+
+    def test_define_overrides(self):
+        call_command('renderstatic', 'defines1.js')
+        js_dict = self.get_js_structure(GLOBAL_STATIC_DIR / 'defines1.js')
+        self.assertEqual(
+            js_dict,
+            {
+                'EXTRA_DEFINE': {'a': 1, 'b': 2},
+                'ExtendedDefines': {
+                    'DEFINE1': 'D1',
+                    'DEFINE2': 'D2',
+                    'DEFINE3': 'D3',
+                    'DEFINE4': 'D4',
+                    'DEFINES': [['D1', 'Define 1'],
+                                 ['D2', 'Define 2'],
+                                 ['D3', 'Define 3'],
+                                 ['D4', 'Define 4']],
+                    'DICTIONARY': None
+                },
+                'MoreDefines': {
+                    'MDEF1': 'MD1',
+                    'MDEF2': 'MD2',
+                    'MDEF3': 'MD3',
+                    'MDEFS': [
+                        ['MD1', 'MDefine 1'],
+                        ['MD2', 'MDefine 2'],
+                        ['MD3', 'MDefine 3']
+                    ]
+                }
+            }
+        )
+
+    @override_settings(STATIC_TEMPLATES={
+        'ENGINES': [{
+            'BACKEND': 'render_static.backends.StaticDjangoTemplates',
+            'OPTIONS': {
+                'app_dir': 'custom_templates',
+                'loaders': [
+                    ('render_static.loaders.StaticLocMemLoader', {
+                        'defines1.js':"""
+{% defines_to_js defines=classes indent="  " %}
+{% override %}
+EXTRA_DEFINE: {
+    const_name: "{{ const_name }}"
+}
+{% endoverride %}
+{% override "ExtendedDefines.DICTIONARY" %}
+{
+    const_name: "{{ const_name }}"
+}
+{% endoverride %}
+{% enddefines_to_js %}
+console.log(JSON.stringify(defines));
+"""
+                    })
+                ],
+                'builtins': ['render_static.templatetags.render_static']
+            },
+        }],
+        'templates': {
+            'defines1.js': {
+                'dest': GLOBAL_STATIC_DIR / 'defines1.js',
+                'context': {
+                    'classes': [
+                        defines.MoreDefines,
+                        'render_static.tests.defines.ExtendedDefines'
+                    ],
+                    'context_keys': [
+
+                    ]
+                }
+            }
+        }
+    })
+    def test_define_override_context(self):
+        call_command('renderstatic', 'defines1.js')
+        js_dict = self.get_js_structure(GLOBAL_STATIC_DIR / 'defines1.js')
+
+        self.assertEqual(
+            js_dict,
+            {
+                'EXTRA_DEFINE': {
+                    'const_name': 'defines'
+                },
+                'ExtendedDefines': {
+                    'DEFINE1': 'D1',
+                    'DEFINE2': 'D2',
+                    'DEFINE3': 'D3',
+                    'DEFINE4': 'D4',
+                    'DEFINES': [['D1', 'Define 1'],
+                                 ['D2', 'Define 2'],
+                                 ['D3', 'Define 3'],
+                                 ['D4', 'Define 4']],
+                    'DICTIONARY': {
+                        'const_name': 'defines'
+                    }
+                },
+                'MoreDefines': {
+                    'MDEF1': 'MD1',
+                    'MDEF2': 'MD2',
+                    'MDEF3': 'MD3',
+                    'MDEFS': [
+                        ['MD1', 'MDefine 1'],
+                        ['MD2', 'MDefine 2'],
+                        ['MD3', 'MDefine 3']
+                    ]
+                }
+            }
+        )
+
 class URLJavascriptMixin:
 
     url_js = None

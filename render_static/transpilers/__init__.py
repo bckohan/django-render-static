@@ -231,7 +231,7 @@ class Transpiler(CodeWriter, metaclass=ABCMeta):
     @property
     def context(self):
         """A local template render context passed to overrides"""
-        return {}  # pragma: no cover
+        return {}
 
     def __init__(
         self,

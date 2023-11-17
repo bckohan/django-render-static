@@ -345,6 +345,14 @@ class URLTreeVisitor(BaseURLTranspiler):
     include_: Optional[Iterable[str]] = None
     exclude_: Optional[Iterable[str]] = None
 
+    @property
+    def context(self):
+        return {
+            **BaseURLTranspiler.context.fget(self),  # type: ignore
+            'include': self.include_,
+            'exclude': self.exclude_,
+        }
+
     def __init__(
             self,
             include: Optional[Iterable[str]] = include_,
@@ -805,7 +813,7 @@ class SimpleURLWriter(URLTreeVisitor):
 
     .. code-block:: js+django
 
-        var urls = {
+        const urls = {
             {% urls_to_js raise_on_not_found=False %}
         };
 
@@ -829,6 +837,14 @@ class SimpleURLWriter(URLTreeVisitor):
     """
 
     raise_on_not_found_ = True
+
+    @property
+    def context(self):
+        """The template render context passed to overrides"""
+        return {
+            **URLTreeVisitor.context.fget(self),  # type: ignore
+            'raise_on_not_found': self.raise_on_not_found_,
+        }
 
     def __init__(self, **kwargs) -> None:
         super().__init__(**kwargs)
@@ -1008,6 +1024,15 @@ class ClassURLWriter(URLTreeVisitor):
     raise_on_not_found_ = True
     export_ = False
 
+    @property
+    def context(self):
+        """The template render context passed to overrides"""
+        return {
+            **URLTreeVisitor.context.fget(self),  # type: ignore
+            'class_name': self.class_name_,
+            'raise_on_not_found': self.raise_on_not_found_,
+        }
+
     def __init__(self, **kwargs) -> None:
         super().__init__(**kwargs)
         self.class_name_ = kwargs.pop('class_name', self.class_name_)
@@ -1104,64 +1129,153 @@ class ClassURLWriter(URLTreeVisitor):
         The recursive deepEqual function.
         :yield: The JavaScript jdoc comment lines and deepEqual function.
         """
-        for comment_line in """
-        /**
-         * Given two values, do a deep equality comparison. If the values are
-         * objects, all keys and values are recursively compared.
-         *
-         * @param {Object} object1 - The first object to compare.
-         * @param {Object} object2 - The second object to compare.
-         */""".split('\n'):
-            yield comment_line[8:]
-        yield 'deepEqual(object1, object2) {'
-        self.indent()
-        yield 'if (!(this.isObject(object1) && this.isObject(object2))) {'
-        self.indent()
-        yield 'return object1 === object2;'
-        self.outdent()
-        yield '}'
-        yield 'const keys1 = Object.keys(object1);'
-        yield 'const keys2 = Object.keys(object2);'
-        yield 'if (keys1.length !== keys2.length) {'
-        self.indent()
-        yield 'return false;'
-        self.outdent()
-        yield '}'
-        yield 'for (let key of keys1) {'
-        self.indent()
-        yield 'const val1 = object1[key];'
-        yield 'const val2 = object2[key];'
-        yield 'const areObjects = this.isObject(val1) && this.isObject(val2);'
-        yield 'if ('
-        self.indent()
-        yield '(areObjects && !deepEqual(val1, val2)) ||'
-        yield '(!areObjects && val1 !== val2)'
-        yield ') { return false; }'
-        self.outdent()
-        yield '}'
-        self.outdent()
-        yield 'return true;'
-        self.outdent()
-        yield '}'
+
+        def impl() -> Generator[str, None, None]:
+            """deepEqual default implementation"""
+            yield 'if (!(this.isObject(object1) && this.isObject(object2))) {'
+            self.indent()
+            yield 'return object1 === object2;'
+            self.outdent()
+            yield '}'
+            yield 'const keys1 = Object.keys(object1);'
+            yield 'const keys2 = Object.keys(object2);'
+            yield 'if (keys1.length !== keys2.length) {'
+            self.indent()
+            yield 'return false;'
+            self.outdent()
+            yield '}'
+            yield 'for (let key of keys1) {'
+            self.indent()
+            yield 'const val1 = object1[key];'
+            yield 'const val2 = object2[key];'
+            yield (
+                'const areObjects = this.isObject(val1) && '
+                'this.isObject(val2);'
+            )
+            yield 'if ('
+            self.indent()
+            yield '(areObjects && !deepEqual(val1, val2)) ||'
+            yield '(!areObjects && val1 !== val2)'
+            yield ') { return false; }'
+            self.outdent()
+            yield '}'
+            self.outdent()
+            yield 'return true;'
+
+        if 'deepEqual' in self.overrides_:
+            yield from self.transpile_override('deepEqual', impl())
+        else:
+            for comment_line in """
+            /**
+             * Given two values, do a deep equality comparison. If the values are
+             * objects, all keys and values are recursively compared.
+             *
+             * @param {Object} object1 - The first object to compare.
+             * @param {Object} object2 - The second object to compare.
+             */""".split('\n'):
+                yield comment_line[12:]
+            yield 'deepEqual(object1, object2) {'
+            self.indent()
+            yield from impl()
+            self.outdent()
+            yield '}'
 
     def is_object(self) -> Generator[Optional[str], None, None]:
         """
         The isObject() function.
         :yield: The JavaScript jdoc comment lines and isObject function.
         """
-        for comment_line in """
-        /**
-         * Given a variable, return true if it is an object.
-         *
-         * @param {Object} object - The variable to check.
-         */""".split('\n'):
-            yield comment_line[8:]
-        yield 'isObject(object) {'
-        self.indent()
-        yield 'return object != null && typeof object === "object";'
-        self.outdent()
-        yield '}'
+        impl = 'return object != null && typeof object === "object";'
+        if 'isObject' in self.overrides_:
+            yield from self.transpile_override('isObject', impl)
+        else:
+            for comment_line in """
+            /**
+             * Given a variable, return true if it is an object.
+             *
+             * @param {Object} object - The variable to check.
+             */""".split('\n'):
+                yield comment_line[12:]
+            yield 'isObject(object) {'
+            self.indent()
+            yield impl
+            self.outdent()
+            yield '}'
 
+    def match(self) -> Generator[Optional[str], None, None]:
+        """
+        The #match() function.
+        :yield: The JavaScript jdoc comment lines and #match() function.
+        """
+        def impl() -> Generator[str, None, None]:
+            """match default implementation"""
+            yield 'if (defaults) {'
+            self.indent()
+            yield 'kwargs = Object.assign({}, kwargs);'
+            yield 'for (const [key, val] of Object.entries(defaults)) {'
+            self.indent()
+            yield 'if (kwargs.hasOwnProperty(key)) {'
+            self.indent()
+            if (
+                DJANGO_VERSION[0] >= 4 and DJANGO_VERSION[1] >= 1
+            ):  # pragma: no cover
+                # there was a change in Django 4.1 that seems to coerce kwargs
+                # given to the default kwarg type of the same name if one
+                # exists for the purposes of reversal. Thus 1 will == '1'
+                # In javascript we attempt string conversion and hope for the
+                # best. In 4.1 given kwargs will also override default kwargs
+                # for kwargs the reversal is expecting. This seems to have
+                # been a byproduct of the differentiation of captured_kwargs
+                # and extra_kwargs - that this wasn't caught in Django's CI is
+                # evidence that previous behavior wasn't considered spec.
+                yield (
+                    'if (kwargs[key] !== val && '
+                    'kwargs[key].toString() !== val.toString() '
+                    '&& !expected.includes(key)) '
+                    '{ return false; }'
+                )
+            else:  # pragma: no cover
+                yield (
+                    'if (!this.deepEqual(kwargs[key], val)) { return false; }'
+                )
+            yield (
+                'if (!expected.includes(key)) '
+                '{ delete kwargs[key]; }'
+            )
+            self.outdent()
+            yield '}'
+            self.outdent()
+            yield '}'
+            self.outdent()
+            yield '}'
+            yield 'if (Array.isArray(expected)) {'
+            self.indent()
+            yield (
+                'return Object.keys(kwargs).length === expected.length && '
+                'expected.every(value => kwargs.hasOwnProperty(value));'
+            )
+            self.outdent()
+            yield '} else if (expected) {'
+            self.indent()
+            yield 'return args.length === expected;'
+            self.outdent()
+            yield '} else {'
+            self.indent()
+            yield 'return Object.keys(kwargs).length === 0 && ' \
+                'args.length === 0;'
+            self.outdent()
+            yield '}'
+            self.outdent()
+
+        if '#match' in self.overrides_:
+            yield from self.transpile_override('#match', impl())
+        else:
+            yield from self.match_jdoc()
+            yield '#match(kwargs, args, expected, defaults={}) {'
+            self.indent()
+            yield from impl()
+            self.outdent()
+            yield '}'
 
     def init_visit(  # pylint: disable=R0915
             self
@@ -1200,65 +1314,7 @@ class ClassURLWriter(URLTreeVisitor):
         self.outdent()
         yield '}'
         yield ''
-        yield from self.match_jdoc()
-        yield '#match(kwargs, args, expected, defaults={}) {'
-        self.indent()
-        yield 'if (defaults) {'
-        self.indent()
-        yield 'kwargs = Object.assign({}, kwargs);'
-        yield 'for (const [key, val] of Object.entries(defaults)) {'
-        self.indent()
-        yield 'if (kwargs.hasOwnProperty(key)) {'
-        self.indent()
-        if (
-            DJANGO_VERSION[0] >= 4 and DJANGO_VERSION[1] >= 1
-        ):  # pragma: no cover
-            # there was a change in Django 4.1 that seems to coerce kwargs
-            # given to the default kwarg type of the same name if one
-            # exists for the purposes of reversal. Thus 1 will == '1'
-            # In javascript we attempt string conversion and hope for the
-            # best. In 4.1 given kwargs will also override default kwargs
-            # for kwargs the reversal is expecting. This seems to have
-            # been a byproduct of the differentiation of captured_kwargs
-            # and extra_kwargs - that this wasn't caught in Django's CI is
-            # evidence that previous behavior wasn't considered spec.
-            yield (
-                'if (kwargs[key] !== val && '
-                'kwargs[key].toString() !== val.toString() '
-                '&& !expected.includes(key)) '
-                '{ return false; }'
-            )
-        else:  # pragma: no cover
-            yield 'if (!this.deepEqual(kwargs[key], val)) { return false; }'
-        yield (
-            'if (!expected.includes(key)) '
-            '{ delete kwargs[key]; }'
-        )
-        self.outdent()
-        yield '}'
-        self.outdent()
-        yield '}'
-        self.outdent()
-        yield '}'
-        yield 'if (Array.isArray(expected)) {'
-        self.indent()
-        yield (
-            'return Object.keys(kwargs).length === expected.length && '
-            'expected.every(value => kwargs.hasOwnProperty(value));'
-        )
-        self.outdent()
-        yield '} else if (expected) {'
-        self.indent()
-        yield 'return args.length === expected;'
-        self.outdent()
-        yield '} else {'
-        self.indent()
-        yield 'return Object.keys(kwargs).length === 0 && ' \
-              'args.length === 0;'
-        self.outdent()
-        yield '}'
-        self.outdent()
-        yield '}'
+        yield from self.match()
         yield ''
         yield from self.deep_equal()
         yield ''
@@ -1328,6 +1384,8 @@ class ClassURLWriter(URLTreeVisitor):
         :yield: Trailing JavaScript LoC
         """
         yield '}'
+        for _, override in self.overrides_.items():
+            yield from override.transpile(self.context)
         self.outdent()
         yield '};'
 

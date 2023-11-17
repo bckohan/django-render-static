@@ -81,8 +81,8 @@ class OverrideNode(Node):
     :param nodelist: The child nodes for this node. Should be empty
     """
 
-    def __init__(self, override_name: str, nodelist: NodeList):
-        self.override_name = override_name
+    def __init__(self, override_name: Optional[str], nodelist: NodeList):
+        self.override_name = override_name or f'_{id(self)}'
         self.nodelist = nodelist
         self.context = Context()
 
@@ -497,4 +497,5 @@ def override(parser, token):
         parser, token.split_contents()[1:], ['override'], [], [], [],
         [], {}, False, 'override',
     )
-    return OverrideNode(p_args[0], nodelist)
+    name = p_args[0] if p_args else None
+    return OverrideNode(name, nodelist)
