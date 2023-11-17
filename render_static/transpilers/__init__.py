@@ -227,12 +227,12 @@ class Transpiler(CodeWriter, metaclass=ABCMeta):
             for parent in self.parents_
             if parent is not self.target
         ]
-    
+
     @property
     def context(self):
         """A local template render context passed to overrides"""
         return {}  # pragma: no cover
-    
+
     def __init__(
         self,
         to_javascript: Union[str, Callable] = to_javascript_,
@@ -279,7 +279,7 @@ class Transpiler(CodeWriter, metaclass=ABCMeta):
             **self.context,
             'default_impl': SafeString(d_impl)
         })
-    
+
     @abstractmethod
     def include_target(self, target:  TranspilerTarget):
         """
