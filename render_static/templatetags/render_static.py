@@ -2,12 +2,29 @@
 Template tags and filters available when the render_static app is installed.
 """
 
+import functools
+from copy import copy
 from enum import Enum
+from inspect import getfullargspec, unwrap
 from types import ModuleType
-from typing import Any, Collection, Iterable, List, Optional, Type, Union
+from typing import (
+    Any,
+    Callable,
+    Collection,
+    Dict,
+    Generator,
+    Iterable,
+    List,
+    Optional,
+    Type,
+    Union,
+)
 
 from django import template
 from django.conf import settings
+from django.template import Node, NodeList
+from django.template.context import Context
+from django.template.library import parse_bits
 from django.utils.module_loading import import_string
 from django.utils.safestring import SafeString
 from render_static.transpilers import (
@@ -19,14 +36,223 @@ from render_static.transpilers.defines_to_js import DefaultDefineTranspiler
 from render_static.transpilers.enums_to_js import EnumClassWriter
 from render_static.transpilers.urls_to_js import ClassURLWriter
 
-register = template.Library()
-
 __all__ = [
     'split',
     'defines_to_js',
     'urls_to_js',
     'enums_to_js'
 ]
+
+Targets = Union[TranspilerTargets, TranspilerTarget]
+TranspilerType = Union[Type[Transpiler], str]
+
+
+def do_transpile(
+        targets: Targets,
+        transpiler: TranspilerType,
+        kwargs: Dict[Any, Any]
+) -> str:
+    """
+    Transpile the given target(s) using the given transpiler and
+    parameters for the transpiler.
+
+    :param targets: A list or single transpiler target which can be an import
+        string a module type or a class.
+    :param transpiler: The transpiler class or import string for the transpiler
+        class to use.
+    :param kwargs: Any kwargs that the transpiler takes.
+    :return: SafeString of rendered transpiled code.
+    """
+    if isinstance(targets, (type, str)) or not isinstance(targets, Collection):
+        targets = [targets]
+
+    transpiler = (
+        import_string(transpiler)
+        if isinstance(transpiler, str) else transpiler
+    )
+    return SafeString(transpiler(**kwargs).transpile(targets))
+
+
+class OverrideNode(Node):
+    """
+    A block node that holds a block override. Works with all transpilers.
+
+    :param override_name: The name of the override (i.e. function name).
+    :param nodelist: The child nodes for this node. Should be empty
+    """
+
+    def __init__(self, override_name: str, nodelist: NodeList):
+        self.override_name = override_name
+        self.nodelist = nodelist
+        self.context = Context()
+
+    def bind(self, context: Context) -> str:
+        """
+        Bind the override to the given base context. The same override
+        may be transpiled multiple times to extensions of this context.
+        See transpile.
+
+        :param context: The context to bind the override to.
+        :return: The name of the override.
+        """
+        self.context = copy(context)
+        return self.override_name.resolve(context) if isinstance(
+            self.override_name,
+            (template.base.Variable, template.base.FilterExpression)
+        ) else self.override_name
+
+    def transpile(self, context: Context) -> Generator[str, None, None]:
+        """
+        Render the override in the given context, yielding each line.
+
+        :param context: The context to render the override in.
+        :return: A generator of lines of rendered override.
+        """
+        self.context.update(context)
+        lines = self.nodelist.render(self.context).splitlines()
+        for line in lines:
+            yield line
+
+
+
+class TranspilerNode(Node):
+    """
+    A block node holding a transpilation and associated parameters.
+    Works with all transpilers.
+
+    :param nodelist: The child nodes for this node. Should be empty
+        or only contain overrides.
+    :param transpiler: The transpiler class or import string.
+    :param targets: The index or the targets positional argument or the
+        name of the keyword argument that contains the targets.
+    :param kwargs: The keyword arguments to pass to the transpiler
+    """
+
+    def __init__(
+            self,
+            func: Callable,
+            targets: Optional[str],
+            kwargs: Dict[str, Any],
+            nodelist: Optional[NodeList] = None,
+        ):
+        self.func = func
+        self.targets = targets
+        self.kwargs = kwargs
+        self.nodelist = nodelist or NodeList()
+
+    def get_resolved_arguments(self, context: Context) -> Dict[str, Any]:
+        """
+        Resolve the arguments to the transpiler.
+        
+        :param context: The context of the template being rendered.
+        :return: A dictionary of resolved arguments.
+        """
+        resolved_kwargs = {
+            k: v.resolve(context)
+            if isinstance(
+                v,
+                (
+                    template.base.Variable,
+                    template.base.FilterExpression
+                )
+            ) else v
+            for k, v in self.kwargs.items()
+        }
+        overrides = self.get_nodes_by_type(OverrideNode)
+        if overrides:
+            resolved_kwargs['overrides'] = {
+                override.bind(context): override
+                for override in overrides
+            }
+        return resolved_kwargs
+
+    def render(self, context: Context) -> str:
+        """
+        Transpile the given target(s).
+
+        :param context: The context of the template being rendered.
+        :return: SafeString of rendered transpiled code.
+        """
+        return self.func(**self.get_resolved_arguments(context))
+
+
+register = template.Library()
+
+def transpiler_tag(
+    func: Optional[Callable] = None,
+    targets: Union[int, str] = 0,
+    name: Optional[str] = None,
+    node: Type[Node] = TranspilerNode
+):
+    """
+    Register a callable as a transpiler tag. This decorator is similar
+    to simple_tag but also passes the parser and token to the decorated
+    function.
+    """
+    def dec(func: Callable):
+        (
+            pos_args, varargs, varkw,
+            defaults, kwonly, kwonly_defaults, _
+        ) = getfullargspec(unwrap(func))
+        function_name = (
+            name or getattr(func, '_decorated_function', func).__name__
+        )
+
+        assert 'transpiler' in pos_args or 'transpiler' in kwonly, \
+            f'{function_name} must accept a transpiler argument.'
+
+        param_defaults = {
+            pos_args[len(pos_args or [])-len(defaults or [])+idx]: default
+            for idx, default in enumerate(defaults or [])
+        }
+
+        @functools.wraps(func)
+        def compile_func(parser, token):
+            # we have to lookahead to see if there is an end tag because parse
+            # will error out if we ask it to parse_until and there isn't one.
+            is_block = False
+            nodelist = None
+            for lookahead in reversed(parser.tokens):
+                if lookahead.token_type == template.base.TokenType.BLOCK:
+                    command = lookahead.contents.split()[0]
+                    if command == f'end{function_name}':
+                        is_block = True
+                        break
+                    if command == f'{function_name}':
+                        break
+            if is_block:
+                nodelist = parser.parse(parse_until=(f'end{function_name}',))
+                parser.delete_first_token()
+
+            bits = token.split_contents()[1:]
+            pargs, pkwargs = parse_bits(
+                parser, bits, pos_args, varargs, varkw, defaults,
+                kwonly, kwonly_defaults, False, function_name,
+            )
+            # we rearrange everything here to turn all arguments into
+            # keyword arguments b/c while this eliminates variadic positional
+            # arguments it does make this code more robust to custom
+            # transpiler constructor signatures
+            for idx, parg in enumerate(pargs):
+                pkwargs[pos_args[idx]] = parg
+
+            return node(
+                func,
+                pos_args[targets] if isinstance(targets, int) else targets,
+                {**(kwonly_defaults or {}), **param_defaults, **pkwargs},
+                nodelist
+            )
+
+        register.tag(function_name, compile_func)
+        return func
+
+    if func is None:
+        # @register.transpile_tag(...)
+        return dec
+    if callable(func):
+        # @register.transpile_tag
+        return dec(func)
+    raise ValueError('Invalid arguments provided to transpiler_tag')
 
 
 @register.filter(name='split')
@@ -44,12 +270,8 @@ def split(to_split: str, sep: Optional[str] = None) -> List[str]:
     return to_split.split()
 
 
-@register.simple_tag
-def transpile(
-    targets: Union[TranspilerTargets, TranspilerTarget],
-    transpiler: Union[Type[Transpiler], str],
-    **kwargs
-) -> str:
+@transpiler_tag
+def transpile(targets: Targets, transpiler: TranspilerType, **kwargs) -> str:
     """
     Run the given transpiler on the given targets and write the generated
     javascript in-place.
@@ -61,24 +283,16 @@ def transpile(
     :param kwargs: Any kwargs that the transpiler takes.
     :return:
     """
-    if isinstance(transpiler, str):
-        # mypy doesn't pick up this switch from str to class, import_string
-        # probably untyped
-        transpiler = import_string(transpiler)
-
-    if isinstance(targets, (type, str)) or not isinstance(targets, Collection):
-        targets = [targets]
-
-    return SafeString(
-        transpiler(  # type: ignore
-            **kwargs
-        ).transpile(targets)
+    return do_transpile(
+        targets=targets,
+        transpiler=transpiler,
+        kwargs=kwargs
     )
 
 
-@register.simple_tag
+@transpiler_tag(targets='url_conf')
 def urls_to_js(  # pylint: disable=R0913,R0915
-        transpiler: Union[Type[Transpiler], str] = ClassURLWriter,
+        transpiler: TranspilerType = ClassURLWriter,
         url_conf: Optional[Union[ModuleType, str]] = None,
         indent: str = '\t',
         depth: int = 0,
@@ -194,20 +408,20 @@ def urls_to_js(  # pylint: disable=R0913,R0915
     :return: A javascript object containing functions that generate urls with
         and without parameters
     """
-
-    kwargs['depth'] = depth
-    kwargs['indent'] = indent
-    kwargs['include'] = include
-    kwargs['exclude'] = exclude
-
-    return transpile(
-        targets=(url_conf if url_conf else settings.ROOT_URLCONF),
+    return do_transpile(
+        targets=url_conf or settings.ROOT_URLCONF,
         transpiler=transpiler,
-        **kwargs
+        kwargs={
+            'depth': depth,
+            'indent': indent,
+            'include': include,
+            'exclude': exclude,
+            **kwargs
+        }
     )
 
 
-@register.simple_tag
+@transpiler_tag
 def defines_to_js(
         defines: Union[
             ModuleType,
@@ -215,7 +429,7 @@ def defines_to_js(
             str,
             Collection[Union[ModuleType, Type[Any], str]]
         ],
-        transpiler: Union[Type[Transpiler], str] = DefaultDefineTranspiler,
+        transpiler: TranspilerType = DefaultDefineTranspiler,
         indent: str = '\t',
         depth: int = 0,
         **kwargs
@@ -232,16 +446,14 @@ def defines_to_js(
     :param kwargs: Any other kwargs to pass to the transpiler.
     :return: SafeString of rendered transpiled code.
     """
-    return transpile(
+    return do_transpile(
         targets=defines,
         transpiler=transpiler,
-        indent=indent,
-        depth=depth,
-        **kwargs
+        kwargs={'indent': indent, 'depth': depth, **kwargs}
     )
 
 
-@register.simple_tag
+@transpiler_tag
 def enums_to_js(
         enums: Union[
             ModuleType,
@@ -249,7 +461,7 @@ def enums_to_js(
             str,
             Collection[Union[ModuleType, Type[Enum], str]]
         ],
-        transpiler: Union[Type[Transpiler], str] = EnumClassWriter,
+        transpiler: TranspilerType = EnumClassWriter,
         indent: str = '\t',
         depth: int = 0,
         **kwargs
@@ -267,10 +479,22 @@ def enums_to_js(
         See transpiler docs for details.
     :return: SafeString of rendered transpiled code.
     """
-    return transpile(
+    return do_transpile(
         targets=enums,
         transpiler=transpiler,
-        indent=indent,
-        depth=depth,
-        **kwargs
+        kwargs={'indent': indent, 'depth': depth, **kwargs}
     )
+
+
+@register.tag(name='override')
+def override(parser, token):
+    """
+    Override a function in the parent transpilation.
+    """
+    nodelist = parser.parse(parse_until=('endoverride',))
+    parser.delete_first_token()
+    p_args, _ = parse_bits(
+        parser, token.split_contents()[1:], ['override'], [], [], [],
+        [], {}, False, 'override',
+    )
+    return OverrideNode(p_args[0], nodelist)

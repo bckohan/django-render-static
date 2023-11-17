@@ -2595,6 +2595,18 @@ class EnumGeneratorTest(EnumComparator, BaseTestCase):
             'toString',
             get_content(ENUM_STATIC_DIR / 'enum_app/test.js')
         )
+        self.assertNotIn(
+            'this.str',
+            get_content(ENUM_STATIC_DIR / 'enum_app/test.js')
+        )
+        self.assertNotIn(
+            ', str) {',
+            get_content(ENUM_STATIC_DIR / 'enum_app/test.js')
+        )
+        self.assertNotIn(
+            ', "1");',
+            get_content(ENUM_STATIC_DIR / 'enum_app/test.js')
+        )
 
     @override_settings(
         STATIC_TEMPLATES={
@@ -2897,6 +2909,7 @@ class EnumGeneratorTest(EnumComparator, BaseTestCase):
                 'include_properties': True,
                 'properties': True,
                 'symmetric_properties': True,
+                'isymmetric_properties': [],
                 'test_symmetric_properties': [
                     'name',
                     'slug',
@@ -2930,6 +2943,67 @@ class EnumGeneratorTest(EnumComparator, BaseTestCase):
         self.assertIn('=== MapBoxStyle.get("mapbox://styles/mapbox/satellite-streets-v11");', content)
         self.assertIn('=== MapBoxStyle.get(6);', content)
         self.assertEqual(content.count('for (const en of this)'), 5)
+        self.assertNotIn('ciCompare', content)
+
+    
+    @override_settings(
+        STATIC_TEMPLATES={
+            'ENGINES': [{
+                'BACKEND': 'render_static.backends.StaticDjangoTemplates',
+                'OPTIONS': {
+                    'loaders': [
+                        ('render_static.loaders.StaticLocMemLoader', {
+                            'enum_app/test.js': '{% enums_to_js enums=enums symmetric_properties=True on_unrecognized="RETURN_NULL" %}\n'
+                                'console.log(JSON.stringify({'
+                                    'StReEtS: MapBoxStyle.get("StReEtS").label,'
+                                    f'"{EnumTester.MapBoxStyle.NAVIGATION_DAY.uri.upper()}": MapBoxStyle.get("{EnumTester.MapBoxStyle.NAVIGATION_DAY.uri.upper()}")'
+                                    '}));'
+                        }),
+                        ('render_static.loaders.StaticLocMemLoader', {
+                            'enum_app/test2.js': '{% enums_to_js enums=enums symmetric_properties=True isymmetric_properties="uri"|split on_unrecognized="RETURN_NULL" %}\n'
+                                'console.log(JSON.stringify({'
+                                    'StReEtS: MapBoxStyle.get("StReEtS"),'
+                                    f'"{EnumTester.MapBoxStyle.NAVIGATION_DAY.uri.upper()}": MapBoxStyle.get("{EnumTester.MapBoxStyle.NAVIGATION_DAY.uri.upper()}").label'
+                                    '}));'
+                        })
+                    ],
+                    'builtins': [
+                        'render_static.templatetags.render_static'
+                    ]
+                },
+            }],
+            'templates': [
+                ('enum_app/test.js', {
+                    'context': {
+                        'enums': [
+                            EnumTester.MapBoxStyle
+                        ]
+                    }
+                }),
+                ('enum_app/test2.js', {
+                    'context': {
+                        'enums': [
+                            EnumTester.MapBoxStyle
+                        ]
+                    }
+                }),
+            ]
+        }
+    )
+    def test_resolve_isymmetric_props(self):
+        call_command('renderstatic', ['enum_app/test.js', 'enum_app/test2.js'])
+        content = get_content(GLOBAL_STATIC_DIR / 'enum_app/test.js')
+        self.assertIn('static ciCompare', content)
+        js_dict = self.get_js_structure(GLOBAL_STATIC_DIR / 'enum_app/test.js')
+        self.assertEqual(js_dict['StReEtS'], 'Streets')
+        self.assertEqual(js_dict[EnumTester.MapBoxStyle.NAVIGATION_DAY.uri.upper()], None)
+
+        content = get_content(GLOBAL_STATIC_DIR / 'enum_app/test2.js')
+        self.assertIn('static ciCompare', content)
+        js_dict = self.get_js_structure(GLOBAL_STATIC_DIR / 'enum_app/test2.js')
+        self.assertEqual(js_dict['StReEtS'], None)
+        self.assertEqual(js_dict[EnumTester.MapBoxStyle.NAVIGATION_DAY.uri.upper()], EnumTester.MapBoxStyle.NAVIGATION_DAY.label)
+
 
     @override_settings(
         STATIC_TEMPLATES={
@@ -3257,6 +3331,269 @@ class EnumGeneratorTest(EnumComparator, BaseTestCase):
 
     def tearDown(self):
        pass
+
+    @override_settings(
+        STATIC_TEMPLATES={
+            'ENGINES': [{
+                'BACKEND': 'render_static.backends.StaticDjangoTemplates',
+                'OPTIONS': {
+                    'loaders': [
+                        ('render_static.loaders.StaticLocMemLoader', {
+                            'enum_app/test.js': """
+{% enums_to_js enums=enums symmetric_properties=True %}
+{% override "get" %}
+/**
+ * A comment.
+ */
+static get(value) {
+    if (value === null) {
+        return {
+            'enum': {% autoescape off %}"{{enum}}"{% endautoescape %},
+            'class_name': "{{class_name}}",
+            'properties': [{% for prop in properties %}"{{prop}}",{% endfor %}],
+            'class_properties': [{% for prop in class_properties %}"{{prop}}",{% endfor %}],
+            'symmetric_properties': [{% for prop in symmetric_properties %}"{{prop}}",{% endfor %}],
+            'to_string': {% if to_string %}true{% else %}false{% endif %},
+            'str_prop': "{{ str_prop }}"
+        };
+    }
+    {{ default_impl }}}
+{% endoverride %}
+
+'enum': self.enum,
+'class_name': self.class_name,
+'properties': self.properties,
+'str_prop': self.str_prop,
+'class_properties': self.class_properties,
+'symmetric_properties': self.symmetric_properties,
+'to_string': self.to_string_
+
+{% override "constructor" %}
+constructor (value, name, label, alt, str, str0) {
+{{ default_impl }}
+    this.constructor_context = {
+        'enum': {% autoescape off %}"{{enum}}"{% endautoescape %},
+        'class_name': "{{class_name}}",
+        'properties': [{% for prop in properties %}"{{prop}}",{% endfor %}],
+        'class_properties': [{% for prop in class_properties %}"{{prop}}",{% endfor %}],
+        'symmetric_properties': [{% for prop in symmetric_properties %}"{{prop}}",{% endfor %}],
+        'to_string': {% if to_string %}true{% else %}false{% endif %},
+        'str_prop': "{{ str_prop }}"
+    };
+}
+{% endoverride %}
+
+{% override "toString" %}
+toString() { 
+    return {
+        'enum': {% autoescape off %}"{{enum}}"{% endautoescape %},
+        'class_name': "{{class_name}}",
+        'properties': [{% for prop in properties %}"{{prop}}",{% endfor %}],
+        'class_properties': [{% for prop in class_properties %}"{{prop}}",{% endfor %}],
+        'symmetric_properties': [{% for prop in symmetric_properties %}"{{prop}}",{% endfor %}],
+        'to_string': {% if to_string %}true{% else %}false{% endif %},
+        'str_prop': "{{ str_prop }}"
+    };
+}
+{% endoverride %}
+
+{% override "ciCompare" %}
+static ciCompare(a, b) { 
+    {{ class_name}}.ci_compare_context = {
+        'enum': {% autoescape off %}"{{enum}}"{% endautoescape %},
+        'class_name': "{{class_name}}",
+        'properties': [{% for prop in properties %}"{{prop}}",{% endfor %}],
+        'class_properties': [{% for prop in class_properties %}"{{prop}}",{% endfor %}],
+        'symmetric_properties': [{% for prop in symmetric_properties %}"{{prop}}",{% endfor %}],
+        'to_string': {% if to_string %}true{% else %}false{% endif %},
+        'str_prop': "{{ str_prop }}"
+    };
+{{ default_impl }}
+}
+{% endoverride %}
+
+
+{% override "[Symbol.iterator]" %}
+static [Symbol.iterator]() {
+    {{ class_name }}.iterator_context = {
+        'enum': {% autoescape off %}"{{enum}}"{% endautoescape %},
+        'class_name': "{{class_name}}",
+        'properties': [{% for prop in properties %}"{{prop}}",{% endfor %}],
+        'class_properties': [{% for prop in class_properties %}"{{prop}}",{% endfor %}],
+        'symmetric_properties': [{% for prop in symmetric_properties %}"{{prop}}",{% endfor %}],
+        'to_string': {% if to_string %}true{% else %}false{% endif %},
+        'str_prop': "{{ str_prop }}"
+    };
+{{ default_impl }}
+}
+{% endoverride %}
+
+{% override "testContext" %}
+static testContext() { 
+    return {
+        'enum': {% autoescape off %}"{{enum}}"{% endautoescape %},
+        'class_name': "{{class_name}}",
+        'properties': [{% for prop in properties %}"{{prop}}",{% endfor %}],
+        'class_properties': [{% for prop in class_properties %}"{{prop}}",{% endfor %}],
+        'symmetric_properties': [{% for prop in symmetric_properties %}"{{prop}}",{% endfor %}],
+        'to_string': {% if to_string %}true{% else %}false{% endif %},
+        'str_prop': "{{ str_prop }}"
+    };
+}
+{% endoverride %}
+
+{% endenums_to_js %}
+console.log(JSON.stringify(
+    {
+        getNull: AddressRoute.get(null),
+        getAve: AddressRoute.get(AddressRoute.AVENUE).label,
+        getAve2: AddressRoute.get('AvEnUe').label,
+        testContext: AddressRoute.testContext(),
+        toString: AddressRoute.AVENUE.toString(),
+        constructor_context: AddressRoute.AVENUE.constructor_context,
+        iterator_context: AddressRoute.iterator_context,
+        ci_compare_context: AddressRoute.ci_compare_context,
+    }
+));
+"""})
+                    ],
+                    'builtins': [
+                        'render_static.templatetags.render_static'
+                    ]
+                },
+            }],
+            'templates': [
+                ('enum_app/test.js', {
+                    'context': {
+                        'enums': [
+                            EnumTester.AddressRoute
+                        ]
+                    }
+                }),
+            ]
+        }
+    )
+    def test_overrides(self):
+        call_command('renderstatic', 'enum_app/test.js')
+        js_dict = self.get_js_structure(GLOBAL_STATIC_DIR / 'enum_app/test.js')
+
+        expected_context = {
+            'enum': "<enum 'AddressRoute'>",
+            'class_name': "AddressRoute",
+            'properties': ['value', 'name', 'label', 'alt', 'str'],
+            'class_properties': ['class_name'],
+            'symmetric_properties': ['name', 'label'],
+            'to_string': True,
+            'str_prop': 'str0'
+        }
+        self.assertEqual(js_dict['testContext'], expected_context)
+        self.assertEqual(js_dict['getNull'], expected_context)
+        self.assertEqual(js_dict['getAve'], 'Avenue')
+        self.assertEqual(js_dict['getAve2'], 'Avenue')
+        self.assertEqual(js_dict['toString'], expected_context)
+        self.assertEqual(js_dict['constructor_context'], expected_context)
+        self.assertEqual(js_dict['iterator_context'], expected_context)
+        self.assertEqual(js_dict['ci_compare_context'], expected_context)
+
+
+    @override_settings(
+        STATIC_TEMPLATES={
+            'ENGINES': [{
+                'BACKEND': 'render_static.backends.StaticDjangoTemplates',
+                'OPTIONS': {
+                    'loaders': [
+                        ('render_static.loaders.StaticLocMemLoader', {
+                            'enum_app/test.js': """
+{% enums_to_js enums="render_static.tests.enum_app.models.EnumTester.MapBoxStyle" %}
+{% enums_to_js enums="render_static.tests.enum_app.models.EnumTester.AddressRoute" symmetric_properties=True %}
+
+{% override "testContext" %}
+static testContext() { 
+    return {
+        'enum': {% autoescape off %}"{{enum}}"{% endautoescape %},
+        'class_name': "{{class_name}}",
+        'properties': [{% for prop in properties %}"{{prop}}",{% endfor %}],
+        'class_properties': [{% for prop in class_properties %}"{{prop}}",{% endfor %}],
+        'symmetric_properties': [{% for prop in symmetric_properties %}"{{prop}}",{% endfor %}],
+        'to_string': {% if to_string %}true{% else %}false{% endif %},
+        'str_prop': "{{ str_prop }}"
+    };
+}
+{% endoverride %}
+{% endenums_to_js %}
+{% transpile "render_static.tests.enum_app.models.EnumTester.Color" "render_static.EnumClassWriter" %}
+console.log(JSON.stringify(
+    {
+        testContext: AddressRoute.testContext(),
+        mapbox: MapBoxStyle.get(1).label,
+        red: Color.RED.hex,
+    }
+));
+"""})
+                    ],
+                    'builtins': [
+                        'render_static.templatetags.render_static'
+                    ]
+                },
+            }],
+        }
+    )
+    def test_multi_block(self):
+        call_command('renderstatic', 'enum_app/test.js')
+        js_dict = self.get_js_structure(GLOBAL_STATIC_DIR / 'enum_app/test.js')
+        expected_context = {
+            'enum': "<enum 'AddressRoute'>",
+            'class_name': "AddressRoute",
+            'properties': ['value', 'name', 'label', 'alt', 'str'],
+            'class_properties': ['class_name'],
+            'symmetric_properties': ['name', 'label'],
+            'to_string': True,
+            'str_prop': 'str0'
+        }
+        self.assertEqual(js_dict['testContext'], expected_context)
+        self.assertEqual(js_dict['mapbox'], 'Streets')
+        self.assertEqual(js_dict['red'], 'ff0000')
+
+
+    @override_settings(
+        STATIC_TEMPLATES={
+            'ENGINES': [{
+                'BACKEND': 'render_static.backends.StaticDjangoTemplates',
+                'OPTIONS': {
+                    'loaders': [
+                        ('render_static.loaders.StaticLocMemLoader', {
+                            'enum_app/test.js': 
+                            "{% enums_to_js enums='render_static.tests.enum_app.models.EnumTester.Nope' %}"
+                        }),
+                        ('render_static.loaders.StaticLocMemLoader', {
+                            'enum_app/test2.js': 
+                            "{% enums_to_js enums='does_not_exist' %}"
+                        }),
+                        ('render_static.loaders.StaticLocMemLoader', {
+                            'enum_app/test3.js': 
+                            "{% enums_to_js enums='render_static.does_not_exist' %}"
+                        }),
+                        ('render_static.loaders.StaticLocMemLoader', {
+                            'enum_app/test4.js': 
+                            "{% enums_to_js enums='render_static.tests.enum_app.models.DNE' %}"
+                        })
+                    ],
+                    'builtins': [
+                        'render_static.templatetags.render_static'
+                    ]
+                },
+            }],
+        }
+    )
+    def test_import_error(self):
+        with self.assertRaises(CommandError):
+            call_command('renderstatic', 'enum_app/test.js')
+        with self.assertRaises(CommandError):
+            call_command('renderstatic', 'enum_app/test2.js')
+        with self.assertRaises(CommandError):
+            call_command('renderstatic', 'enum_app/test3.js')
+        with self.assertRaises(CommandError):
+            call_command('renderstatic', 'enum_app/test4.js')
 
 
 @override_settings(

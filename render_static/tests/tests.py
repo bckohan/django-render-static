@@ -1346,3 +1346,13 @@ class MultipleDestinationsTestCase(BaseTestCase):
 
     # def tearDown(self):
     #     pass
+
+
+class TranspilerTagTestCase(BaseTestCase):
+
+    def test_invalid_args(self):
+        from render_static.templatetags.render_static import transpiler_tag
+        with self.assertRaises(ValueError):
+            @transpiler_tag(func=True)
+            def transpiler1():  # pragma: no cover
+                pass  # pragma: no cover

@@ -120,7 +120,7 @@ try:
         env = Environment(**options)
         env.globals.update(render_static.register.filters)
         env.globals.update({
-            name: tag.__wrapped__
+            name: getattr(tag, '__wrapped__', tag)
             for name, tag in render_static.register.tags.items()
         })
         return env
