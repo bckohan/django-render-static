@@ -3370,7 +3370,7 @@ static get(value) {
 
 {% override "constructor" %}
 constructor (value, name, label, alt, str, str0) {
-{{ default_impl }}
+    {{ default_impl }}
     this.constructor_context = {
         'enum': {% autoescape off %}"{{enum}}"{% endautoescape %},
         'class_name': "{{class_name}}",
@@ -3408,7 +3408,7 @@ static ciCompare(a, b) {
         'to_string': {% if to_string %}true{% else %}false{% endif %},
         'str_prop': "{{ str_prop }}"
     };
-{{ default_impl }}
+    {{ default_impl }}
 }
 {% endoverride %}
 
@@ -3424,7 +3424,7 @@ static [Symbol.iterator]() {
         'to_string': {% if to_string %}true{% else %}false{% endif %},
         'str_prop': "{{ str_prop }}"
     };
-{{ default_impl }}
+    {{ default_impl }}
 }
 {% endoverride %}
 

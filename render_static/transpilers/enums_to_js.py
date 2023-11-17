@@ -18,7 +18,6 @@ from typing import (
 )
 
 from django.db.models import IntegerChoices, TextChoices
-from django.utils.safestring import SafeString
 from render_static.transpilers import Transpiler, TranspilerTarget
 
 try:
@@ -488,10 +487,7 @@ class EnumClassWriter(EnumTranspiler):  # pylint: disable=R0902
             yield from self.to_string(enum)
             yield ''
         if 'get' in self.overrides_:
-            yield from self.overrides_.pop('get').transpile({
-                **self.context,
-                'default_impl': self.get_lines(self.getter_impl())
-            })
+            yield from self.transpile_override('get', self.getter_impl())
         else:
             yield from self.getter()
         yield ''
@@ -571,10 +567,10 @@ class EnumClassWriter(EnumTranspiler):  # pylint: disable=R0902
                 yield f'this.{self.str_prop} = {self.str_prop};'
 
         if 'constructor' in self.overrides_:
-            yield from self.overrides_.pop('constructor').transpile({
-                **self.context,
-                'default_impl': self.get_lines(constructor_impl())
-            })
+            yield from self.transpile_override(
+                'constructor',
+                constructor_impl()
+            )
         else:
             yield f'constructor ({", ".join(props)}) {{'
             self.indent()
@@ -592,10 +588,7 @@ class EnumClassWriter(EnumTranspiler):  # pylint: disable=R0902
             "=== 0 : a === b;"
         )
         if 'ciCompare' in self.overrides_:
-            yield from self.overrides_.pop('ciCompare').transpile({
-                **self.context,
-                'default_impl': SafeString(self.get_line(impl))
-            })
+            yield from self.transpile_override('ciCompare', impl)
         else:
             yield 'static ciCompare(a, b) {'
             self.indent()
@@ -616,10 +609,7 @@ class EnumClassWriter(EnumTranspiler):  # pylint: disable=R0902
         """
         impl = f'return this.{self.str_prop};'
         if 'toString' in self.overrides_:
-            yield from self.overrides_.pop('toString').transpile({
-                **self.context,
-                'default_impl': self.get_line(impl)
-            })
+            yield from self.transpile_override('toString', impl)
         else:
             yield 'toString() {'
             self.indent()
@@ -699,10 +689,7 @@ class EnumClassWriter(EnumTranspiler):  # pylint: disable=R0902
         enums = [f'{self.class_name}.{enm.name}' for enm in enum]
         impl = f'return [{", ".join(enums)}][Symbol.iterator]();'
         if '[Symbol.iterator]' in self.overrides_:
-            yield from self.overrides_.pop('[Symbol.iterator]').transpile({
-                **self.context,
-                'default_impl': self.get_line(impl)
-            })
+            yield from self.transpile_override('[Symbol.iterator]', impl)
         else:
             yield 'static [Symbol.iterator]() {'
             self.indent()

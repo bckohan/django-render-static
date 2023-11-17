@@ -27,6 +27,7 @@ from warnings import warn
 from django.apps import apps
 from django.apps.config import AppConfig
 from django.utils.module_loading import import_module, import_string
+from django.utils.safestring import SafeString
 
 if TYPE_CHECKING:
     from render_static.templatetags.render_static import (
@@ -156,21 +157,6 @@ class CodeWriter:
         """
         return f'{self.prefix_}{self.indent_ * self.level_}{line}{self.nl_}'
 
-    def get_lines(self, lines: Generator[Optional[str], None, None]) -> str:
-        """
-        Returns a string of lines from a generator with the indentation and 
-        newlines added. This is meant to be used in place during overrides,
-        so the first newline has no indents. So it will have the line prefix
-        of {{ default_impl }}.
-        """
-        lines_str = ''
-        for idx, line in enumerate(lines):
-            if idx == 0:
-                lines_str += f'{line}{self.nl_}'
-            else:
-                lines_str += self.get_line(line)
-        return lines_str
-
     def write_line(self, line: Optional[str]) -> None:
         """
         Writes a line to the rendered code file, respecting
@@ -241,7 +227,12 @@ class Transpiler(CodeWriter, metaclass=ABCMeta):
             for parent in self.parents_
             if parent is not self.target
         ]
-
+    
+    @property
+    def context(self):
+        """A local template render context passed to overrides"""
+        return {}  # pragma: no cover
+    
     def __init__(
         self,
         to_javascript: Union[str, Callable] = to_javascript_,
@@ -258,6 +249,37 @@ class Transpiler(CodeWriter, metaclass=ABCMeta):
         self.parents_ = []
         assert callable(self.to_javascript), 'To_javascript is not callable!'
 
+    def transpile_override(
+            self,
+            override: str,
+            default_impl: Union[str, Generator[Optional[str], None, None]]
+    ) -> Generator[str, None, None]:
+        """
+        Returns a string of lines from a generator with the indentation and 
+        newlines added. This is meant to be used in place during overrides,
+        so the first newline has no indents. So it will have the line prefix
+        of {{ default_impl }}.
+
+        :param override: The name of the override to transpile
+        :param default_impl: The default implementation to use if the override
+            is not present. May be a single line string or a generator of
+            lines.
+        """
+        d_impl = default_impl
+        if isinstance(default_impl, Generator):
+            d_impl = ''
+            for idx, line in enumerate(default_impl):
+                if idx == 0:
+                    d_impl += f'{line}{self.nl_}'
+                else:
+                    d_impl += self.get_line(line)
+            d_impl.rstrip(self.nl_)
+
+        yield from self.overrides_.pop(override).transpile({
+            **self.context,
+            'default_impl': SafeString(d_impl)
+        })
+    
     @abstractmethod
     def include_target(self, target:  TranspilerTarget):
         """
