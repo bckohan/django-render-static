@@ -574,7 +574,8 @@ class URLTreeVisitor(BaseURLTranspiler):
                             path.append(placeholder_url[url_idx:])
 
                         yield from self.visit_path(
-                            path, list(kwargs.keys()),
+                            path,
+                            list(kwargs.keys()),
                             endpoint.default_args if num_patterns > 1 else None
                         )
 
@@ -702,10 +703,32 @@ class URLTreeVisitor(BaseURLTranspiler):
             arg inputs
         """
         yield from self.enter_path_group(qname)
-        for pattern in reversed(nodes):
-            yield from self.visit_pattern(
-                pattern, qname, app_name, route or [], num_patterns=len(nodes)
+
+        def impl() -> Generator[Optional[str], None, None]:
+            for pattern in reversed(nodes):
+                yield from self.visit_pattern(
+                    pattern,
+                    qname,
+                    app_name,
+                    route or [],
+                    num_patterns=len(nodes)
+                )
+
+        if qname in self.overrides_:
+            yield from self.transpile_override(
+                qname,
+                impl(),
+                {
+                    'qname': qname,
+                    'app_name': app_name,
+                    'route': route,
+                    'patterns': nodes,
+                    'num_patterns': len(nodes)
+                }
             )
+        else:
+            yield from impl()
+
         yield from self.exit_path_group(qname)
 
     def visit_branch(
@@ -867,7 +890,8 @@ class SimpleURLWriter(URLTreeVisitor):
 
         :yield: nothing
         """
-        yield None
+        for _, override in self.overrides_.items():
+            yield from override.transpile(self.context)
 
     def enter_namespace(
             self,
@@ -1123,6 +1147,38 @@ class ClassURLWriter(URLTreeVisitor):
          */""".split('\n'):
             yield comment_line[8:]
 
+    def constructor(self) -> Generator[Optional[str], None, None]:
+        """
+        The constructor() function.
+        :yield: The JavaScript jdoc comment lines and constructor() function.
+        """
+        def impl() -> Generator[str, None, None]:
+            """constructor default implementation"""
+            yield 'this.options = options || {};'
+            yield 'if (this.options.hasOwnProperty("namespace")) {'
+            self.indent()
+            yield 'this.namespace = this.options.namespace;'
+            yield 'if (!this.namespace.endsWith(":")) {'
+            self.indent()
+            yield 'this.namespace += ":";'
+            self.outdent()
+            yield '}'
+            self.outdent()
+            yield '} else {'
+            self.indent()
+            yield 'this.namespace = "";'
+            self.outdent()
+            yield '}'
+
+        if 'constructor' in self.overrides_:
+            yield from self.transpile_override('constructor', impl())
+        else:
+            yield from self.constructor_jdoc()
+            yield 'constructor(options=null) {'
+            self.indent()
+            yield from impl()
+            self.outdent()
+            yield '}'
 
     def deep_equal(self) -> Generator[Optional[str], None, None]:
         """
@@ -1265,13 +1321,79 @@ class ClassURLWriter(URLTreeVisitor):
                 'args.length === 0;'
             self.outdent()
             yield '}'
-            self.outdent()
 
         if '#match' in self.overrides_:
             yield from self.transpile_override('#match', impl())
         else:
             yield from self.match_jdoc()
             yield '#match(kwargs, args, expected, defaults={}) {'
+            self.indent()
+            yield from impl()
+            self.outdent()
+            yield '}'
+
+    def reverse(self) -> Generator[Optional[str], None, None]:
+        """
+        The reverse() function.
+        :yield: The JavaScript jdoc comment lines and reverse() function.
+        """
+        def impl() -> Generator[str, None, None]:
+            """reverse default implementation"""
+            yield 'if (this.namespace) {'
+            self.indent()
+            yield (
+                'qname = `${this.namespace}'
+                '${qname.replace(this.namespace, "")}`;'
+            )
+            self.outdent()
+            yield '}'
+            yield 'const kwargs = options.kwargs || {};'
+            yield 'const args = options.args || [];'
+            yield 'const query = options.query || {};'
+            yield 'let url = this.urls;'
+            yield "for (const ns of qname.split(':')) {"
+            self.indent()
+            yield 'if (ns && url) { url = url.hasOwnProperty(ns) ? ' \
+                'url[ns] : null; }'
+            self.outdent()
+            yield '}'
+            yield 'if (url) {'
+            self.indent()
+            yield 'let pth = url(kwargs, args);'
+            yield 'if (typeof pth === "string") {'
+            self.indent()
+            yield 'if (Object.keys(query).length !== 0) {'
+            self.indent()
+            yield 'const params = new URLSearchParams();'
+            yield 'for (const [key, value] of Object.entries(query)) {'
+            self.indent()
+            yield "if (value === null || value === '') continue;"
+            yield 'if (Array.isArray(value)) value.forEach(element => ' \
+                'params.append(key, element));'
+            yield 'else params.append(key, value);'
+            self.outdent()
+            yield '}'
+            yield 'const qryStr = params.toString();'
+            yield r"if (qryStr) return `${pth.replace(/\/+$/, '')}?${qryStr}`;"
+            self.outdent()
+            yield '}'
+            yield 'return pth;'
+            self.outdent()
+            yield '}'
+            self.outdent()
+            yield '}'
+            if self.raise_on_not_found_:
+                yield (
+                    'throw new TypeError('
+                    '`No reversal available for parameters at path: '
+                    '${qname}`);'
+                )
+
+        if 'reverse' in self.overrides_:
+            yield from self.transpile_override('reverse', impl())
+        else:
+            yield from self.reverse_jdoc()
+            yield 'reverse(qname, options={}) {'
             self.indent()
             yield from impl()
             self.outdent()
@@ -1293,26 +1415,7 @@ class ClassURLWriter(URLTreeVisitor):
         )
         self.indent()
         yield ''
-        yield from self.constructor_jdoc()
-        yield 'constructor(options=null) {'
-        self.indent()
-        yield 'this.options = options || {};'
-        yield 'if (this.options.hasOwnProperty("namespace")) {'
-        self.indent()
-        yield 'this.namespace = this.options.namespace;'
-        yield 'if (!this.namespace.endsWith(":")) {'
-        self.indent()
-        yield 'this.namespace += ":";'
-        self.outdent()
-        yield '}'
-        self.outdent()
-        yield '} else {'
-        self.indent()
-        yield 'this.namespace = "";'
-        self.outdent()
-        yield '}'
-        self.outdent()
-        yield '}'
+        yield from self.constructor()
         yield ''
         yield from self.match()
         yield ''
@@ -1320,60 +1423,7 @@ class ClassURLWriter(URLTreeVisitor):
         yield ''
         yield from self.is_object()
         yield ''
-        yield from self.reverse_jdoc()
-        yield 'reverse(qname, options={}) {'
-        self.indent()
-        yield 'if (this.namespace) {'
-        self.indent()
-        yield (
-            'qname = `${this.namespace}'
-            '${qname.replace(this.namespace, "")}`;'
-        )
-        self.outdent()
-        yield '}'
-        yield 'const kwargs = options.kwargs || {};'
-        yield 'const args = options.args || [];'
-        yield 'const query = options.query || {};'
-        yield 'let url = this.urls;'
-        yield "for (const ns of qname.split(':')) {"
-        self.indent()
-        yield 'if (ns && url) { url = url.hasOwnProperty(ns) ? ' \
-              'url[ns] : null; }'
-        self.outdent()
-        yield '}'
-        yield 'if (url) {'
-        self.indent()
-        yield 'let pth = url(kwargs, args);'
-        yield 'if (typeof pth === "string") {'
-        self.indent()
-        yield 'if (Object.keys(query).length !== 0) {'
-        self.indent()
-        yield 'const params = new URLSearchParams();'
-        yield 'for (const [key, value] of Object.entries(query)) {'
-        self.indent()
-        yield "if (value === null || value === '') continue;"
-        yield 'if (Array.isArray(value)) value.forEach(element => ' \
-              'params.append(key, element));'
-        yield 'else params.append(key, value);'
-        self.outdent()
-        yield '}'
-        yield 'const qryStr = params.toString();'
-        yield r"if (qryStr) return `${pth.replace(/\/+$/, '')}?${qryStr}`;"
-        self.outdent()
-        yield '}'
-        yield 'return pth;'
-        self.outdent()
-        yield '}'
-        self.outdent()
-        yield '}'
-        if self.raise_on_not_found_:
-            yield (
-                'throw new TypeError('
-                '`No reversal available for parameters at path: '
-                '${qname}`);'
-            )
-        self.outdent()
-        yield '}'
+        yield from self.reverse()
         yield ''
         yield 'urls = {'
 

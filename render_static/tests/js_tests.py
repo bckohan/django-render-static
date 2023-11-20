@@ -542,6 +542,12 @@ class URLJavascriptMixin:
     class_mode = None
     legacy_args = False
 
+    def get_js_structure(self, js_file):  # pragma: no cover
+        json_structure = run_js_file(js_file)
+        if json_structure:
+            return json.loads(json_structure)
+        return None
+
     def clear_placeholder_registries(self):
         from importlib import reload
         reload(placeholders)
@@ -712,8 +718,8 @@ class URLJavascriptMixin:
 })
 class URLSToJavascriptTest(URLJavascriptMixin, BaseTestCase):
 
-    # def tearDown(self):
-    #     pass
+    def tearDown(self):
+        pass
 
     def setUp(self):
         self.clear_placeholder_registries()
@@ -860,7 +866,7 @@ class URLSToJavascriptTest(URLJavascriptMixin, BaseTestCase):
             'OPTIONS': {
                 'loaders': [
                     ('render_static.loaders.StaticLocMemLoader', {
-                        'urls.js': 'var urls = {\n{% urls_to_js transpiler="render_static.SimpleURLWriter" %}};'
+                        'urls.js': 'const urls = {\n{% urls_to_js transpiler="render_static.SimpleURLWriter" %}};'
                     })
                 ],
                 'builtins': ['render_static.templatetags.render_static']
@@ -872,6 +878,215 @@ class URLSToJavascriptTest(URLJavascriptMixin, BaseTestCase):
         Test ES6 classes.
         """
         self.test_full_url_dump()
+
+    @override_settings(STATIC_TEMPLATES={
+        'ENGINES': [{
+            'BACKEND': 'render_static.backends.StaticDjangoTemplates',
+            'OPTIONS': {
+                'loaders': [
+                    ('render_static.loaders.StaticLocMemLoader', {
+                        'urls.js': """
+const urls = {
+{% urls_to_js transpiler="render_static.SimpleURLWriter"  include="path_tst,re_path_mixed,app2:app1"|split:"," exclude="admin"|split raise_on_not_found=False%}
+    {% override "re_path_mixed" %}
+return {
+    'qname': '{{qname}}',
+    'raise_on_not_found': {% if raise_on_not_found %}true{% else %}false{% endif %},
+    'include': [{% for inc in include %}'{{ inc }}',{% endfor %}],
+    'exclude': [{% for exc in exclude %}'{{ exc }}',{% endfor %}],
+};
+    {% endoverride %}
+    {% override "app2:app1:re_path_unnamed" %}
+return {
+    'qname': '{{qname}}',
+    'raise_on_not_found': {% if raise_on_not_found %}true{% else %}false{% endif %},
+    'include': [{% for inc in include %}'{{ inc }}',{% endfor %}],
+    'exclude': [{% for exc in exclude %}'{{ exc }}',{% endfor %}],
+};
+    {% endoverride %}
+    {% override %}
+    extra: () => {
+        return JSON.stringify({
+            're_path_mixed': urls['re_path_mixed'](),
+            'app2:app1:re_path_unnamed': urls.app2.app1.re_path_unnamed(),
+            'path_tst': urls['path_tst']()
+        })
+    }
+    {% endoverride %}
+{% endurls_to_js %}
+};
+console.log(urls.extra());
+"""
+                    })
+                ],
+                'builtins': ['render_static.templatetags.render_static']
+            },
+        }],
+    })
+    def test_simple_url_overrides(self):
+        """
+        Check that SimpleURLWriter qname overrides work as expected.
+        """
+        self.url_js = None
+        call_command('renderstatic', 'urls.js')
+        js_dict = self.get_js_structure(GLOBAL_STATIC_DIR / 'urls.js')
+
+        expected_context = {
+            'exclude': ['admin'],
+            'include': ['path_tst','re_path_mixed','app2:app1'],
+            'raise_on_not_found': False
+        }
+        for key, value in {'qname': 're_path_mixed', **expected_context}.items():
+            self.assertEqual(js_dict['re_path_mixed'][key], value)
+
+        for key, value in {'qname': 'app2:app1:re_path_unnamed', **expected_context}.items():
+            self.assertEqual(js_dict['app2:app1:re_path_unnamed'][key], value)
+
+        self.assertEqual(js_dict['path_tst'], '/test/simple/')
+
+
+    @override_settings(STATIC_TEMPLATES={
+        'ENGINES': [{
+            'BACKEND': 'render_static.backends.StaticDjangoTemplates',
+            'OPTIONS': {
+                'loaders': [
+                    ('render_static.loaders.StaticLocMemLoader', {
+                        'urls.js': """
+{% urls_to_js transpiler="render_static.ClassURLWriter"  include="path_tst,re_path_mixed,app2:app1"|split:"," exclude="admin"|split raise_on_not_found=False%}
+
+    {% override "constructor" %}
+
+constructor(options=null) {
+    this.constructor_ctx = {
+        'raise_on_not_found': {% if raise_on_not_found %}true{% else %}false{% endif %},
+        'include': [{% for inc in include %}'{{ inc }}',{% endfor %}],
+        'exclude': [{% for exc in exclude %}'{{ exc }}',{% endfor %}],
+    };
+    {{ default_impl }}
+}
+    {% endoverride %}
+
+    {% override "#match" %}
+
+#match(kwargs, args, expected, defaults={}) {
+    this.match_ctx = {
+        'raise_on_not_found': {% if raise_on_not_found %}true{% else %}false{% endif %},
+        'include': [{% for inc in include %}'{{ inc }}',{% endfor %}],
+        'exclude': [{% for exc in exclude %}'{{ exc }}',{% endfor %}],
+    };
+    {{ default_impl }}
+}
+    {% endoverride %}
+
+    {% override "deepEqual" %}
+
+deepEqual(object1, object2) {
+    this.deepEqual_ctx = {
+        'raise_on_not_found': {% if raise_on_not_found %}true{% else %}false{% endif %},
+        'include': [{% for inc in include %}'{{ inc }}',{% endfor %}],
+        'exclude': [{% for exc in exclude %}'{{ exc }}',{% endfor %}],
+    };
+    {{ default_impl }}
+}
+    {% endoverride %}
+
+    {% override "isObject" %}
+
+isObject(object) {
+    this.isObject_ctx = {
+        'raise_on_not_found': {% if raise_on_not_found %}true{% else %}false{% endif %},
+        'include': [{% for inc in include %}'{{ inc }}',{% endfor %}],
+        'exclude': [{% for exc in exclude %}'{{ exc }}',{% endfor %}],
+    };
+    {{ default_impl }}
+}
+    {% endoverride %}
+
+    {% override "reverse" %}
+
+reverse(qname, options={}) {
+    {{ default_impl }}
+    this.reverse_ctx = {
+        'raise_on_not_found': {% if raise_on_not_found %}true{% else %}false{% endif %},
+        'include': [{% for inc in include %}'{{ inc }}',{% endfor %}],
+        'exclude': [{% for exc in exclude %}'{{ exc }}',{% endfor %}],
+    };
+    return url(kwargs, args);
+}
+    {% endoverride %}
+
+    {% override "re_path_mixed" %}
+return {
+    'qname': '{{qname}}',
+    'raise_on_not_found': {% if raise_on_not_found %}true{% else %}false{% endif %},
+    'include': [{% for inc in include %}'{{ inc }}',{% endfor %}],
+    'exclude': [{% for exc in exclude %}'{{ exc }}',{% endfor %}],
+};
+    {% endoverride %}
+    {% override "app2:app1:re_path_unnamed" %}
+return {
+    'qname': '{{qname}}',
+    'raise_on_not_found': {% if raise_on_not_found %}true{% else %}false{% endif %},
+    'include': [{% for inc in include %}'{{ inc }}',{% endfor %}],
+    'exclude': [{% for exc in exclude %}'{{ exc }}',{% endfor %}],
+};
+    {% endoverride %}
+    {% override %}
+extra() {
+    return JSON.stringify({
+        're_path_mixed': urls.reverse('re_path_mixed'),
+        'app2:app1:re_path_unnamed': urls.reverse('app2:app1:re_path_unnamed'),
+        'path_tst': urls.reverse('path_tst', {kwargs: {arg1: 1, arg2: 'xo'}}),
+        'deepEqual': this.deepEqual({a: 1}, {a: 1}),
+        'extra_ctx': {
+            'raise_on_not_found': {% if raise_on_not_found %}true{% else %}false{% endif %},
+            'include': [{% for inc in include %}'{{ inc }}',{% endfor %}],
+            'exclude': [{% for exc in exclude %}'{{ exc }}',{% endfor %}],
+        },
+        'constructor_ctx': this.constructor_ctx,
+        'match_ctx': this.match_ctx,
+        'deepEqual_ctx': this.deepEqual_ctx,
+        'isObject_ctx': this.isObject_ctx,
+        'reverse_ctx': this.reverse_ctx
+    })
+}
+    {% endoverride %}
+{% endurls_to_js %}
+urls = new URLResolver();
+console.log(urls.extra());
+"""
+                    })
+                ],
+                'builtins': ['render_static.templatetags.render_static']
+            },
+        }],
+    })
+    def test_class_url_overrides(self):
+        """
+        Check that SimpleURLWriter qname overrides work as expected.
+        """
+        self.url_js = None
+        call_command('renderstatic', 'urls.js')
+        js_dict = self.get_js_structure(GLOBAL_STATIC_DIR / 'urls.js')
+
+        expected_context = {
+            'exclude': ['admin'],
+            'include': ['path_tst','re_path_mixed','app2:app1'],
+            'raise_on_not_found': False
+        }
+        for key, value in {'qname': 're_path_mixed', **expected_context}.items():
+            self.assertEqual(js_dict['re_path_mixed'][key], value)
+
+        for key, value in {'qname': 'app2:app1:re_path_unnamed', **expected_context}.items():
+            self.assertEqual(js_dict['app2:app1:re_path_unnamed'][key], value)
+
+        self.assertEqual(js_dict['path_tst'], '/test/different/1/xo')
+        self.assertTrue(js_dict['deepEqual'])
+
+        for func in ['constructor', 'match', 'deepEqual', 'isObject', 'reverse']:
+            for key, value in expected_context.items():
+                self.assertEqual(js_dict[func + '_ctx'][key], value)
+
 
     @override_settings(STATIC_TEMPLATES={
         'ENGINES': [{

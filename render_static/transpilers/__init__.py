@@ -252,7 +252,8 @@ class Transpiler(CodeWriter, metaclass=ABCMeta):
     def transpile_override(
             self,
             override: str,
-            default_impl: Union[str, Generator[Optional[str], None, None]]
+            default_impl: Union[str, Generator[Optional[str], None, None]],
+            context: Optional[Dict[str, Any]] = None
     ) -> Generator[str, None, None]:
         """
         Returns a string of lines from a generator with the indentation and 
@@ -264,6 +265,7 @@ class Transpiler(CodeWriter, metaclass=ABCMeta):
         :param default_impl: The default implementation to use if the override
             is not present. May be a single line string or a generator of
             lines.
+        :param context: Any additional context to pass to the override render
         """
         d_impl = default_impl
         if isinstance(default_impl, Generator):
@@ -277,7 +279,8 @@ class Transpiler(CodeWriter, metaclass=ABCMeta):
 
         yield from self.overrides_.pop(override).transpile({
             **self.context,
-            'default_impl': SafeString(d_impl)
+            'default_impl': SafeString(d_impl),
+            **(context or {})
         })
 
     @abstractmethod
