@@ -376,7 +376,22 @@ class EnumClassWriter(EnumTranspiler):  # pylint: disable=R0902
 
     @property
     def context(self):
-        """The template render context passed to overrides"""
+        """
+        The template render context passed to overrides. In addition to
+        :attr:`render_static.transpilers.Transpiler.context`.
+        This includes:
+
+            - **enum**: The enum class being transpiled
+            - **class_name**: The name of the transpiled class
+            - **properties**: A list of property names of the enum to transpile
+            - **str_prop**: The name of the string property of the enum
+            - **class_properties**: A list of the class property names of
+              the enum to transpile
+            - **symmetric_properties**: The list of property names that the
+              enum can be instantiated from
+            - **to_string**: Boolean, True if the enum should have a 
+              toString() method
+        """
         return {
             **EnumTranspiler.context.fget(self),  # type: ignore
             'enum': self.enum,

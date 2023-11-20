@@ -112,7 +112,11 @@ class DefaultDefineTranspiler(Transpiler):
     @property
     def context(self) -> Dict[str, Any]:
         """
-        The context passed to override blocks.
+        The template render context passed to overrides. In addition to
+        :attr:`render_static.transpilers.Transpiler.context`.
+        This includes:
+
+            - **const_name**: The name of the const variable
         """
         return {
             **Transpiler.context.fget(self),  # type: ignore

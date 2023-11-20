@@ -135,7 +135,7 @@ class CodeWriter:
     rendered_: str
     level_: int = 0
     prefix_: str = ''
-    indent_: str = '\t'
+    indent_: str = ' '*4
     nl_: str = '\n'
 
     def __init__(
@@ -230,8 +230,14 @@ class Transpiler(CodeWriter, metaclass=ABCMeta):
 
     @property
     def context(self):
-        """A local template render context passed to overrides"""
-        return {}
+        """
+        The base template render context passed to overrides. Includes:
+
+            - **transpiler**: The transpiler instance
+        """
+        return {
+            'transpiler': self
+        }
 
     def __init__(
         self,

@@ -12,6 +12,7 @@ from django.core.management import call_command
 from django.test import override_settings
 from django.urls import reverse
 from render_static.tests.js_tests import (
+    GLOBAL_STATIC_DIR,
     EnumComparator,
     StructureDiff,
     URLJavascriptMixin,
@@ -134,6 +135,70 @@ class TestReadmeEnum(BaseTestCase):
             "'00ff00'\n}\nColor {\n  value: 'B',\n  name: 'BLUE',\n  label: "
             "'Blue',\n  rgb: [ 0, 0, 1 ],\n  hex: '0000ff'\n}"
         )
+
+@override_settings(
+    STATIC_TEMPLATES={
+        'ENGINES': [{
+            'BACKEND': 'render_static.backends.StaticDjangoTemplates',
+            'OPTIONS': {
+                'loaders': [
+                    ('render_static.loaders.StaticLocMemLoader', {
+                        'color.js': """
+{% enums_to_js enums="render_static.tests.examples.models.ExampleModel.Color" %}
+    {# to override a function we must pass its name as the argument #}
+    {% override 'get' %}
+static get(value) {
+    if (Array.isArray(value) && value.length === 4) {
+        value = Color.cmykToRgb(...value);
+    }
+
+    if (Array.isArray(value) && value.length === 3) {
+        for (const en of this) {
+            let i = 0;
+            for (; i < 3; i++) {
+                if (en.rgb[i] !== value[i]) break;
+            }
+            if (i === 3) return en;
+        }
+    }
+    {{ default_impl }}
+}
+    {% endoverride %}
+
+    {# additions do not require a name argument #}
+    {% override %}
+static cmykToRgb(c, m, y, k) {
+
+    let r = (1 - c / 100) * (1 - k / 100);
+    let g = (1 - m / 100) * (1 - k / 100);
+    let b = (1 - y / 100) * (1 - k / 100);
+    
+    return [Math.round(r), Math.round(g), Math.round(b)]
+}
+    {% endoverride %}
+{% endenums_to_js %}
+console.log(Color.get([0, 100, 100, 0]).label);
+"""
+                    }),
+                    'render_static.loaders.StaticAppDirectoriesBatchLoader'
+                ]
+            },
+        }]
+    }
+)
+class TestEnumOverrideExample(BaseTestCase):
+
+    to_remove = [
+        GLOBAL_STATIC_DIR
+    ]
+
+    def tearDown(self):
+        pass
+
+    def test_override_example(self):
+        call_command('renderstatic', 'color.js')
+        result = run_js_file(GLOBAL_STATIC_DIR / 'color.js')
+        self.assertEqual(result, 'Red')
 
 
 @override_settings(
