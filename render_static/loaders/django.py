@@ -6,11 +6,11 @@ transparently if these loaders need to be adapted to work with Django Static
 Templates in the future.
 """
 
+from collections.abc import Container
 from glob import glob
 from os.path import relpath
 from pathlib import Path
-from collections.abc import Container
-from typing import Generator, List, Tuple, Union, Optional
+from typing import Generator, List, Optional, Tuple, Union
 
 from django.apps import apps
 from django.apps.config import AppConfig

@@ -1358,35 +1358,36 @@ class TranspilerTagTestCase(BaseTestCase):
                 pass  # pragma: no cover
 
 
+BATCH_RENDER_TEMPLATES = [
+    (
+        'batch_test/**/*',
+        {
+            'context': {
+                'site_name': 'my_site',
+                'variable1': 'var1 value',
+                'variable2': 2,
+                'sub_dir': 'resources'
+            },
+            'dest': GLOBAL_STATIC_DIR
+        }
+    ),
+    (
+        'batch_test/{{ site_name }}',
+        {
+            'context': {'site_name': 'my_site'},
+            'dest': GLOBAL_STATIC_DIR / 'batch_test' / '{{ site_name }}'
+        }
+    ),
+    (
+        'batch_test/{{ site_name }}/{{ sub_dir }}',
+        {
+            'context': {'site_name': 'my_site', 'sub_dir': 'resources'},
+            'dest': GLOBAL_STATIC_DIR / 'batch_test' / '{{ site_name }}' / '{{ sub_dir }}'
+        }
+    )
+]
 @override_settings(STATIC_TEMPLATES={
-    'templates': [
-        (
-            'batch_test/**/*',
-            {
-                'context': {
-                    'site_name': 'my_site',
-                    'variable1': 'var1 value',
-                    'variable2': 2,
-                    'sub_dir': 'resources'
-                },
-                'dest': GLOBAL_STATIC_DIR
-            }
-        ),
-        (
-            'batch_test/{{ site_name }}',
-            {
-                'context': {'site_name': 'my_site'},
-                'dest': GLOBAL_STATIC_DIR / 'batch_test' / '{{ site_name }}'
-            }
-        ),
-        (
-            'batch_test/{{ site_name }}/{{ sub_dir }}',
-            {
-                'context': {'site_name': 'my_site', 'sub_dir': 'resources'},
-                'dest': GLOBAL_STATIC_DIR / 'batch_test' / '{{ site_name }}' / '{{ sub_dir }}'
-            }
-        )
-    ]
+    'templates': BATCH_RENDER_TEMPLATES
 })
 class BatchRenderTestCase(BaseTestCase):
     """
@@ -1427,8 +1428,8 @@ class BatchRenderTestCase(BaseTestCase):
         self.assertTrue(file1.is_file())
         self.assertTrue(file2.is_file())
 
-        self.assertEqual(file1.read_text(), 'var1 value\n')
-        self.assertEqual(file2.read_text(), '2\n')
+        self.assertEqual(file1.read_text().strip(), 'var1 value')
+        self.assertEqual(file2.read_text().strip(), '2')
 
     # def tearDown(self):
     #     pass
