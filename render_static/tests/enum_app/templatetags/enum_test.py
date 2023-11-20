@@ -37,6 +37,7 @@ class EnumTests(EnumTranspiler):
             properties=True,
             symmetric_properties=None,
             class_name_map=None,
+            to_string=True,
             **kwargs
     ):
         self.name_map = name_map
@@ -45,6 +46,7 @@ class EnumTests(EnumTranspiler):
         if symmetric_properties:
             self.symmetric_properties_ = symmetric_properties or []
         self.class_name_map_ = class_name_map or self.class_name_map_
+        self.to_string_ = to_string
         super().__init__(*args, **kwargs)
 
     def start_visitation(self):
@@ -76,7 +78,8 @@ class EnumTests(EnumTranspiler):
 
         yield f'enums.{enum.__name__} = {{'
         self.indent()
-        yield 'strings: {},'
+        if self.to_string_:
+            yield 'strings: {},'
         for prop in properties:
             yield f'{prop}: [],'
         yield 'getCheck: false'
@@ -86,7 +89,9 @@ class EnumTests(EnumTranspiler):
         self.indent()
         for prop in properties:
             yield f'enums.{enum.__name__}.{prop}.push(en.{prop});'
-        yield f'enums.{enum.__name__}.strings[en.value] = en.toString();'
+        
+        if self.to_string_:
+            yield f'enums.{enum.__name__}.strings[en.value] = en.toString();'
 
         if class_properties:
             yield f'enums.{enum.__name__}.class_props = {{'
@@ -127,7 +132,8 @@ def enum_tests(
         class_properties=True,
         properties=True,
         symmetric_properties=False,
-        class_name_map=None
+        class_name_map=None,
+        to_string=True,
 ):
     if name_map is None:
         name_map = {en: en.__name__ for en in enums}
@@ -137,6 +143,14 @@ def enum_tests(
             class_properties=class_properties,
             properties=properties,
             symmetric_properties=symmetric_properties,
-            class_name_map=class_name_map
+            class_name_map=class_name_map,
+            to_string=to_string
         ).transpile(enums)
     )
+
+
+@register.filter(name='default_bool')
+def default_bool(value, default):
+    if value in [None, '']:
+        return default
+    return value

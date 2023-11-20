@@ -120,6 +120,7 @@ transpilers
    .. autofunction:: to_js_datetime
    .. autoclass:: CodeWriter
    .. autoclass:: Transpiler
+   .. autoproperty:: Transpiler.context
 
 
 .. _transpilers_defines_to_js:
@@ -131,6 +132,7 @@ transpilers.defines_to_js
 .. automodule:: render_static.transpilers.defines_to_js
 
    .. autoclass:: DefaultDefineTranspiler
+   .. autoproperty:: DefaultDefineTranspiler.context
 
 
 .. _transpilers_urls_to_js:
@@ -141,8 +143,11 @@ transpilers.urls_to_js
 .. automodule:: render_static.transpilers.urls_to_js
 
    .. autoclass:: URLTreeVisitor
+   .. autoproperty:: URLTreeVisitor.context
    .. autoclass:: SimpleURLWriter
+   .. autoproperty:: SimpleURLWriter.context
    .. autoclass:: ClassURLWriter
+   .. autoproperty:: ClassURLWriter.context
    .. autoclass:: Substitute
    .. autofunction:: normalize_ns
    .. autofunction:: build_tree
@@ -155,8 +160,10 @@ transpilers.enums_to_js
 
 .. automodule:: render_static.transpilers.enums_to_js
 
+   .. autoclass:: UnrecognizedBehavior
    .. autoclass:: EnumTranspiler
    .. autoclass:: EnumClassWriter
+   .. autoproperty:: EnumClassWriter.context
 
 
 .. _context:

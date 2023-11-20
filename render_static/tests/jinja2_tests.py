@@ -23,11 +23,13 @@ from render_static.tests.js_tests import (
 from render_static.tests.tests import (
     APP1_STATIC_DIR,
     APP2_STATIC_DIR,
+    BATCH_RENDER_TEMPLATES,
     EXPECTED_DIR,
     GLOBAL_STATIC_DIR,
     STATIC_TEMP_DIR,
     STATIC_TEMP_DIR2,
     BaseTestCase,
+    BatchRenderTestCase,
     TemplatePreferenceFSTestCase,
     empty_or_dne,
     generate_context1,
@@ -624,3 +626,35 @@ class Jinja2WildCardLoaderTestCase(BaseTestCase):
             ),
         ]:
             self.assertTrue(filecmp.cmp(source, dest, shallow=False))
+
+
+@override_settings(STATIC_TEMPLATES={
+    'ENGINES': [{
+        'BACKEND': 'render_static.backends.StaticJinja2Templates',
+        'APP_DIRS': True,
+        'OPTIONS': {
+            'autoescape': False
+        }
+    }],
+    'templates': BATCH_RENDER_TEMPLATES
+})
+class Jinja2BatchRenderTestCase(BatchRenderTestCase):
+    
+    def tearDown(self):
+        pass
+
+    @override_settings(STATIC_TEMPLATES={
+        'ENGINES': [{
+            'BACKEND': 'render_static.backends.StaticJinja2Templates',
+            'APP_DIRS': True,
+            'OPTIONS': {
+                'autoescape': False
+            }
+        }],
+        'templates': [
+            ('batch_test/{{ dne }}', {})
+        ]
+    })
+    def test_batch_render_not_found(self):
+        with self.assertRaises(CommandError):
+            call_command('renderstatic', 'batch_test/{{ dne }}')

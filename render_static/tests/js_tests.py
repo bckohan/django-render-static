@@ -282,8 +282,6 @@ class DefinesToJavascriptTest(StructureDiff, BaseTestCase):
             self.assertFalse(jf.readline().startswith(' '))
 
     def test_empty_module_to_js(self):
-        # import ipdb
-        # ipdb.set_trace()
         call_command('renderstatic', 'empty_defines.js')
         self.assertEqual(
             self.diff_modules(
@@ -385,11 +383,170 @@ class DefinesToJavascriptTest(StructureDiff, BaseTestCase):
     #     pass
 
 
+
+@override_settings(STATIC_TEMPLATES={
+    'ENGINES': [{
+        'BACKEND': 'render_static.backends.StaticDjangoTemplates',
+        'OPTIONS': {
+            'app_dir': 'custom_templates',
+            'loaders': [
+                ('render_static.loaders.StaticLocMemLoader', {
+                    'defines1.js':"""
+{% defines_to_js defines=classes indent="  " %}
+{% override %}
+EXTRA_DEFINE: {
+    'a': 1,
+    'b': 2
+}
+{% endoverride %}
+{% override "ExtendedDefines.DICTIONARY" %}
+null
+{% endoverride %}
+{% enddefines_to_js %}
+console.log(JSON.stringify(defines));
+"""
+                })
+            ],
+            'builtins': ['render_static.templatetags.render_static']
+        },
+    }],
+    'templates': {
+        'defines1.js': {
+            'dest': GLOBAL_STATIC_DIR / 'defines1.js',
+            'context': {
+                'classes': [
+                    defines.MoreDefines,
+                    'render_static.tests.defines.ExtendedDefines'
+                ]
+            }
+        }
+    }
+})
+class DefinesToJavascriptOverrideTest(StructureDiff, BaseTestCase):
+
+    def tearDown(self):
+        pass
+
+    def test_define_overrides(self):
+        call_command('renderstatic', 'defines1.js')
+        js_dict = self.get_js_structure(GLOBAL_STATIC_DIR / 'defines1.js')
+        self.assertEqual(
+            js_dict,
+            {
+                'EXTRA_DEFINE': {'a': 1, 'b': 2},
+                'ExtendedDefines': {
+                    'DEFINE1': 'D1',
+                    'DEFINE2': 'D2',
+                    'DEFINE3': 'D3',
+                    'DEFINE4': 'D4',
+                    'DEFINES': [['D1', 'Define 1'],
+                                 ['D2', 'Define 2'],
+                                 ['D3', 'Define 3'],
+                                 ['D4', 'Define 4']],
+                    'DICTIONARY': None
+                },
+                'MoreDefines': {
+                    'MDEF1': 'MD1',
+                    'MDEF2': 'MD2',
+                    'MDEF3': 'MD3',
+                    'MDEFS': [
+                        ['MD1', 'MDefine 1'],
+                        ['MD2', 'MDefine 2'],
+                        ['MD3', 'MDefine 3']
+                    ]
+                }
+            }
+        )
+
+    @override_settings(STATIC_TEMPLATES={
+        'ENGINES': [{
+            'BACKEND': 'render_static.backends.StaticDjangoTemplates',
+            'OPTIONS': {
+                'app_dir': 'custom_templates',
+                'loaders': [
+                    ('render_static.loaders.StaticLocMemLoader', {
+                        'defines1.js':"""
+{% defines_to_js defines=classes indent="  " %}
+{% override %}
+EXTRA_DEFINE: {
+    const_name: "{{ const_name }}"
+}
+{% endoverride %}
+{% override "ExtendedDefines.DICTIONARY" %}
+{
+    const_name: "{{ const_name }}"
+}
+{% endoverride %}
+{% enddefines_to_js %}
+console.log(JSON.stringify(defines));
+"""
+                    })
+                ],
+                'builtins': ['render_static.templatetags.render_static']
+            },
+        }],
+        'templates': {
+            'defines1.js': {
+                'dest': GLOBAL_STATIC_DIR / 'defines1.js',
+                'context': {
+                    'classes': [
+                        defines.MoreDefines,
+                        'render_static.tests.defines.ExtendedDefines'
+                    ],
+                    'context_keys': [
+
+                    ]
+                }
+            }
+        }
+    })
+    def test_define_override_context(self):
+        call_command('renderstatic', 'defines1.js')
+        js_dict = self.get_js_structure(GLOBAL_STATIC_DIR / 'defines1.js')
+
+        self.assertEqual(
+            js_dict,
+            {
+                'EXTRA_DEFINE': {
+                    'const_name': 'defines'
+                },
+                'ExtendedDefines': {
+                    'DEFINE1': 'D1',
+                    'DEFINE2': 'D2',
+                    'DEFINE3': 'D3',
+                    'DEFINE4': 'D4',
+                    'DEFINES': [['D1', 'Define 1'],
+                                 ['D2', 'Define 2'],
+                                 ['D3', 'Define 3'],
+                                 ['D4', 'Define 4']],
+                    'DICTIONARY': {
+                        'const_name': 'defines'
+                    }
+                },
+                'MoreDefines': {
+                    'MDEF1': 'MD1',
+                    'MDEF2': 'MD2',
+                    'MDEF3': 'MD3',
+                    'MDEFS': [
+                        ['MD1', 'MDefine 1'],
+                        ['MD2', 'MDefine 2'],
+                        ['MD3', 'MDefine 3']
+                    ]
+                }
+            }
+        )
+
 class URLJavascriptMixin:
 
     url_js = None
     class_mode = None
     legacy_args = False
+
+    def get_js_structure(self, js_file):  # pragma: no cover
+        json_structure = run_js_file(js_file)
+        if json_structure:
+            return json.loads(json_structure)
+        return None
 
     def clear_placeholder_registries(self):
         from importlib import reload
@@ -561,8 +718,8 @@ class URLJavascriptMixin:
 })
 class URLSToJavascriptTest(URLJavascriptMixin, BaseTestCase):
 
-    # def tearDown(self):
-    #     pass
+    def tearDown(self):
+        pass
 
     def setUp(self):
         self.clear_placeholder_registries()
@@ -709,7 +866,7 @@ class URLSToJavascriptTest(URLJavascriptMixin, BaseTestCase):
             'OPTIONS': {
                 'loaders': [
                     ('render_static.loaders.StaticLocMemLoader', {
-                        'urls.js': 'var urls = {\n{% urls_to_js transpiler="render_static.SimpleURLWriter" %}};'
+                        'urls.js': 'const urls = {\n{% urls_to_js transpiler="render_static.SimpleURLWriter" %}};'
                     })
                 ],
                 'builtins': ['render_static.templatetags.render_static']
@@ -721,6 +878,215 @@ class URLSToJavascriptTest(URLJavascriptMixin, BaseTestCase):
         Test ES6 classes.
         """
         self.test_full_url_dump()
+
+    @override_settings(STATIC_TEMPLATES={
+        'ENGINES': [{
+            'BACKEND': 'render_static.backends.StaticDjangoTemplates',
+            'OPTIONS': {
+                'loaders': [
+                    ('render_static.loaders.StaticLocMemLoader', {
+                        'urls.js': """
+const urls = {
+{% urls_to_js transpiler="render_static.SimpleURLWriter"  include="path_tst,re_path_mixed,app2:app1"|split:"," exclude="admin"|split raise_on_not_found=False%}
+    {% override "re_path_mixed" %}
+return {
+    'qname': '{{qname}}',
+    'raise_on_not_found': {% if raise_on_not_found %}true{% else %}false{% endif %},
+    'include': [{% for inc in include %}'{{ inc }}',{% endfor %}],
+    'exclude': [{% for exc in exclude %}'{{ exc }}',{% endfor %}],
+};
+    {% endoverride %}
+    {% override "app2:app1:re_path_unnamed" %}
+return {
+    'qname': '{{qname}}',
+    'raise_on_not_found': {% if raise_on_not_found %}true{% else %}false{% endif %},
+    'include': [{% for inc in include %}'{{ inc }}',{% endfor %}],
+    'exclude': [{% for exc in exclude %}'{{ exc }}',{% endfor %}],
+};
+    {% endoverride %}
+    {% override %}
+    extra: () => {
+        return JSON.stringify({
+            're_path_mixed': urls['re_path_mixed'](),
+            'app2:app1:re_path_unnamed': urls.app2.app1.re_path_unnamed(),
+            'path_tst': urls['path_tst']()
+        })
+    }
+    {% endoverride %}
+{% endurls_to_js %}
+};
+console.log(urls.extra());
+"""
+                    })
+                ],
+                'builtins': ['render_static.templatetags.render_static']
+            },
+        }],
+    })
+    def test_simple_url_overrides(self):
+        """
+        Check that SimpleURLWriter qname overrides work as expected.
+        """
+        self.url_js = None
+        call_command('renderstatic', 'urls.js')
+        js_dict = self.get_js_structure(GLOBAL_STATIC_DIR / 'urls.js')
+
+        expected_context = {
+            'exclude': ['admin'],
+            'include': ['path_tst','re_path_mixed','app2:app1'],
+            'raise_on_not_found': False
+        }
+        for key, value in {'qname': 're_path_mixed', **expected_context}.items():
+            self.assertEqual(js_dict['re_path_mixed'][key], value)
+
+        for key, value in {'qname': 'app2:app1:re_path_unnamed', **expected_context}.items():
+            self.assertEqual(js_dict['app2:app1:re_path_unnamed'][key], value)
+
+        self.assertEqual(js_dict['path_tst'], '/test/simple/')
+
+
+    @override_settings(STATIC_TEMPLATES={
+        'ENGINES': [{
+            'BACKEND': 'render_static.backends.StaticDjangoTemplates',
+            'OPTIONS': {
+                'loaders': [
+                    ('render_static.loaders.StaticLocMemLoader', {
+                        'urls.js': """
+{% urls_to_js transpiler="render_static.ClassURLWriter"  include="path_tst,re_path_mixed,app2:app1"|split:"," exclude="admin"|split raise_on_not_found=False%}
+
+    {% override "constructor" %}
+
+constructor(options=null) {
+    this.constructor_ctx = {
+        'raise_on_not_found': {% if raise_on_not_found %}true{% else %}false{% endif %},
+        'include': [{% for inc in include %}'{{ inc }}',{% endfor %}],
+        'exclude': [{% for exc in exclude %}'{{ exc }}',{% endfor %}],
+    };
+    {{ default_impl }}
+}
+    {% endoverride %}
+
+    {% override "#match" %}
+
+#match(kwargs, args, expected, defaults={}) {
+    this.match_ctx = {
+        'raise_on_not_found': {% if raise_on_not_found %}true{% else %}false{% endif %},
+        'include': [{% for inc in include %}'{{ inc }}',{% endfor %}],
+        'exclude': [{% for exc in exclude %}'{{ exc }}',{% endfor %}],
+    };
+    {{ default_impl }}
+}
+    {% endoverride %}
+
+    {% override "deepEqual" %}
+
+deepEqual(object1, object2) {
+    this.deepEqual_ctx = {
+        'raise_on_not_found': {% if raise_on_not_found %}true{% else %}false{% endif %},
+        'include': [{% for inc in include %}'{{ inc }}',{% endfor %}],
+        'exclude': [{% for exc in exclude %}'{{ exc }}',{% endfor %}],
+    };
+    {{ default_impl }}
+}
+    {% endoverride %}
+
+    {% override "isObject" %}
+
+isObject(object) {
+    this.isObject_ctx = {
+        'raise_on_not_found': {% if raise_on_not_found %}true{% else %}false{% endif %},
+        'include': [{% for inc in include %}'{{ inc }}',{% endfor %}],
+        'exclude': [{% for exc in exclude %}'{{ exc }}',{% endfor %}],
+    };
+    {{ default_impl }}
+}
+    {% endoverride %}
+
+    {% override "reverse" %}
+
+reverse(qname, options={}) {
+    {{ default_impl }}
+    this.reverse_ctx = {
+        'raise_on_not_found': {% if raise_on_not_found %}true{% else %}false{% endif %},
+        'include': [{% for inc in include %}'{{ inc }}',{% endfor %}],
+        'exclude': [{% for exc in exclude %}'{{ exc }}',{% endfor %}],
+    };
+    return url(kwargs, args);
+}
+    {% endoverride %}
+
+    {% override "re_path_mixed" %}
+return {
+    'qname': '{{qname}}',
+    'raise_on_not_found': {% if raise_on_not_found %}true{% else %}false{% endif %},
+    'include': [{% for inc in include %}'{{ inc }}',{% endfor %}],
+    'exclude': [{% for exc in exclude %}'{{ exc }}',{% endfor %}],
+};
+    {% endoverride %}
+    {% override "app2:app1:re_path_unnamed" %}
+return {
+    'qname': '{{qname}}',
+    'raise_on_not_found': {% if raise_on_not_found %}true{% else %}false{% endif %},
+    'include': [{% for inc in include %}'{{ inc }}',{% endfor %}],
+    'exclude': [{% for exc in exclude %}'{{ exc }}',{% endfor %}],
+};
+    {% endoverride %}
+    {% override %}
+extra() {
+    return JSON.stringify({
+        're_path_mixed': urls.reverse('re_path_mixed'),
+        'app2:app1:re_path_unnamed': urls.reverse('app2:app1:re_path_unnamed'),
+        'path_tst': urls.reverse('path_tst', {kwargs: {arg1: 1, arg2: 'xo'}}),
+        'deepEqual': this.deepEqual({a: 1}, {a: 1}),
+        'extra_ctx': {
+            'raise_on_not_found': {% if raise_on_not_found %}true{% else %}false{% endif %},
+            'include': [{% for inc in include %}'{{ inc }}',{% endfor %}],
+            'exclude': [{% for exc in exclude %}'{{ exc }}',{% endfor %}],
+        },
+        'constructor_ctx': this.constructor_ctx,
+        'match_ctx': this.match_ctx,
+        'deepEqual_ctx': this.deepEqual_ctx,
+        'isObject_ctx': this.isObject_ctx,
+        'reverse_ctx': this.reverse_ctx
+    })
+}
+    {% endoverride %}
+{% endurls_to_js %}
+urls = new URLResolver();
+console.log(urls.extra());
+"""
+                    })
+                ],
+                'builtins': ['render_static.templatetags.render_static']
+            },
+        }],
+    })
+    def test_class_url_overrides(self):
+        """
+        Check that SimpleURLWriter qname overrides work as expected.
+        """
+        self.url_js = None
+        call_command('renderstatic', 'urls.js')
+        js_dict = self.get_js_structure(GLOBAL_STATIC_DIR / 'urls.js')
+
+        expected_context = {
+            'exclude': ['admin'],
+            'include': ['path_tst','re_path_mixed','app2:app1'],
+            'raise_on_not_found': False
+        }
+        for key, value in {'qname': 're_path_mixed', **expected_context}.items():
+            self.assertEqual(js_dict['re_path_mixed'][key], value)
+
+        for key, value in {'qname': 'app2:app1:re_path_unnamed', **expected_context}.items():
+            self.assertEqual(js_dict['app2:app1:re_path_unnamed'][key], value)
+
+        self.assertEqual(js_dict['path_tst'], '/test/different/1/xo')
+        self.assertTrue(js_dict['deepEqual'])
+
+        for func in ['constructor', 'match', 'deepEqual', 'isObject', 'reverse']:
+            for key, value in expected_context.items():
+                self.assertEqual(js_dict[func + '_ctx'][key], value)
+
 
     @override_settings(STATIC_TEMPLATES={
         'ENGINES': [{
@@ -1937,8 +2303,8 @@ class URLSToJavascriptParametersTest(URLJavascriptMixin, BaseTestCase):
         self.compare('path_tst', {'arg1': 12, 'arg2': 'xo'}, js_generator=generator, url_path=up3_exprt)
 
     # uncomment to not delete generated js
-    # def tearDown(self):
-    #    pass
+    def tearDown(self):
+       pass
 
 
 @override_settings(
@@ -2278,14 +2644,16 @@ class EnumComparator:
             js_file,
             enum_classes,
             class_properties=True,
-            properties=True
+            properties=True,
+            to_string=True
     ):
         for enum in enum_classes:
             self.enum_compare(
                 js_file,
                 enum,
                 class_properties=class_properties,
-                properties=properties
+                properties=properties,
+                to_string=to_string
             )
 
     def enum_compare(
@@ -2293,7 +2661,8 @@ class EnumComparator:
             js_file,
             cls,
             class_properties=True,
-            properties=True
+            properties=True,
+            to_string=True
     ):
         """
         Given a javascript file and a list of classes, evaluate the javascript
@@ -2331,10 +2700,11 @@ class EnumComparator:
                 return value
 
             enum_dict = {
-                'strings': {
+                **({'strings': {
                     en.value.isoformat()
                     if isinstance(en.value, date)
-                    else str(en.value): str(en) for en in cls},
+                    else str(en.value): str(en) for en in cls
+                }} if to_string else {}),
                 **{
                     prop: [
                         to_js_test(getattr(en, prop))
@@ -2558,6 +2928,53 @@ class EnumGeneratorTest(EnumComparator, BaseTestCase):
             'class_name',
             get_content(ENUM_STATIC_DIR / 'enum_app/test.js')
         )
+    
+    @override_settings(
+        STATIC_TEMPLATES={
+            'context': {
+                'include_properties': True,
+                'class_properties': False,
+                'properties': True,
+                'symmetric_properties': False,
+                'to_string': False
+            },
+            'templates': [
+                ('enum_app/test.js', {
+                    'context': {
+                        'enums': EnumTester.MapBoxStyle
+                    }
+                }),
+            ]
+        }
+    )
+    def test_disable_to_string(self):
+        call_command('renderstatic', 'enum_app/test.js')
+        self.enums_compare(
+            js_file=ENUM_STATIC_DIR / 'enum_app/test.js',
+            enum_classes=[EnumTester.MapBoxStyle],
+            class_properties=False,
+            to_string=False
+        )
+        self.assertNotIn(
+            'class_name',
+            get_content(ENUM_STATIC_DIR / 'enum_app/test.js')
+        )
+        self.assertNotIn(
+            'toString',
+            get_content(ENUM_STATIC_DIR / 'enum_app/test.js')
+        )
+        self.assertNotIn(
+            'this.str',
+            get_content(ENUM_STATIC_DIR / 'enum_app/test.js')
+        )
+        self.assertNotIn(
+            ', str) {',
+            get_content(ENUM_STATIC_DIR / 'enum_app/test.js')
+        )
+        self.assertNotIn(
+            ', "1");',
+            get_content(ENUM_STATIC_DIR / 'enum_app/test.js')
+        )
 
     @override_settings(
         STATIC_TEMPLATES={
@@ -2665,6 +3082,47 @@ class EnumGeneratorTest(EnumComparator, BaseTestCase):
         self.assertIn('this.value = ', contents)
         self.assertIn('this.slug = ', contents)
         self.assertIn('this.label = ', contents)
+
+
+    @override_settings(
+        STATIC_TEMPLATES={
+            'context': {
+                'include_properties': ['slug', 'label'],
+                'properties': True,
+                'test_properties': [
+                    'slug',
+                    'label',
+                    'value'
+                ],
+                'symmetric_properties': False
+            },
+            'templates': [
+                ('enum_app/test.js', {
+                    'context': {
+                        'enums': [
+                            EnumTester.MapBoxStyle
+                        ]
+                    }
+                }),
+            ]
+        }
+    )
+    def test_include_props_list(self):
+        call_command('renderstatic', 'enum_app/test.js')
+        self.enums_compare(
+            js_file=ENUM_STATIC_DIR / 'enum_app/test.js',
+            enum_classes=[EnumTester.MapBoxStyle],
+            class_properties=False,
+            properties=['slug', 'label', 'value']
+        )
+        contents = get_content(ENUM_STATIC_DIR / 'enum_app/test.js')
+        self.assertNotIn('uri', contents)
+        self.assertNotIn('version', contents)
+        self.assertNotIn('name', contents)
+        self.assertIn('this.value = ', contents)
+        self.assertIn('this.slug = ', contents)
+        self.assertIn('this.label = ', contents)
+
 
     @override_settings(
         STATIC_TEMPLATES={
@@ -2811,7 +3269,7 @@ class EnumGeneratorTest(EnumComparator, BaseTestCase):
         self.assertIn('=== MapBoxStyle.get("Satellite Streets");', content)
         self.assertIn('=== MapBoxStyle.get("satellite-streets");', content)
         self.assertIn('=== MapBoxStyle.get(6);', content)
-        self.assertEqual(content.count('switch(value)'), 4)
+        self.assertEqual(content.count('for (const en of this)'), 4)
 
     @override_settings(
         STATIC_TEMPLATES={
@@ -2819,6 +3277,7 @@ class EnumGeneratorTest(EnumComparator, BaseTestCase):
                 'include_properties': True,
                 'properties': True,
                 'symmetric_properties': True,
+                'isymmetric_properties': [],
                 'test_symmetric_properties': [
                     'name',
                     'slug',
@@ -2851,7 +3310,68 @@ class EnumGeneratorTest(EnumComparator, BaseTestCase):
         self.assertIn('=== MapBoxStyle.get("satellite-streets");', content)
         self.assertIn('=== MapBoxStyle.get("mapbox://styles/mapbox/satellite-streets-v11");', content)
         self.assertIn('=== MapBoxStyle.get(6);', content)
-        self.assertEqual(content.count('switch(value)'), 5)
+        self.assertEqual(content.count('for (const en of this)'), 5)
+        self.assertNotIn('ciCompare', content)
+
+    
+    @override_settings(
+        STATIC_TEMPLATES={
+            'ENGINES': [{
+                'BACKEND': 'render_static.backends.StaticDjangoTemplates',
+                'OPTIONS': {
+                    'loaders': [
+                        ('render_static.loaders.StaticLocMemLoader', {
+                            'enum_app/test.js': '{% enums_to_js enums=enums symmetric_properties=True on_unrecognized="RETURN_NULL" %}\n'
+                                'console.log(JSON.stringify({'
+                                    'StReEtS: MapBoxStyle.get("StReEtS").label,'
+                                    f'"{EnumTester.MapBoxStyle.NAVIGATION_DAY.uri.upper()}": MapBoxStyle.get("{EnumTester.MapBoxStyle.NAVIGATION_DAY.uri.upper()}")'
+                                    '}));'
+                        }),
+                        ('render_static.loaders.StaticLocMemLoader', {
+                            'enum_app/test2.js': '{% enums_to_js enums=enums symmetric_properties=True isymmetric_properties="uri"|split on_unrecognized="RETURN_NULL" %}\n'
+                                'console.log(JSON.stringify({'
+                                    'StReEtS: MapBoxStyle.get("StReEtS"),'
+                                    f'"{EnumTester.MapBoxStyle.NAVIGATION_DAY.uri.upper()}": MapBoxStyle.get("{EnumTester.MapBoxStyle.NAVIGATION_DAY.uri.upper()}").label'
+                                    '}));'
+                        })
+                    ],
+                    'builtins': [
+                        'render_static.templatetags.render_static'
+                    ]
+                },
+            }],
+            'templates': [
+                ('enum_app/test.js', {
+                    'context': {
+                        'enums': [
+                            EnumTester.MapBoxStyle
+                        ]
+                    }
+                }),
+                ('enum_app/test2.js', {
+                    'context': {
+                        'enums': [
+                            EnumTester.MapBoxStyle
+                        ]
+                    }
+                }),
+            ]
+        }
+    )
+    def test_resolve_isymmetric_props(self):
+        call_command('renderstatic', ['enum_app/test.js', 'enum_app/test2.js'])
+        content = get_content(GLOBAL_STATIC_DIR / 'enum_app/test.js')
+        self.assertIn('static ciCompare', content)
+        js_dict = self.get_js_structure(GLOBAL_STATIC_DIR / 'enum_app/test.js')
+        self.assertEqual(js_dict['StReEtS'], 'Streets')
+        self.assertEqual(js_dict[EnumTester.MapBoxStyle.NAVIGATION_DAY.uri.upper()], None)
+
+        content = get_content(GLOBAL_STATIC_DIR / 'enum_app/test2.js')
+        self.assertIn('static ciCompare', content)
+        js_dict = self.get_js_structure(GLOBAL_STATIC_DIR / 'enum_app/test2.js')
+        self.assertEqual(js_dict['StReEtS'], None)
+        self.assertEqual(js_dict[EnumTester.MapBoxStyle.NAVIGATION_DAY.uri.upper()], EnumTester.MapBoxStyle.NAVIGATION_DAY.label)
+
 
     @override_settings(
         STATIC_TEMPLATES={
@@ -2860,7 +3380,7 @@ class EnumGeneratorTest(EnumComparator, BaseTestCase):
                 'OPTIONS': {
                     'loaders': [
                         ('render_static.loaders.StaticLocMemLoader', {
-                            'enum_app/test.js': '{% enums_to_js enums=enums summetric_properties=True raise_on_not_found=False %}\n'
+                            'enum_app/test.js': '{% enums_to_js enums=enums symmetric_properties=True on_unrecognized="RETURN_NULL" %}\n'
                                              'console.log(JSON.stringify({not_found: AddressRoute.get("Aly")}));'
                         })
                     ],
@@ -2892,7 +3412,107 @@ class EnumGeneratorTest(EnumComparator, BaseTestCase):
                 'OPTIONS': {
                     'loaders': [
                         ('render_static.loaders.StaticLocMemLoader', {
-                            'enum_app/test.js': '{% enums_to_js enums=enums summetric_properties=True raise_on_not_found=True %}\n'
+                            'enum_app/test.js': '{% enums_to_js enums=enums symmetric_properties=True raise_on_not_found=False %}\n'
+                                             'console.log(JSON.stringify({not_found: AddressRoute.get("Aly")}));'
+                        })
+                    ],
+                    'builtins': [
+                        'render_static.templatetags.render_static'
+                    ]
+                },
+            }],
+            'templates': [
+                ('enum_app/test.js', {
+                    'context': {
+                        'enums': [
+                            EnumTester.AddressRoute
+                        ]
+                    }
+                }),
+            ]
+        }
+    )
+    def test_raise_on_not_found_false_deprecated(self):
+        with self.assertWarns(DeprecationWarning):
+            call_command('renderstatic', 'enum_app/test.js')
+        js_dict = self.get_js_structure(GLOBAL_STATIC_DIR / 'enum_app/test.js')
+        self.assertDictEqual(js_dict, {'not_found': None})
+
+    @override_settings(
+        STATIC_TEMPLATES={
+            'ENGINES': [{
+                'BACKEND': 'render_static.backends.StaticDjangoTemplates',
+                'OPTIONS': {
+                    'loaders': [
+                        ('render_static.loaders.StaticLocMemLoader', {
+                            'enum_app/test.js': '{% enums_to_js enums=enums symmetric_properties=True raise_on_not_found=True %}\n'
+                                             'console.log(JSON.stringify({not_found: AddressRoute.get("Aly")}));'
+                        })
+                    ],
+                    'builtins': [
+                        'render_static.templatetags.render_static'
+                    ]
+                },
+            }],
+            'templates': [
+                ('enum_app/test.js', {
+                    'context': {
+                        'enums': [
+                            EnumTester.AddressRoute
+                        ]
+                    }
+                }),
+            ]
+        }
+    )
+    def test_raise_on_not_found_true_deprecated(self):
+        with self.assertWarns(DeprecationWarning):
+            call_command('renderstatic', 'enum_app/test.js')
+        self.assertIn(
+            'TypeError: No AddressRoute enumeration maps to value Aly',
+            run_js_file(GLOBAL_STATIC_DIR / 'enum_app/test.js')
+        )
+
+    @override_settings(
+        STATIC_TEMPLATES={
+            'ENGINES': [{
+                'BACKEND': 'render_static.backends.StaticDjangoTemplates',
+                'OPTIONS': {
+                    'loaders': [
+                        ('render_static.loaders.StaticLocMemLoader', {
+                            'enum_app/test.js': '{% enums_to_js enums=enums on_unrecognized="RETURN_INPUT" %}\n'
+                                             'console.log(JSON.stringify({not_found: AddressRoute.get("Aly")}));'
+                        })
+                    ],
+                    'builtins': [
+                        'render_static.templatetags.render_static'
+                    ]
+                },
+            }],
+            'templates': [
+                ('enum_app/test.js', {
+                    'context': {
+                        'enums': [
+                            EnumTester.AddressRoute
+                        ]
+                    }
+                }),
+            ]
+        }
+    )
+    def test_return_input_on_unrecognized(self):
+        call_command('renderstatic', 'enum_app/test.js')
+        js_dict = self.get_js_structure(GLOBAL_STATIC_DIR / 'enum_app/test.js')
+        self.assertDictEqual(js_dict, {'not_found': 'Aly'})
+
+    @override_settings(
+        STATIC_TEMPLATES={
+            'ENGINES': [{
+                'BACKEND': 'render_static.backends.StaticDjangoTemplates',
+                'OPTIONS': {
+                    'loaders': [
+                        ('render_static.loaders.StaticLocMemLoader', {
+                            'enum_app/test.js': '{% enums_to_js enums=enums symmetric_properties=True on_unrecognized="THROW_EXCEPTION" %}\n'
                                              'try { AddressRoute.get("Aly") } catch (e) {console.log(JSON.stringify({not_found: e instanceof TypeError ? "TypeError" : "Unknown"}));}'
                         })
                     ],
@@ -2924,7 +3544,7 @@ class EnumGeneratorTest(EnumComparator, BaseTestCase):
                 'OPTIONS': {
                     'loaders': [
                         ('render_static.loaders.StaticLocMemLoader', {
-                            'enum_app/test.js': '{% enums_to_js enums=enums summetric_properties=True transpiler="render_static.EnumClassWriter" %}\n'
+                            'enum_app/test.js': '{% enums_to_js enums=enums symmetric_properties=True transpiler="render_static.EnumClassWriter" %}\n'
                                              'try { AddressRoute.get("Aly") } catch (e) {console.log(JSON.stringify({not_found: e instanceof TypeError ? "TypeError" : "Unknown"}));}'
                         })
                     ],
@@ -2946,6 +3566,38 @@ class EnumGeneratorTest(EnumComparator, BaseTestCase):
     )
     def test_default_raise_on_not_found(self):
         return self.test_raise_on_not_found.__wrapped__(self)
+
+    @override_settings(
+        STATIC_TEMPLATES={
+            'ENGINES': [{
+                'BACKEND': 'render_static.backends.StaticDjangoTemplates',
+                'OPTIONS': {
+                    'loaders': [
+                        ('render_static.loaders.StaticLocMemLoader', {
+                            'enum_app/test.js': '{% enums_to_js enums=enums %}\n'
+                                             'console.log(JSON.stringify({found: AddressRoute.get(AddressRoute.AVENUE)}));'
+                        })
+                    ],
+                    'builtins': [
+                        'render_static.templatetags.render_static'
+                    ]
+                },
+            }],
+            'templates': [
+                ('enum_app/test.js', {
+                    'context': {
+                        'enums': [
+                            EnumTester.AddressRoute
+                        ]
+                    }
+                }),
+            ]
+        }
+    )
+    def test_return_instance(self):
+        call_command('renderstatic', 'enum_app/test.js')
+        js_dict = self.get_js_structure(GLOBAL_STATIC_DIR / 'enum_app/test.js')
+        self.assertEqual(js_dict['found']['value'], 'AVE')
 
     @override_settings(
         STATIC_TEMPLATES={
@@ -3045,8 +3697,271 @@ class EnumGeneratorTest(EnumComparator, BaseTestCase):
         self.assertIn('static VALUE1 = new DependentEnum(1, "VALUE1", IndependentEnum.VALUE1, "DependentEnum.VALUE1");', contents)
         self.assertIn('static VALUE2 = new DependentEnum(2, "VALUE2", IndependentEnum.VALUE0, "DependentEnum.VALUE2");', contents)
 
-    #def tearDown(self):
-    #    pass
+    def tearDown(self):
+       pass
+
+    @override_settings(
+        STATIC_TEMPLATES={
+            'ENGINES': [{
+                'BACKEND': 'render_static.backends.StaticDjangoTemplates',
+                'OPTIONS': {
+                    'loaders': [
+                        ('render_static.loaders.StaticLocMemLoader', {
+                            'enum_app/test.js': """
+{% enums_to_js enums=enums symmetric_properties=True %}
+{% override "get" %}
+/**
+ * A comment.
+ */
+static get(value) {
+    if (value === null) {
+        return {
+            'enum': {% autoescape off %}"{{enum}}"{% endautoescape %},
+            'class_name': "{{class_name}}",
+            'properties': [{% for prop in properties %}"{{prop}}",{% endfor %}],
+            'class_properties': [{% for prop in class_properties %}"{{prop}}",{% endfor %}],
+            'symmetric_properties': [{% for prop in symmetric_properties %}"{{prop}}",{% endfor %}],
+            'to_string': {% if to_string %}true{% else %}false{% endif %},
+            'str_prop': "{{ str_prop }}"
+        };
+    }
+    {{ default_impl }}}
+{% endoverride %}
+
+'enum': self.enum,
+'class_name': self.class_name,
+'properties': self.properties,
+'str_prop': self.str_prop,
+'class_properties': self.class_properties,
+'symmetric_properties': self.symmetric_properties,
+'to_string': self.to_string_
+
+{% override "constructor" %}
+constructor (value, name, label, alt, str, str0) {
+    {{ default_impl }}
+    this.constructor_context = {
+        'enum': {% autoescape off %}"{{enum}}"{% endautoescape %},
+        'class_name': "{{class_name}}",
+        'properties': [{% for prop in properties %}"{{prop}}",{% endfor %}],
+        'class_properties': [{% for prop in class_properties %}"{{prop}}",{% endfor %}],
+        'symmetric_properties': [{% for prop in symmetric_properties %}"{{prop}}",{% endfor %}],
+        'to_string': {% if to_string %}true{% else %}false{% endif %},
+        'str_prop': "{{ str_prop }}"
+    };
+}
+{% endoverride %}
+
+{% override "toString" %}
+toString() { 
+    return {
+        'enum': {% autoescape off %}"{{enum}}"{% endautoescape %},
+        'class_name': "{{class_name}}",
+        'properties': [{% for prop in properties %}"{{prop}}",{% endfor %}],
+        'class_properties': [{% for prop in class_properties %}"{{prop}}",{% endfor %}],
+        'symmetric_properties': [{% for prop in symmetric_properties %}"{{prop}}",{% endfor %}],
+        'to_string': {% if to_string %}true{% else %}false{% endif %},
+        'str_prop': "{{ str_prop }}"
+    };
+}
+{% endoverride %}
+
+{% override "ciCompare" %}
+static ciCompare(a, b) { 
+    {{ class_name}}.ci_compare_context = {
+        'enum': {% autoescape off %}"{{enum}}"{% endautoescape %},
+        'class_name': "{{class_name}}",
+        'properties': [{% for prop in properties %}"{{prop}}",{% endfor %}],
+        'class_properties': [{% for prop in class_properties %}"{{prop}}",{% endfor %}],
+        'symmetric_properties': [{% for prop in symmetric_properties %}"{{prop}}",{% endfor %}],
+        'to_string': {% if to_string %}true{% else %}false{% endif %},
+        'str_prop': "{{ str_prop }}"
+    };
+    {{ default_impl }}
+}
+{% endoverride %}
+
+
+{% override "[Symbol.iterator]" %}
+static [Symbol.iterator]() {
+    {{ class_name }}.iterator_context = {
+        'enum': {% autoescape off %}"{{enum}}"{% endautoescape %},
+        'class_name': "{{class_name}}",
+        'properties': [{% for prop in properties %}"{{prop}}",{% endfor %}],
+        'class_properties': [{% for prop in class_properties %}"{{prop}}",{% endfor %}],
+        'symmetric_properties': [{% for prop in symmetric_properties %}"{{prop}}",{% endfor %}],
+        'to_string': {% if to_string %}true{% else %}false{% endif %},
+        'str_prop': "{{ str_prop }}"
+    };
+    {{ default_impl }}
+}
+{% endoverride %}
+
+{% override "testContext" %}
+static testContext() { 
+    return {
+        'enum': {% autoescape off %}"{{enum}}"{% endautoescape %},
+        'class_name': "{{class_name}}",
+        'properties': [{% for prop in properties %}"{{prop}}",{% endfor %}],
+        'class_properties': [{% for prop in class_properties %}"{{prop}}",{% endfor %}],
+        'symmetric_properties': [{% for prop in symmetric_properties %}"{{prop}}",{% endfor %}],
+        'to_string': {% if to_string %}true{% else %}false{% endif %},
+        'str_prop': "{{ str_prop }}"
+    };
+}
+{% endoverride %}
+
+{% endenums_to_js %}
+console.log(JSON.stringify(
+    {
+        getNull: AddressRoute.get(null),
+        getAve: AddressRoute.get(AddressRoute.AVENUE).label,
+        getAve2: AddressRoute.get('AvEnUe').label,
+        testContext: AddressRoute.testContext(),
+        toString: AddressRoute.AVENUE.toString(),
+        constructor_context: AddressRoute.AVENUE.constructor_context,
+        iterator_context: AddressRoute.iterator_context,
+        ci_compare_context: AddressRoute.ci_compare_context,
+    }
+));
+"""})
+                    ],
+                    'builtins': [
+                        'render_static.templatetags.render_static'
+                    ]
+                },
+            }],
+            'templates': [
+                ('enum_app/test.js', {
+                    'context': {
+                        'enums': [
+                            EnumTester.AddressRoute
+                        ]
+                    }
+                }),
+            ]
+        }
+    )
+    def test_overrides(self):
+        call_command('renderstatic', 'enum_app/test.js')
+        js_dict = self.get_js_structure(GLOBAL_STATIC_DIR / 'enum_app/test.js')
+
+        expected_context = {
+            'enum': "<enum 'AddressRoute'>",
+            'class_name': "AddressRoute",
+            'properties': ['value', 'name', 'label', 'alt', 'str'],
+            'class_properties': ['class_name'],
+            'symmetric_properties': ['name', 'label'],
+            'to_string': True,
+            'str_prop': 'str0'
+        }
+        self.assertEqual(js_dict['testContext'], expected_context)
+        self.assertEqual(js_dict['getNull'], expected_context)
+        self.assertEqual(js_dict['getAve'], 'Avenue')
+        self.assertEqual(js_dict['getAve2'], 'Avenue')
+        self.assertEqual(js_dict['toString'], expected_context)
+        self.assertEqual(js_dict['constructor_context'], expected_context)
+        self.assertEqual(js_dict['iterator_context'], expected_context)
+        self.assertEqual(js_dict['ci_compare_context'], expected_context)
+
+
+    @override_settings(
+        STATIC_TEMPLATES={
+            'ENGINES': [{
+                'BACKEND': 'render_static.backends.StaticDjangoTemplates',
+                'OPTIONS': {
+                    'loaders': [
+                        ('render_static.loaders.StaticLocMemLoader', {
+                            'enum_app/test.js': """
+{% enums_to_js enums="render_static.tests.enum_app.models.EnumTester.MapBoxStyle" %}
+{% enums_to_js enums="render_static.tests.enum_app.models.EnumTester.AddressRoute" symmetric_properties=True %}
+
+{% override "testContext" %}
+static testContext() { 
+    return {
+        'enum': {% autoescape off %}"{{enum}}"{% endautoescape %},
+        'class_name': "{{class_name}}",
+        'properties': [{% for prop in properties %}"{{prop}}",{% endfor %}],
+        'class_properties': [{% for prop in class_properties %}"{{prop}}",{% endfor %}],
+        'symmetric_properties': [{% for prop in symmetric_properties %}"{{prop}}",{% endfor %}],
+        'to_string': {% if to_string %}true{% else %}false{% endif %},
+        'str_prop': "{{ str_prop }}"
+    };
+}
+{% endoverride %}
+{% endenums_to_js %}
+{% transpile "render_static.tests.enum_app.models.EnumTester.Color" "render_static.EnumClassWriter" %}
+console.log(JSON.stringify(
+    {
+        testContext: AddressRoute.testContext(),
+        mapbox: MapBoxStyle.get(1).label,
+        red: Color.RED.hex,
+    }
+));
+"""})
+                    ],
+                    'builtins': [
+                        'render_static.templatetags.render_static'
+                    ]
+                },
+            }],
+        }
+    )
+    def test_multi_block(self):
+        call_command('renderstatic', 'enum_app/test.js')
+        js_dict = self.get_js_structure(GLOBAL_STATIC_DIR / 'enum_app/test.js')
+        expected_context = {
+            'enum': "<enum 'AddressRoute'>",
+            'class_name': "AddressRoute",
+            'properties': ['value', 'name', 'label', 'alt', 'str'],
+            'class_properties': ['class_name'],
+            'symmetric_properties': ['name', 'label'],
+            'to_string': True,
+            'str_prop': 'str0'
+        }
+        self.assertEqual(js_dict['testContext'], expected_context)
+        self.assertEqual(js_dict['mapbox'], 'Streets')
+        self.assertEqual(js_dict['red'], 'ff0000')
+
+
+    @override_settings(
+        STATIC_TEMPLATES={
+            'ENGINES': [{
+                'BACKEND': 'render_static.backends.StaticDjangoTemplates',
+                'OPTIONS': {
+                    'loaders': [
+                        ('render_static.loaders.StaticLocMemLoader', {
+                            'enum_app/test.js': 
+                            "{% enums_to_js enums='render_static.tests.enum_app.models.EnumTester.Nope' %}"
+                        }),
+                        ('render_static.loaders.StaticLocMemLoader', {
+                            'enum_app/test2.js': 
+                            "{% enums_to_js enums='does_not_exist' %}"
+                        }),
+                        ('render_static.loaders.StaticLocMemLoader', {
+                            'enum_app/test3.js': 
+                            "{% enums_to_js enums='render_static.does_not_exist' %}"
+                        }),
+                        ('render_static.loaders.StaticLocMemLoader', {
+                            'enum_app/test4.js': 
+                            "{% enums_to_js enums='render_static.tests.enum_app.models.DNE' %}"
+                        })
+                    ],
+                    'builtins': [
+                        'render_static.templatetags.render_static'
+                    ]
+                },
+            }],
+        }
+    )
+    def test_import_error(self):
+        with self.assertRaises(CommandError):
+            call_command('renderstatic', 'enum_app/test.js')
+        with self.assertRaises(CommandError):
+            call_command('renderstatic', 'enum_app/test2.js')
+        with self.assertRaises(CommandError):
+            call_command('renderstatic', 'enum_app/test3.js')
+        with self.assertRaises(CommandError):
+            call_command('renderstatic', 'enum_app/test4.js')
 
 
 @override_settings(

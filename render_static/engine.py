@@ -7,6 +7,7 @@ from typing import Callable, Dict, Generator, List, Optional, Tuple, Union
 
 from django.conf import settings
 from django.core.exceptions import ImproperlyConfigured
+from django.template import Context, Template
 from django.template.backends.django import Template as DjangoTemplate
 from django.template.exceptions import TemplateDoesNotExist
 from django.template.utils import InvalidTemplateEngineError
@@ -45,6 +46,17 @@ class Render(
             return f'[{app.label}] {self.template.origin.template_name} -> ' \
                    f'{self.destination}'
         return f'{self.template.origin.template_name} -> {self.destination}'
+
+    @property
+    def is_dir(self) -> bool:
+        """
+        True if the destination is a directory, false otherwise.
+        """
+        return getattr(
+            getattr(self.template, 'template', None),
+            'is_dir',
+            False
+        )
 
 
 def _resolve_context(
@@ -449,8 +461,6 @@ class StaticTemplateEngine:
         elif batch or Path(dest).is_dir():
             dest = Path(dest) / template.template.name
 
-        os.makedirs(str(Path(dest if dest else '').parent), exist_ok=True)
-
         return Path(dest if dest else '')
 
     def render_to_disk(  # pylint: disable=R0913
@@ -576,15 +586,16 @@ class StaticTemplateEngine:
             ctx = render.config.context.copy()
             if context is not None:
                 ctx.update(context)
-            with open(
-                str(render.destination), 'w', encoding='UTF-8'
-            ) as temp_out:
-                temp_out.write(
-                    render.template.render({
-                        **self.context,
-                        **ctx
-                    })
-                )
+
+            r_ctx = {**self.context, **ctx}
+            dest = Template(render.destination).render(Context(r_ctx))
+
+            if render.is_dir:
+                os.makedirs(str(dest), exist_ok=True)
+            else:
+                os.makedirs(Path(dest or '').parent, exist_ok=True)
+                with open(str(dest), 'w', encoding='UTF-8') as out:
+                    out.write(render.template.render(r_ctx))
             yield render
 
     def resolve_renderings(

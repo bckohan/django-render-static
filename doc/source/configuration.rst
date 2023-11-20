@@ -209,6 +209,10 @@ single template, if the ``dest`` parameter is not an existing directory, it will
 the full path including the file name where the template will be rendered. When rendering in batch
 mode, ``dest`` will be treated as a directory and created if it does not exist.
 
+The ``dest`` parameter may include template variables that will be replaced with the value of the
+variable in the context. For example, if ``dest`` is ``'js/{{ app_name }}.js'`` and the context
+contains ``{'app_name': 'my_app'}`` then the template will be rendered to ``js/my_app.js``.
+
 ``context``
 ~~~~~~~~~~~
 

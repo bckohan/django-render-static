@@ -10,9 +10,11 @@ from datetime import date, datetime
 from enum import Enum
 from types import ModuleType
 from typing import (
+    TYPE_CHECKING,
     Any,
     Callable,
     Collection,
+    Dict,
     Generator,
     List,
     Optional,
@@ -25,6 +27,13 @@ from warnings import warn
 from django.apps import apps
 from django.apps.config import AppConfig
 from django.utils.module_loading import import_module, import_string
+from django.utils.safestring import SafeString
+
+if TYPE_CHECKING:
+    from render_static.templatetags.render_static import (
+        OverrideNode,  # pragma: no cover
+    )
+
 
 __all__ = [
     'to_js',
@@ -126,7 +135,7 @@ class CodeWriter:
     rendered_: str
     level_: int = 0
     prefix_: str = ''
-    indent_: str = '\t'
+    indent_: str = ' '*4
     nl_: str = '\n'
 
     def __init__(
@@ -142,6 +151,12 @@ class CodeWriter:
         self.prefix_ = prefix or ''
         self.nl_ = self.nl_ if self.indent_ else ''  # pylint: disable=C0103
 
+    def get_line(self, line: Optional[str]) -> str:
+        """
+        Returns a line with indentation and newline.
+        """
+        return f'{self.prefix_}{self.indent_ * self.level_}{line}{self.nl_}'
+
     def write_line(self, line: Optional[str]) -> None:
         """
         Writes a line to the rendered code file, respecting
@@ -151,8 +166,7 @@ class CodeWriter:
         :return:
         """
         if line is not None:
-            self.rendered_ += f'{self.prefix_}{self.indent_ * self.level_}' \
-                              f'{line}{self.nl_}'
+            self.rendered_ += self.get_line(line)
 
     def indent(self, incr: int = 1) -> None:
         """
@@ -195,6 +209,8 @@ class Transpiler(CodeWriter, metaclass=ABCMeta):
     parents_: List[Union[ModuleType, Type[Any]]]
     target_: ResolvedTranspilerTarget
 
+    overrides_: Dict[str, 'OverrideNode']
+
     @property
     def target(self):
         """The python artifact that is the target to transpile."""
@@ -212,9 +228,21 @@ class Transpiler(CodeWriter, metaclass=ABCMeta):
             if parent is not self.target
         ]
 
+    @property
+    def context(self):
+        """
+        The base template render context passed to overrides. Includes:
+
+            - **transpiler**: The transpiler instance
+        """
+        return {
+            'transpiler': self
+        }
+
     def __init__(
         self,
         to_javascript: Union[str, Callable] = to_javascript_,
+        overrides: Optional[Dict[str, 'OverrideNode']] = None,
         **kwargs
     ) -> None:
         super().__init__(**kwargs)
@@ -223,8 +251,43 @@ class Transpiler(CodeWriter, metaclass=ABCMeta):
             if callable(to_javascript)
             else import_string(to_javascript)
         )
+        self.overrides_ = overrides or {}
         self.parents_ = []
         assert callable(self.to_javascript), 'To_javascript is not callable!'
+
+    def transpile_override(
+            self,
+            override: str,
+            default_impl: Union[str, Generator[Optional[str], None, None]],
+            context: Optional[Dict[str, Any]] = None
+    ) -> Generator[str, None, None]:
+        """
+        Returns a string of lines from a generator with the indentation and 
+        newlines added. This is meant to be used in place during overrides,
+        so the first newline has no indents. So it will have the line prefix
+        of {{ default_impl }}.
+
+        :param override: The name of the override to transpile
+        :param default_impl: The default implementation to use if the override
+            is not present. May be a single line string or a generator of
+            lines.
+        :param context: Any additional context to pass to the override render
+        """
+        d_impl = default_impl
+        if isinstance(default_impl, Generator):
+            d_impl = ''
+            for idx, line in enumerate(default_impl):
+                if idx == 0:
+                    d_impl += f'{line}{self.nl_}'
+                else:
+                    d_impl += self.get_line(line)
+            d_impl.rstrip(self.nl_)
+
+        yield from self.overrides_.pop(override).transpile({
+            **self.context,
+            'default_impl': SafeString(d_impl),
+            **(context or {})
+        })
 
     @abstractmethod
     def include_target(self, target:  TranspilerTarget):
@@ -238,7 +301,7 @@ class Transpiler(CodeWriter, metaclass=ABCMeta):
         """
         return True
 
-    def transpile(  # pylint: disable=too-many-branches
+    def transpile(  # pylint: disable=too-many-branches, disable=too-many-statements
             self,
             targets: TranspilerTargets
     ) -> str:
@@ -288,12 +351,31 @@ class Transpiler(CodeWriter, metaclass=ABCMeta):
                     try:
                         target = apps.get_app_config(target)
                     except LookupError:
-                        try:
-                            target = import_string(target)
-                        except ImportError:
-                            # this is needed when there is no __init__ file in
-                            # the same directory
-                            target = import_module(target)
+                        parts = target.split('.')
+                        tries = 0
+                        while True:
+                            try:
+                                tries += 1
+                                target = import_string(
+                                    '.'.join(
+                                        parts[0:
+                                            None if tries == 1
+                                            else -(tries-1)
+                                        ])
+                                )
+                                if tries > 1:
+                                    for attr in parts[-(tries-1):]:
+                                        target = getattr(target, attr)
+                                break
+                            except (ImportError, AttributeError):
+                                if tries == 1:
+                                    try:
+                                        target = import_module('.'.join(parts))
+                                    except (ImportError, ModuleNotFoundError):
+                                        if len(parts) == 1:
+                                            raise
+                                elif tries == len(parts):
+                                    raise
 
             node = _TargetTreeNode(target, self.include_target(target))
 

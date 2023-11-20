@@ -120,7 +120,7 @@ try:
         env = Environment(**options)
         env.globals.update(render_static.register.filters)
         env.globals.update({
-            name: tag.__wrapped__
+            name: getattr(tag, '__wrapped__', tag)
             for name, tag in render_static.register.tags.items()
         })
         return env
@@ -211,7 +211,6 @@ try:
                 loader specific and documented on the loader.
             :return: The list of resolved template names
             """
-
             template_names = set()
             if callable(getattr(self.env.loader, 'select_templates', None)):
                 for templates in self.env.loader.select_templates(selector):
@@ -223,6 +222,7 @@ try:
             else:
                 self.get_template(selector)
                 template_names.add(selector)
+
             if first_loader and template_names:
                 return list(template_names)
 

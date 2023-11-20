@@ -81,6 +81,8 @@ class DefaultDefineTranspiler(Transpiler):
 
     members_: Dict[str, Any]
 
+    object_path_: str = ''
+
     @property
     def members(self) -> Dict[str, Any]:
         """
@@ -106,6 +108,20 @@ class DefaultDefineTranspiler(Transpiler):
             self.members = target  # type: ignore
             return len(self.members) > 0
         return False
+
+    @property
+    def context(self) -> Dict[str, Any]:
+        """
+        The template render context passed to overrides. In addition to
+        :attr:`render_static.transpilers.Transpiler.context`.
+        This includes:
+
+            - **const_name**: The name of the const variable
+        """
+        return {
+            **Transpiler.context.fget(self),  # type: ignore
+            'const_name': self.const_name_
+        }
 
     def __init__(
         self,
@@ -150,6 +166,8 @@ class DefaultDefineTranspiler(Transpiler):
         """
         Lay down the closing brace for the const variable declaration.
         """
+        for _, override in self.overrides_.items():
+            yield from override.transpile(self.context)
         self.outdent()
         yield '};'
 
@@ -196,6 +214,9 @@ class DefaultDefineTranspiler(Transpiler):
         self.members = cls  # type: ignore
         yield f'{cls.__name__}: {{'
         self.indent()
+        self.object_path_ += (
+            f'{"." if self.object_path_ else ""}{cls.__name__}'
+        )
 
     def exit_class(
             self,
@@ -214,6 +235,7 @@ class DefaultDefineTranspiler(Transpiler):
         """
         self.outdent()
         yield '},'
+        self.object_path_ = '.'.join(self.object_path_.split('.')[:-1])
 
     def visit_member(
         self,
@@ -232,4 +254,18 @@ class DefaultDefineTranspiler(Transpiler):
             at all
         :yield: Transpiled javascript for the member.
         """
-        yield f'{name}: {self.to_js(member)},'
+        self.object_path_ += f'{"." if self.object_path_ else ""}{name}'
+        if self.object_path_ in self.overrides_:
+            first = True
+            for line in self.transpile_override(
+                self.object_path_,
+                self.to_js(member)
+            ):
+                if first:
+                    yield f'{name}: {line}'
+                    first = False
+                else:
+                    yield line
+        else:
+            yield f'{name}: {self.to_js(member)},'
+        self.object_path_ = '.'.join(self.object_path_.split('.')[:-1])

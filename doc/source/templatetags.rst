@@ -144,6 +144,25 @@ The generated source would look like:
     parent classes and add them to the JavaScript.
 
 
+Overrides
+*********
+
+The ``DefaultDefineTranspiler`` supports the :ref:`override` block. The context available to
+override blocks is detailed here:
+:py:attr:`render_static.transpilers.defines_to_js.DefaultDefineTranspiler.context`. More code
+can be added to define variables or specific defines can be overridden by using their python
+path:
+
+.. code-block:: js+django
+
+    {% defines_to_js defines='myapp' %}
+
+        {% override 'myapp.defines.TestDefines.DEFINE1' %}
+            "OVERRIDE"
+        {% endoverride %}
+
+    {% enddefines_to_js %}
+
 .. _urls_to_js:
 
 ``urls_to_js``
@@ -265,15 +284,36 @@ Placeholders are the price paid for that reliability. Common default placeholder
 after all registered placeholders fail, and all of Django's native path converters are
 supported. This should allow most urls to work out of the box.
 
+Overrides
+*********
+
+Both the ``ClassURLWriter`` and ``SimpleURLWriter`` transpilers support the :ref:`override`
+block. The contexts available to override blocks for each transpiler are detailed here:
+
+    - :py:attr:`render_static.transpilers.urls_to_js.SimpleURLWriter.context`
+    - :py:attr:`render_static.transpilers.urls_to_js.ClassURLWriter.context`
+
+Any function on ``ClassURLWriter`` including the constructor can be overridden and both
+transpilers allow adding to the class or object and overriding the reversal code for
+specific url names. For instance:
+
+.. code-block:: js+django
+
+    {% urls_to_js transpiler='render_static.SimpleURLWriter' %}
+
+        {% override 'namespace:path_name' %}
+            return "/an/overridden/path";
+        {% endoverride %}
+
+    {% endurls_to_js %}
 
 `ClassURLWriter` (default)
 **************************
 
 A transpiler class that produces ES6 JavaScript class is now included. As of version 2 This
-class is used by default. It is the preferred transpiler for larger, more complex URL trees
-because it minifies better than the ``SimpleURLWriter`` and it handles default kwargs
-appropriately. **The** ``ClassURLWriter`` **is guaranteed to produce output identical to Django's
-reverse function**. If it does not please report a bug. To use the class writer:
+class is used by default. **The** ``ClassURLWriter`` **is guaranteed to produce output
+identical to Django's reverse function**. If it does not please report a bug. To use the
+class writer:
 
 .. code-block:: htmldjango
 
@@ -532,13 +572,14 @@ like this:
         }
 
         static get(value) {
-            switch(value) {
-                case "R":
-                    return Color.RED;
-                case "G":
-                    return Color.GREEN;
-                case "B":
-                    return Color.BLUE;
+            if (value instanceof this) {
+                return value;
+            }
+
+            for (const en of this) {
+                if (en.value === value) {
+                    return en;
+                }
             }
             throw new TypeError(`No Color enumeration maps to value ${value}`);
         }
@@ -556,3 +597,138 @@ We can now use our enumeration like so:
     for (const color of Color) {
         console.log(color);
     }
+
+Overrides
+*********
+
+You may add additional code to the class or :ref:`override` the following functions:
+
+    - constructor
+    - toString
+    - get
+    - ciCompare
+    - [Symbol.iterator]
+
+See :py:attr:`render_static.transpilers.enums_to_js.EnumClassWriter.context` for the
+context made available by the transpiler to override blocks.
+
+.. _override:
+
+``override``
+~~~~~~~~~~~~
+
+All of the transpilation tags accept child override blocks to override default transpilation
+of functions or objects or be used to add additional code to an object block or class. For
+example, if we wanted to override the default transpilation of the Color class above to allow
+instantiation off a cmyk value we could do so by adapting the get function and adding a new
+static utility function called cmykToRgb. We would do so like this:
+
+
+.. code:: js+django
+
+    {% enums_to_js enums="examples.models.ExampleModel.Color" %}
+
+        {# to override a function we must pass its name as the argument #}
+        {% override 'get' %}
+            static get(value) {
+                if (Array.isArray(value) && value.length === 4) {
+                    value = Color.cmykToRgb(...value);
+                }
+
+                if (Array.isArray(value) && value.length === 3) {
+                    for (const en of this) {
+                        let i = 0;
+                        for (; i < 3; i++) {
+                            if (en.rgb[i] !== value[i]) break;
+                        }
+                        if (i === 3) return en;
+                    }
+                }
+                {{ default_impl }}
+            }
+        {% endoverride %}
+
+        {# additions do not require a name argument #}
+        {% override %}
+            static cmykToRgb(c, m, y, k) {
+
+                let r = 255 * (1 - c / 100) * (1 - k / 100);
+                let g = 255 * (1 - m / 100) * (1 - k / 100);
+                let b = 255 * (1 - y / 100) * (1 - k / 100);
+
+                return [Math.round(r), Math.round(g), Math.round(b)]
+            }
+        {% endoverride %}
+    {% endenums_to_js %}
+
+When a function is overridden, the default implementation is available in the template context
+as the ``default_impl`` variable. This allows you to add the default implementation from
+code to your override. The context available to an override block varies depending on the
+transpiler. See the individual tag sections for details.
+
+The above example will generate code that looks like this:
+
+.. code:: javascript
+
+    class Color {
+
+        static RED = new Color("R", "RED", "Red", [1, 0, 0], "ff0000");
+        static GREEN = new Color("G", "GREEN", "Green", [0, 1, 0], "00ff00");
+        static BLUE = new Color("B", "BLUE", "Blue", [0, 0, 1], "0000ff");
+
+        constructor (value, name, label, rgb, hex) {
+            this.value = value;
+            this.name = name;
+            this.label = label;
+            this.rgb = rgb;
+            this.hex = hex;
+        }
+
+        toString() {
+            return this.value;
+        }
+
+        static get(value) {
+            if (Array.isArray(value) && value.length === 4) {
+                value = Color.cmykToRgb(...value);
+            }
+
+            if (Array.isArray(value) && value.length === 3) {
+                for (const en of this) {
+                    let i = 0;
+                    for (; i < 3; i++) {
+                        if (en.rgb[i] !== value[i]) break;
+                    }
+                    if (i === 3) return en;
+                }
+            }
+            if (value instanceof this) {
+                return value;
+            }
+
+            for (const en of this) {
+                if (en.value === value) {
+                    return en;
+                }
+            }
+            throw new TypeError(`No Color enumeration maps to value ${value}`);
+        }
+
+        static [Symbol.iterator]() {
+            return [Color.RED, Color.GREEN, Color.BLUE][Symbol.iterator]();
+        }
+
+        static cmykToRgb(c, m, y, k) {
+
+            let r = (1 - c / 100) * (1 - k / 100);
+            let g = (1 - m / 100) * (1 - k / 100);
+            let b = (1 - y / 100) * (1 - k / 100);
+
+            return [Math.round(r), Math.round(g), Math.round(b)]
+        }
+    }
+
+
+.. note::
+
+    The Jinja2 tags do not currently support overrides.
