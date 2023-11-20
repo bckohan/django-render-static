@@ -45,6 +45,9 @@ Single-sourcing these structures by transpiling client side code from the server
     - Plain data define-like structures in Python classes and modules
       (`defines_to_js`)
 
+Transpilation is extremely flexible and may be customized by using override blocks or extending the provided 
+transpilers.
+
 `django-render-static` also formalizes the concept of a package-time or deployment-time
 static file rendering step. It piggybacks off the existing templating engines and configurations
 and should therefore be familiar to Django developers. It supports both standard Django templating
