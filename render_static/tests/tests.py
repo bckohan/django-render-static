@@ -1356,3 +1356,79 @@ class TranspilerTagTestCase(BaseTestCase):
             @transpiler_tag(func=True)
             def transpiler1():  # pragma: no cover
                 pass  # pragma: no cover
+
+
+@override_settings(STATIC_TEMPLATES={
+    'templates': [
+        (
+            'batch_test/**/*',
+            {
+                'context': {
+                    'site_name': 'my_site',
+                    'variable1': 'var1 value',
+                    'variable2': 2,
+                    'sub_dir': 'resources'
+                },
+                'dest': GLOBAL_STATIC_DIR
+            }
+        ),
+        (
+            'batch_test/{{ site_name }}',
+            {
+                'context': {'site_name': 'my_site'},
+                'dest': GLOBAL_STATIC_DIR / 'batch_test' / '{{ site_name }}'
+            }
+        ),
+        (
+            'batch_test/{{ site_name }}/{{ sub_dir }}',
+            {
+                'context': {'site_name': 'my_site', 'sub_dir': 'resources'},
+                'dest': GLOBAL_STATIC_DIR / 'batch_test' / '{{ site_name }}' / '{{ sub_dir }}'
+            }
+        )
+    ]
+})
+class BatchRenderTestCase(BaseTestCase):
+    """
+    Tests that batches of files can be rendered to paths that
+    are also templates.
+    """
+    def test_render_empty_dir_template(self):
+        call_command('renderstatic', 'batch_test/{{ site_name }}')
+        batch_test = GLOBAL_STATIC_DIR / 'batch_test'
+        my_site = batch_test / 'my_site'
+        self.assertTrue(batch_test.is_dir())
+        self.assertTrue(my_site.is_dir())
+
+    def test_render_empty_dir_template_multi_level(self):
+        call_command('renderstatic', 'batch_test/{{ site_name }}/{{ sub_dir }}')
+        batch_test = GLOBAL_STATIC_DIR / 'batch_test'
+        my_site = batch_test / 'my_site'
+        resources = my_site / 'resources'
+        self.assertTrue(batch_test.is_dir())
+        self.assertTrue(my_site.is_dir())
+        self.assertTrue(resources.is_dir())
+
+    def test_batch_render_path_templates(self):
+        call_command('renderstatic', 'batch_test/**/*')
+        batch_test = GLOBAL_STATIC_DIR / 'batch_test'
+        my_site = batch_test / 'my_site'
+        resources = my_site / 'resources'
+        
+        self.assertTrue(batch_test.is_dir())
+        self.assertTrue((batch_test / '__init__.py').is_file())
+        self.assertTrue(my_site.is_dir())
+        self.assertTrue((my_site / '__init__.py').is_file())
+        self.assertTrue(resources.is_dir())
+
+        file1 = my_site / 'file1.py'
+        file2 = my_site / 'file2.html'
+
+        self.assertTrue(file1.is_file())
+        self.assertTrue(file2.is_file())
+
+        self.assertEqual(file1.read_text(), 'var1 value\n')
+        self.assertEqual(file2.read_text(), '2\n')
+
+    # def tearDown(self):
+    #     pass

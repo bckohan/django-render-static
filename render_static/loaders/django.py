@@ -9,11 +9,13 @@ Templates in the future.
 from glob import glob
 from os.path import relpath
 from pathlib import Path
-from typing import Generator, List, Tuple, Union
+from collections.abc import Container
+from typing import Generator, List, Tuple, Union, Optional
 
 from django.apps import apps
 from django.apps.config import AppConfig
 from django.core.exceptions import SuspiciousFileOperation
+from django.template import Template
 from django.template.loaders.app_directories import Loader as AppDirLoader
 from django.template.loaders.filesystem import Loader as FilesystemLoader
 from django.template.loaders.filesystem import safe_join
@@ -30,7 +32,53 @@ __all__ = [
 ]
 
 
-class StaticFilesystemLoader(FilesystemLoader):
+class DirectorySupport(FilesystemLoader):
+    """
+    A mixin that allows directories to be templates. The templates resolved
+    when this mixin is used that are directories will have an is_dir
+    attribute that is set to True.
+    """
+    is_dir = False
+
+    def get_template(
+            self,
+            template_name: str,
+            skip: Optional[Container] = None
+    ) -> Template:
+        """
+        Wrap the super class's get_template method and set our is_dir
+        flag depending on if get_contents raises an IsADirectoryError.
+
+        :param template_name: The name of the template to load
+        :param skip: A container of origins to skip
+        :return: The loaded template
+        :raises TemplateDoesNotExist: If the template does not exist
+        """
+        self.is_dir = False
+        template = super().get_template(template_name, skip=skip)
+        template.is_dir = self.is_dir
+        return template
+
+    def get_contents(self, origin: AppOrigin) -> str:
+        """
+        We wrap the super class's get_contents implementation and
+        set the is_dir flag if the origin is a directory. This is
+        alight touch approach that avoids touching any of the loader 
+        internals and should be robust to future changes.
+
+        :param origin: The origin of the template to load
+        :return: The contents of the template
+        :raises TemplateDoesNotExist: If the template does not
+            exist
+        """
+        try:
+            return super().get_contents(origin)
+        except IsADirectoryError:
+            self.is_dir = True
+            return ''
+
+
+class StaticFilesystemLoader(DirectorySupport):
     """
     Simple extension of ``django.template.loaders.filesystem.Loader``
     """
@@ -52,7 +100,7 @@ class StaticLocMemLoader(LocMemLoader):
     """
 
 
-class StaticAppDirectoriesLoader(AppDirLoader):
+class StaticAppDirectoriesLoader(DirectorySupport, AppDirLoader):
     """
     Extension of ``django.template.loaders.app_directories.Loader``
 
