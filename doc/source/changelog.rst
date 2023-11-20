@@ -7,7 +7,7 @@ v2.1.0
 * Implemented `Support templating of destination paths. <https://github.com/bckohan/django-render-static/issues/129>`_
 * Implemented `Support configurable case insensitive property mapping on enum transpilation. <https://github.com/bckohan/django-render-static/issues/128>`_
 * Implemented `Add a pass through getter for enums_to_js transpilation. <https://github.com/bckohan/django-render-static/issues/126>`_
-* Implemented `enum transpilation should iterate through value properties instead of hardcoding a switch statement. <https://github.com/bckohan/django-render-static/issues/125>`
+* Implemented `enum transpilation should iterate through value properties instead of hardcoding a switch statement. <https://github.com/bckohan/django-render-static/issues/125>`_
 * Implemented `Add type check and return to getter on transpiled enum classes.. <https://github.com/bckohan/django-render-static/issues/122>`_
 * Implemented `Provide switch to turn off toString() transpilation on enums_to_js <https://github.com/bckohan/django-render-static/issues/121>`_
 * Implemented `Allow include_properties to be a list of properties on enums_to_js <https://github.com/bckohan/django-render-static/issues/119>`_
