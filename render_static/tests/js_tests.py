@@ -3697,6 +3697,35 @@ class EnumGeneratorTest(EnumComparator, BaseTestCase):
         self.assertIn('static VALUE1 = new DependentEnum(1, "VALUE1", IndependentEnum.VALUE1, "DependentEnum.VALUE1");', contents)
         self.assertIn('static VALUE2 = new DependentEnum(2, "VALUE2", IndependentEnum.VALUE0, "DependentEnum.VALUE2");', contents)
 
+    @override_settings(
+        STATIC_TEMPLATES={
+            'ENGINES': [{
+                'BACKEND': 'render_static.backends.StaticDjangoTemplates',
+                'OPTIONS': {
+                    'loaders': [
+                        ('render_static.loaders.StaticLocMemLoader', {
+                            'enum_app/test.js': """
+{% enums_to_js enums='render_static.tests.enum_app.models.EnumTester.Color' include_properties="hex,name,value,rgb,label"|split:"," %}
+{% enums_to_js enums='render_static.tests.enum_app.models.EnumTester.MapBoxStyle' include_properties="value,name,label,uri,slug,version"|split:"," %}
+{% enums_to_js enums='render_static.tests.enum_app.models.EnumTester.AddressRoute' include_properties="name,value,alt"|split:"," %}
+"""
+                        })
+                    ]
+                },
+            }],
+        }
+    )
+    def test_property_order_determinism_bug131(self):
+        enum_js = GLOBAL_STATIC_DIR / 'enum_app/test.js'
+        for _ in range(0,10):
+            call_command('renderstatic', 'enum_app/test.js')
+            transpilation = enum_js.read_text()
+            self.assertIn('constructor (value, name, label, rgb, hex)', transpilation)
+            self.assertIn('constructor (value, name, label, slug, version, uri, str)', transpilation)
+            self.assertIn('constructor (value, name, alt, str)', transpilation)
+            os.remove(enum_js)
+
+
     def tearDown(self):
        pass
 

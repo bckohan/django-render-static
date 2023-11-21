@@ -2,6 +2,11 @@
 Change Log
 ==========
 
+v2.1.1
+======
+
+* Fixed `include_properties can result in non-deterministic ordering of constructor parameters that changes render to render <https://github.com/bckohan/django-render-static/issues/131>`_
+
 v2.1.0
 ======
 * Implemented `Support templating of destination paths. <https://github.com/bckohan/django-render-static/issues/129>`_

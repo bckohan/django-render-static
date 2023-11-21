@@ -200,36 +200,41 @@ class EnumClassWriter(EnumTranspiler):  # pylint: disable=R0902
         """
         builtins = [
             bltin for bltin in self.builtins_
-            if bltin not in self.exclude_properties_
+            if bltin == 'value' or bltin not in self.exclude_properties_
+        ]
+        if (
+            hasattr(list(enum)[0], 'label') and
+            'label' not in builtins and
+            'label' not in self.exclude_properties_ and
+            self.include_properties_
+        ):
+            builtins.append('label')
+
+        props_on_class = [
+            str(name)
+            for name, member in vars(enum).items()
+            if (
+                isinstance(member, property) and
+                name not in self.exclude_properties_
+                and str(name) not in builtins
+            )
+        ]
+        prop_def_order = [
+            *builtins,
+            *[
+                prop for prop in getattr(enum, '_properties_', [])
+                if prop not in self.exclude_properties_
+                and prop not in builtins and prop not in props_on_class
+            ],
+            *props_on_class
         ]
         if self.include_properties_ is True:
-            if (
-                hasattr(list(enum)[0], 'label') and
-                'label' not in builtins and
-                'label' not in self.exclude_properties_
-            ):
-                builtins.append('label')
-            props_on_class = [
-                str(name)
-                for name, member in vars(enum).items()
-                if (
-                    isinstance(member, property) and
-                    name not in self.exclude_properties_
-                    and str(name) not in builtins
-                )
-            ]
-            self.properties_ = [
-                *builtins,
-                *props_on_class,
-                # handle enum-properties defined properties
-                *[
-                    prop for prop in getattr(enum, '_properties_', [])
-                    if prop not in self.exclude_properties_
-                    and prop not in builtins and prop not in props_on_class
-                ]
-            ]
+            self.properties_ = prop_def_order
         elif self.include_properties_:
-            self.properties_ = list({*self.include_properties_, 'value'})
+            self.properties_ = [
+                prop for prop in prop_def_order
+                if prop in self.include_properties_ or prop == 'value'
+            ]
         else:
             self.properties_ = builtins
 
