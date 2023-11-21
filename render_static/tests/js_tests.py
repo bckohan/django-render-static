@@ -1081,9 +1081,16 @@ console.log(urls.extra());
             self.assertEqual(js_dict['app2:app1:re_path_unnamed'][key], value)
 
         self.assertEqual(js_dict['path_tst'], '/test/different/1/xo')
-        self.assertTrue(js_dict['deepEqual'])
 
-        for func in ['constructor', 'match', 'deepEqual', 'isObject', 'reverse']:
+        functions = ['constructor', 'match', 'reverse']
+        if DJANGO_VERSION[0:2] < (4, 1):  # pragma: no cover
+            self.assertTrue(js_dict['deepEqual'])
+            functions.append('deepEqual')
+            functions.append('isObject')
+        else: # pragma: no cover
+            pass
+
+        for func in functions:
             for key, value in expected_context.items():
                 self.assertEqual(js_dict[func + '_ctx'][key], value)
 

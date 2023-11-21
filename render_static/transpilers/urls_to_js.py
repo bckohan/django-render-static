@@ -1199,7 +1199,9 @@ class ClassURLWriter(URLTreeVisitor):
             self.outdent()
             yield '}'
 
-    def deep_equal(self) -> Generator[Optional[str], None, None]:
+    def deep_equal(
+            self
+    ) -> Generator[Optional[str], None, None]:  # pragma: no cover
         """
         The recursive deepEqual function.
         :yield: The JavaScript jdoc comment lines and deepEqual function.
@@ -1255,7 +1257,9 @@ class ClassURLWriter(URLTreeVisitor):
             self.outdent()
             yield '}'
 
-    def is_object(self) -> Generator[Optional[str], None, None]:
+    def is_object(
+            self
+    ) -> Generator[Optional[str], None, None]:  # pragma: no cover
         """
         The isObject() function.
         :yield: The JavaScript jdoc comment lines and isObject function.
