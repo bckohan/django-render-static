@@ -2,6 +2,12 @@
 Change Log
 ==========
 
+v2.1.2
+======
+
+* Fixed `deepEqual should only be included by ClassURLWriter when Django version is less than 4.1 <https://github.com/bckohan/django-render-static/issues/134>`_
+* Fixed `deepEqual generated code in ClassURLWriter has an error <https://github.com/bckohan/django-render-static/issues/133>`_
+
 v2.1.1
 ======
 

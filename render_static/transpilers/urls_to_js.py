@@ -1229,7 +1229,7 @@ class ClassURLWriter(URLTreeVisitor):
             )
             yield 'if ('
             self.indent()
-            yield '(areObjects && !deepEqual(val1, val2)) ||'
+            yield '(areObjects && !this.deepEqual(val1, val2)) ||'
             yield '(!areObjects && val1 !== val2)'
             yield ') { return false; }'
             self.outdent()
@@ -1291,9 +1291,7 @@ class ClassURLWriter(URLTreeVisitor):
             self.indent()
             yield 'if (kwargs.hasOwnProperty(key)) {'
             self.indent()
-            if (
-                DJANGO_VERSION[0] >= 4 and DJANGO_VERSION[1] >= 1
-            ):  # pragma: no cover
+            if DJANGO_VERSION[0:2] >= (4,1):  # pragma: no cover
                 # there was a change in Django 4.1 that seems to coerce kwargs
                 # given to the default kwarg type of the same name if one
                 # exists for the purposes of reversal. Thus 1 will == '1'
@@ -1305,7 +1303,7 @@ class ClassURLWriter(URLTreeVisitor):
                 # evidence that previous behavior wasn't considered spec.
                 yield (
                     'if (kwargs[key] !== val && '
-                    'kwargs[key].toString() !== val.toString() '
+                    'JSON.stringify(kwargs[key]) !== JSON.stringify(val) '
                     '&& !expected.includes(key)) '
                     '{ return false; }'
                 )
@@ -1438,10 +1436,11 @@ class ClassURLWriter(URLTreeVisitor):
         yield ''
         yield from self.match()
         yield ''
-        yield from self.deep_equal()
-        yield ''
-        yield from self.is_object()
-        yield ''
+        if DJANGO_VERSION[0:2] < (4, 1):  # pragma: no cover
+            yield from self.deep_equal()
+            yield ''
+            yield from self.is_object()
+            yield ''
         yield from self.reverse()
         yield ''
         yield 'urls = {'
