@@ -10,8 +10,8 @@
 .. |PyPI pyversions| image:: https://img.shields.io/pypi/pyversions/django-render-static.svg
    :target: https://pypi.python.org/pypi/django-render-static/
 
-.. |PyPI djversions| image:: https://img.shields.io/pypi/djversions/django-enum.svg
-   :target: https://pypi.org/project/django-enum/
+.. |PyPI djversions| image:: https://img.shields.io/pypi/djversions/django-render-static.svg
+   :target: https://pypi.org/project/django-render-static/
 
 .. |PyPI status| image:: https://img.shields.io/pypi/status/django-render-static.svg
    :target: https://pypi.python.org/pypi/django-render-static
