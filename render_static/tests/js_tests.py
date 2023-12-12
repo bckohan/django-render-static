@@ -2460,7 +2460,7 @@ class URLBugsTestCases(URLJavascriptMixin, BaseTestCase):
 
         call_command('renderstatic', 'urls.js')
 
-        dj_gt41 = DJANGO_VERSION[0] >= 4 and DJANGO_VERSION[1] >= 1
+        dj_gt41 = DJANGO_VERSION[0:2] >= (4, 1)
 
         from django.urls import reverse
         for kwargs in [

@@ -2,6 +2,12 @@
 Change Log
 ==========
 
+v2.1.3
+======
+
+* Fixed `Support Django 5.0 <https://github.com/bckohan/django-render-static/issues/136>`_
+
+
 v2.1.2
 ======
 
