@@ -7,4 +7,4 @@ sphinxcontrib-jsmath==1.0.1; python_version >= "3.5"
 sphinxcontrib-qthelp==1.0.3; python_version >= "3.5"
 sphinxcontrib-serializinghtml==1.1.5; python_version >= "3.5"
 sphinx-js==3.2.2; python_version >= "3.5"
-django-render-static==2.1.2
+django-render-static==2.1.3
