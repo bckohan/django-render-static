@@ -43,6 +43,7 @@ jobs:
           poetry run pip install -U "${{ matrix.django-version }}"
       - name: Run Static Analysis
         run: |
+          poetry run black render_static --check
           poetry run pylint render_static
           poetry run mypy render_static
           poetry run doc8 -q doc
