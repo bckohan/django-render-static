@@ -32,6 +32,7 @@ try:
         PackageLoader,
         PrefixLoader,
     )
+
     if TYPE_CHECKING:
         from jinja2 import Environment, Template  # pragma: no cover
 
@@ -45,14 +46,14 @@ except ImportError:  # pragma: no cover
     PrefixLoader = Jinja2DependencyNeeded  # type: ignore
 
 __all__ = [
-    'StaticFileSystemLoader',
-    'StaticFileSystemBatchLoader',
-    'StaticPackageLoader',
-    'StaticPrefixLoader',
-    'StaticFunctionLoader',
-    'StaticDictLoader',
-    'StaticChoiceLoader',
-    'StaticModuleLoader'
+    "StaticFileSystemLoader",
+    "StaticFileSystemBatchLoader",
+    "StaticPackageLoader",
+    "StaticPrefixLoader",
+    "StaticFunctionLoader",
+    "StaticDictLoader",
+    "StaticChoiceLoader",
+    "StaticModuleLoader",
 ]
 
 
@@ -62,6 +63,7 @@ class StaticFileSystemLoader(FileSystemLoader):  # pylint: disable=R0903
 
     We adapt the base loader to support loading directories as templates.
     """
+
     is_dir: bool = False
 
     def load(
@@ -76,7 +78,7 @@ class StaticFileSystemLoader(FileSystemLoader):  # pylint: disable=R0903
         Wrap load so we can tag directory templates with is_dir.
         """
         tmpl = super().load(environment, name, globals)
-        setattr(tmpl, 'is_dir', self.is_dir)
+        setattr(tmpl, "is_dir", self.is_dir)
         return tmpl
 
     def get_source(
@@ -95,11 +97,7 @@ class StaticFileSystemLoader(FileSystemLoader):  # pylint: disable=R0903
                 if pth.is_dir():
                     self.is_dir = True
                     # code cov bug here, ignore it
-                    return (  # pragma: no cover
-                        '',
-                        normpath(pth),
-                        lambda: True
-                    )
+                    return ("", normpath(pth), lambda: True)  # pragma: no cover
             raise
 
 

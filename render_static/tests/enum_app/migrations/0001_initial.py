@@ -5,20 +5,59 @@ from django.db import migrations, models
 
 
 class Migration(migrations.Migration):
-
     initial = True
 
-    dependencies = [
-    ]
+    dependencies = []
 
     operations = [
         migrations.CreateModel(
-            name='EnumTester',
+            name="EnumTester",
             fields=[
-                ('id', models.AutoField(auto_created=True, primary_key=True, serialize=False, verbose_name='ID')),
-                ('color', django_enum.fields.EnumCharField(choices=[('R', 'Red'), ('G', 'Green'), ('B', 'Blue')], default=None, max_length=1, null=True)),
-                ('style', django_enum.fields.EnumPositiveSmallIntegerField(choices=[(1, 'Streets'), (2, 'Outdoors'), (3, 'Light'), (4, 'Dark'), (5, 'Satellite'), (6, 'Satellite Streets'), (7, 'Navigation Day'), (8, 'Navigation Night')], default=1)),
-                ('route', django_enum.fields.EnumCharField(choices=[('ALY', 'Alley'), ('AVE', 'Avenue'), ('CIR', 'Circle')], max_length=32)),
+                (
+                    "id",
+                    models.AutoField(
+                        auto_created=True,
+                        primary_key=True,
+                        serialize=False,
+                        verbose_name="ID",
+                    ),
+                ),
+                (
+                    "color",
+                    django_enum.fields.EnumCharField(
+                        choices=[("R", "Red"), ("G", "Green"), ("B", "Blue")],
+                        default=None,
+                        max_length=1,
+                        null=True,
+                    ),
+                ),
+                (
+                    "style",
+                    django_enum.fields.EnumPositiveSmallIntegerField(
+                        choices=[
+                            (1, "Streets"),
+                            (2, "Outdoors"),
+                            (3, "Light"),
+                            (4, "Dark"),
+                            (5, "Satellite"),
+                            (6, "Satellite Streets"),
+                            (7, "Navigation Day"),
+                            (8, "Navigation Night"),
+                        ],
+                        default=1,
+                    ),
+                ),
+                (
+                    "route",
+                    django_enum.fields.EnumCharField(
+                        choices=[
+                            ("ALY", "Alley"),
+                            ("AVE", "Avenue"),
+                            ("CIR", "Circle"),
+                        ],
+                        max_length=32,
+                    ),
+                ),
             ],
         ),
     ]

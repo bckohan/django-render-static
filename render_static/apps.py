@@ -4,4 +4,4 @@ from django.apps import AppConfig
 
 class RenderStaticConfig(AppConfig):
     # pylint: disable=C0115
-    name = 'render_static'
+    name = "render_static"

@@ -2,7 +2,7 @@
 Define exceptions thrown by `django-render-static`
 """
 
-__all__ = ['URLGenerationFailed', 'ReversalLimitHit', 'InvalidContext']
+__all__ = ["URLGenerationFailed", "ReversalLimitHit", "InvalidContext"]
 
 
 class URLGenerationFailed(Exception):

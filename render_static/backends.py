@@ -18,7 +18,7 @@ from render_static.loaders.jinja2 import StaticFileSystemBatchLoader
 from render_static.origin import AppOrigin
 from render_static.templatetags import render_static
 
-__all__ = ['StaticDjangoTemplates', 'StaticJinja2Templates']
+__all__ = ["StaticDjangoTemplates", "StaticJinja2Templates"]
 
 
 class StaticDjangoTemplates(DjangoTemplates):
@@ -34,33 +34,27 @@ class StaticDjangoTemplates(DjangoTemplates):
         configuration for this backend.
     """
 
-    app_dirname = 'static_templates'
+    app_dirname = "static_templates"
 
     def __init__(self, params: Dict) -> None:
         params = params.copy()
-        options = params.pop('OPTIONS').copy()
-        loaders = options.get('loaders', None)
-        options.setdefault(
-            'builtins',
-            ['render_static.templatetags.render_static']
-        )
-        self.app_dirname = options.pop('app_dir', self.app_dirname)
+        options = params.pop("OPTIONS").copy()
+        loaders = options.get("loaders", None)
+        options.setdefault("builtins", ["render_static.templatetags.render_static"])
+        self.app_dirname = options.pop("app_dir", self.app_dirname)
         if loaders is None:
-            loaders = ['render_static.loaders.StaticFilesystemLoader']
-            if params.get('APP_DIRS', False):
-                loaders += ['render_static.loaders.StaticAppDirectoriesLoader']
+            loaders = ["render_static.loaders.StaticFilesystemLoader"]
+            if params.get("APP_DIRS", False):
+                loaders += ["render_static.loaders.StaticAppDirectoriesLoader"]
                 # base class with throw if this isn't present, it must be false
-                params['APP_DIRS'] = False
-            options['loaders'] = loaders
-        params['OPTIONS'] = options
+                params["APP_DIRS"] = False
+            options["loaders"] = loaders
+        params["OPTIONS"] = options
         super().__init__(params)
         self.engine.app_dirname = self.app_dirname
 
     def select_templates(
-            self,
-            selector: str,
-            first_loader: bool = False,
-            first_preference: bool = False
+        self, selector: str, first_loader: bool = False, first_preference: bool = False
     ) -> List[str]:
         """
         Resolves a template selector into a list of template names from the
@@ -81,7 +75,7 @@ class StaticDjangoTemplates(DjangoTemplates):
         template_names = set()
         for loader in self.engine.template_loaders:
             try:
-                if callable(getattr(loader, 'select_templates', None)):
+                if callable(getattr(loader, "select_templates", None)):
                     for templates in loader.select_templates(selector):
                         for tmpl in templates:
                             template_names.add(tmpl)
@@ -97,8 +91,7 @@ class StaticDjangoTemplates(DjangoTemplates):
         if template_names:
             return list(template_names)
         raise TemplateDoesNotExist(
-            f'Template selector {selector} did not resolve to any template '
-            f'names.'
+            f"Template selector {selector} did not resolve to any template " f"names."
         )
 
 
@@ -119,10 +112,12 @@ try:
         """
         env = Environment(**options)
         env.globals.update(render_static.register.filters)
-        env.globals.update({
-            name: getattr(tag, '__wrapped__', tag)
-            for name, tag in render_static.register.tags.items()
-        })
+        env.globals.update(
+            {
+                name: getattr(tag, "__wrapped__", tag)
+                for name, tag in render_static.register.tags.items()
+            }
+        )
         return env
 
     class StaticJinja2Templates(Jinja2):
@@ -139,33 +134,27 @@ try:
             configuration for this backend.
         """
 
-        app_dirname = 'static_jinja2'
+        app_dirname = "static_jinja2"
         app_directories: List[Tuple[Path, AppConfig]] = []
 
         def __init__(self, params: Dict) -> None:
             params = params.copy()
-            self.dirs = list(params.get('DIRS', []))
-            self.app_dirs = params.get('APP_DIRS', False)
-            options = params.pop('OPTIONS').copy()
-            options.setdefault(
-                'environment',
-                'render_static.backends.default_env'
-            )
-            self.app_dirname = options.pop('app_dir', self.app_dirname)
+            self.dirs = list(params.get("DIRS", []))
+            self.app_dirs = params.get("APP_DIRS", False)
+            options = params.pop("OPTIONS").copy()
+            options.setdefault("environment", "render_static.backends.default_env")
+            self.app_dirname = options.pop("app_dir", self.app_dirname)
 
-            if 'loader' not in options:
-                options['loader'] = StaticFileSystemBatchLoader(
-                    self.template_dirs
-                )
+            if "loader" not in options:
+                options["loader"] = StaticFileSystemBatchLoader(self.template_dirs)
 
-            params['OPTIONS'] = options
+            params["OPTIONS"] = options
 
             self.app_directories = [
                 (Path(app_config.path) / self.app_dirname, app_config)
                 for app_config in apps.get_app_configs()
-                if app_config.path and (
-                        Path(app_config.path) / self.app_dirname
-                ).is_dir()
+                if app_config.path
+                and (Path(app_config.path) / self.app_dirname).is_dir()
             ]
 
             super().__init__(params)
@@ -182,22 +171,20 @@ try:
             template = super().get_template(template_name)
 
             for app_dir, app in self.app_directories:
-                if normpath(template.origin.name).startswith(
-                        normpath(app_dir)
-                ):
+                if normpath(template.origin.name).startswith(normpath(app_dir)):
                     template.origin = AppOrigin(
                         name=template.origin.name,
                         template_name=template.origin.template_name,
-                        app=app
+                        app=app,
                     )
                     break
             return template
 
         def select_templates(
-                self,
-                selector: str,
-                first_loader: bool = False,
-                first_preference: bool = False
+            self,
+            selector: str,
+            first_loader: bool = False,
+            first_preference: bool = False,
         ) -> List[str]:
             """
             Resolves a template selector into a list of template names from
@@ -212,7 +199,7 @@ try:
             :return: The list of resolved template names
             """
             template_names = set()
-            if callable(getattr(self.env.loader, 'select_templates', None)):
+            if callable(getattr(self.env.loader, "select_templates", None)):
                 for templates in self.env.loader.select_templates(selector):
                     if templates:
                         for tmpl in templates:
@@ -229,8 +216,9 @@ try:
             if template_names:
                 return list(template_names)
             raise TemplateDoesNotExist(
-                f'Template selector {selector} did not resolve to any '
-                f'template names.'
+                f"Template selector {selector} did not resolve to any "
+                f"template names."
             )
+
 except ImportError:  # pragma: no cover
     StaticJinja2Templates = Jinja2DependencyNeeded  # type: ignore

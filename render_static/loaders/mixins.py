@@ -8,7 +8,7 @@ from typing import Generator, List
 from django.core.exceptions import SuspiciousFileOperation
 from django.template.loaders.filesystem import safe_join
 
-__all__ = ['BatchLoaderMixin']
+__all__ = ["BatchLoaderMixin"]
 
 
 class BatchLoaderMixin:
@@ -26,13 +26,10 @@ class BatchLoaderMixin:
         this loader.
         """
         raise NotImplementedError(
-            f'{self.__class__.__name__} must implement get_dirs!'
+            f"{self.__class__.__name__} must implement get_dirs!"
         )  # pragma: no cover
 
-    def select_templates(
-            self,
-            selector: str
-    ) -> Generator[List[str], None, None]:
+    def select_templates(self, selector: str) -> Generator[List[str], None, None]:
         """
         Yields template names matching the selector pattern.
 
@@ -47,6 +44,5 @@ class BatchLoaderMixin:
                 continue
 
             yield [
-                relpath(file, template_dir)
-                for file in glob(pattern, recursive=True)
+                relpath(file, template_dir) for file in glob(pattern, recursive=True)
             ]

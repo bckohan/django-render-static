@@ -5,17 +5,16 @@ from django.urls import include, path, re_path
 
 urlpatterns = [
     path(
-        'spa1/<int:toparg>/',
-        include('render_static.tests.spa.urls', namespace='spa1')
+        "spa1/<int:toparg>/", include("render_static.tests.spa.urls", namespace="spa1")
     ),
-    path('spa2/', include('render_static.tests.spa.urls', namespace='spa2')),
-    path('multi/<slug:top>/', include('render_static.tests.chain.urls')),
+    path("spa2/", include("render_static.tests.spa.urls", namespace="spa2")),
+    path("multi/<slug:top>/", include("render_static.tests.chain.urls")),
     re_path(
-        r'^multi/(?P<top>\w+)/',
-        include('render_static.tests.chain.urls', namespace='chain_re')
+        r"^multi/(?P<top>\w+)/",
+        include("render_static.tests.chain.urls", namespace="chain_re"),
     ),
     path(
-        'noslash/<slug:top>',
-        include('render_static.tests.chain.urls', namespace='noslash')
+        "noslash/<slug:top>",
+        include("render_static.tests.chain.urls", namespace="noslash"),
     ),
 ]

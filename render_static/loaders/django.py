@@ -24,11 +24,11 @@ from render_static.loaders.mixins import BatchLoaderMixin
 from render_static.origin import AppOrigin
 
 __all__ = [
-    'StaticFilesystemLoader',
-    'StaticAppDirectoriesLoader',
-    'StaticLocMemLoader',
-    'StaticAppDirectoriesBatchLoader',
-    'StaticFilesystemBatchLoader'
+    "StaticFilesystemLoader",
+    "StaticAppDirectoriesLoader",
+    "StaticLocMemLoader",
+    "StaticAppDirectoriesBatchLoader",
+    "StaticFilesystemBatchLoader",
 ]
 
 
@@ -38,12 +38,11 @@ class DirectorySupport(FilesystemLoader):
     when this mixin is used that are directories will have an is_dir
     attribute that is set to True.
     """
+
     is_dir = False
 
     def get_template(
-            self,
-            template_name: str,
-            skip: Optional[Container] = None
+        self, template_name: str, skip: Optional[Container] = None
     ) -> Template:
         """
         Wrap the super class's get_template method and set our is_dir
@@ -63,7 +62,7 @@ class DirectorySupport(FilesystemLoader):
         """
         We wrap the super class's get_contents implementation and
         set the is_dir flag if the origin is a directory. This is
-        alight touch approach that avoids touching any of the loader 
+        alight touch approach that avoids touching any of the loader
         internals and should be robust to future changes.
 
         :param origin: The origin of the template to load
@@ -75,7 +74,7 @@ class DirectorySupport(FilesystemLoader):
             return super().get_contents(origin)
         except IsADirectoryError:
             self.is_dir = True
-            return ''
+            return ""
 
 
 class StaticFilesystemLoader(DirectorySupport):
@@ -120,15 +119,14 @@ class StaticAppDirectoriesLoader(DirectorySupport, AppDirLoader):
             (Path(app_config.path) / self.engine.app_dirname, app_config)
             for app_config in apps.get_app_configs()
             if (
-                app_config.path and
-                (Path(app_config.path) / self.engine.app_dirname).is_dir()
+                app_config.path
+                and (Path(app_config.path) / self.engine.app_dirname).is_dir()
             )
         ]
         return tuple(template_dirs)
 
     def get_template_sources(
-            self,
-            template_name: str
+        self, template_name: str
     ) -> Generator[Union[AppOrigin, List[AppOrigin]], None, None]:
         """
         Yield the origins of all the templates from apps that match the given
@@ -146,10 +144,7 @@ class StaticAppDirectoriesLoader(DirectorySupport, AppDirLoader):
                 continue
 
             yield AppOrigin(
-                name=name,
-                template_name=template_name,
-                loader=self,
-                app=app_config
+                name=name, template_name=template_name, loader=self, app=app_config
             )
 
 
@@ -161,17 +156,14 @@ class StaticAppDirectoriesBatchLoader(StaticAppDirectoriesLoader):
     Yields batches of template names in order of preference, where preference
     is defined by the precedence of Django apps.
     """
-    def select_templates(
-            self,
-            selector: str
-    ) -> Generator[List[str], None, None]:
+
+    def select_templates(self, selector: str) -> Generator[List[str], None, None]:
         """
         Yields template names matching the selector pattern.
 
         :param selector: A glob pattern, or file name
         """
-        for template_dir, app_config in \
-                self.get_dirs():  # pylint: disable=W0612
+        for template_dir, app_config in self.get_dirs():  # pylint: disable=W0612
             try:
                 pattern = safe_join(template_dir, selector)
             except SuspiciousFileOperation:

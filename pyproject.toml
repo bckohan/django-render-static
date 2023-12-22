@@ -76,6 +76,8 @@ importlib-metadata = "^7.0.0"
 selenium = "^4.16.0"
 python-dateutil = "^2.8.2"
 ipdb = "^0.13.13"
+black = "^23.12.0"
+aiohttp = "^3.9.1"
 
 [build-system]
 requires = ["poetry-core>=1.0.0"]
@@ -126,7 +128,7 @@ line_length = 79
 
 [tool.pylint]
 output-format = "colorized"
-max-line-length = 79  # PEP 8
+max-line-length = 88 # PEP 8
 max-args = 6
 
 [tool.pylint.'MESSAGES CONTROL']
@@ -159,3 +161,11 @@ addopts = [
 omit = [
   "render_static/tests/app1/static_jinja2/batch_test/**/*"
 ]
+
+[tool.black]
+line-length = 88
+target-version = ["py38", "py39", "py310", "py311", "py312"]
+include = '\.pyi?$'
+extend-exclude = '''
+  render_static/tests/resources/bad_code\.py
+'''

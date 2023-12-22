@@ -16,11 +16,11 @@ from .transpilers.urls_to_js import ClassURLWriter, SimpleURLWriter
 
 VERSION = (2, 1, 3)
 
-__title__ = 'Django Render Static'
-__version__ = '.'.join(str(i) for i in VERSION)
-__author__ = 'Brian Kohan'
-__license__ = 'MIT'
-__copyright__ = f'Copyright 2020-{datetime.now().year} Brian Kohan'
+__title__ = "Django Render Static"
+__version__ = ".".join(str(i) for i in VERSION)
+__author__ = "Brian Kohan"
+__license__ = "MIT"
+__copyright__ = f"Copyright 2020-{datetime.now().year} Brian Kohan"
 
 
 class Jinja2DependencyNeeded:  # pylint: disable=R0903
@@ -31,6 +31,5 @@ class Jinja2DependencyNeeded:  # pylint: disable=R0903
 
     def __init__(self, *args, **kwargs):
         raise ImportError(  # pragma: no cover
-            'To use the Jinja2 backend you must install the Jinja2 python '
-            'package.'
+            "To use the Jinja2 backend you must install the Jinja2 python package."
         )

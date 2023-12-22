@@ -4,13 +4,11 @@ from django.views import View
 
 
 class DefaultStrEncoder(DjangoJSONEncoder):
-
     def default(self, obj):
         return str(obj)
 
 
 class TestView(View):
-
     def get(self, request, *args, **kwargs):
         query = {}
         for key, val in request.GET.items():
@@ -18,9 +16,12 @@ class TestView(View):
                 query[key] = request.GET.getlist(key)
             else:
                 query[key] = val
-        return JsonResponse({
-            'request': request.path,
-            'args': list(args),
-            'kwargs': {**kwargs},
-            'query': query
-        }, encoder=DefaultStrEncoder)
+        return JsonResponse(
+            {
+                "request": request.path,
+                "args": list(args),
+                "kwargs": {**kwargs},
+                "query": query,
+            },
+            encoder=DefaultStrEncoder,
+        )

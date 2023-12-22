@@ -24,12 +24,10 @@ try:
 except ImportError:  # pragma: no cover
     Jinja2Template = Jinja2DependencyNeeded
 
-__all__ = ['StaticTemplateEngine', 'Render']
+__all__ = ["StaticTemplateEngine", "Render"]
 
 
-class Render(
-    namedtuple('_Render', ['selector', 'config', 'template', 'destination'])
-):
+class Render(namedtuple("_Render", ["selector", "config", "template", "destination"])):
     """
     A named tuple that holds all the pertinent information for a template
     including:
@@ -40,28 +38,26 @@ class Render(
             template
         - The destination where it will be/was rendered
     """
+
     def __str__(self) -> str:
-        app = getattr(self.template.origin, 'app', None)
+        app = getattr(self.template.origin, "app", None)
         if app:
-            return f'[{app.label}] {self.template.origin.template_name} -> ' \
-                   f'{self.destination}'
-        return f'{self.template.origin.template_name} -> {self.destination}'
+            return (
+                f"[{app.label}] {self.template.origin.template_name} -> "
+                f"{self.destination}"
+            )
+        return f"{self.template.origin.template_name} -> {self.destination}"
 
     @property
     def is_dir(self) -> bool:
         """
         True if the destination is a directory, false otherwise.
         """
-        return getattr(
-            getattr(self.template, 'template', None),
-            'is_dir',
-            False
-        )
+        return getattr(getattr(self.template, "template", None), "is_dir", False)
 
 
 def _resolve_context(
-        context: Optional[Union[Dict, Callable, str, Path]],
-        template: Optional[str] = None
+    context: Optional[Union[Dict, Callable, str, Path]], template: Optional[str] = None
 ) -> Dict:
     """
     Resolve a context configuration parameter into a context dictionary. If
@@ -147,15 +143,15 @@ class StaticTemplateEngine:
 
     config_: Dict = {}
 
-    DEFAULT_ENGINE_CONFIG = [{
-        'BACKEND': 'render_static.backends.StaticDjangoTemplates',
-        'OPTIONS': {
-            'loaders': [
-                'render_static.loaders.StaticAppDirectoriesBatchLoader'
-            ],
-            'builtins': ['render_static.templatetags.render_static']
-        },
-    }]
+    DEFAULT_ENGINE_CONFIG = [
+        {
+            "BACKEND": "render_static.backends.StaticDjangoTemplates",
+            "OPTIONS": {
+                "loaders": ["render_static.loaders.StaticAppDirectoriesBatchLoader"],
+                "builtins": ["render_static.templatetags.render_static"],
+            },
+        }
+    ]
 
     class TemplateConfig:
         """
@@ -179,10 +175,10 @@ class StaticTemplateEngine:
         dest_: Optional[Path] = None
 
         def __init__(
-                self,
-                name: str,
-                dest: Optional[Union[Path, str]] = None,
-                context: Optional[Union[Dict, Callable, str]] = None
+            self,
+            name: str,
+            dest: Optional[Union[Path, str]] = None,
+            context: Optional[Union[Dict, Callable, str]] = None,
         ) -> None:
             self.name = name
 
@@ -196,8 +192,8 @@ class StaticTemplateEngine:
                 self.dest_ = Path(dest)
                 if not self.dest_.is_absolute():
                     raise ImproperlyConfigured(
-                        f'In STATIC_TEMPLATES, template {name} dest must be '
-                        f'absolute!'
+                        f"In STATIC_TEMPLATES, template {name} dest must be "
+                        f"absolute!"
                     )
             context = _resolve_context(context, template=name)
             if context:
@@ -237,17 +233,17 @@ class StaticTemplateEngine:
             configurations
         """
         if not self.config_:
-            self.config_ = getattr(settings, 'STATIC_TEMPLATES', {}) or {}
+            self.config_ = getattr(settings, "STATIC_TEMPLATES", {}) or {}
 
         unrecognized_keys = [
-            key for key in self.config_.keys() if key not in [
-                'ENGINES', 'templates', 'context'
-            ]
+            key
+            for key in self.config_.keys()
+            if key not in ["ENGINES", "templates", "context"]
         ]
         if unrecognized_keys:
             raise ImproperlyConfigured(
-                f'Unrecognized STATIC_TEMPLATES configuration directives: '
-                f'{unrecognized_keys}'
+                f"Unrecognized STATIC_TEMPLATES configuration directives: "
+                f"{unrecognized_keys}"
             )
         return self.config_
 
@@ -263,8 +259,8 @@ class StaticTemplateEngine:
             is not a dictionary.
         """
         return {
-            'settings': settings,
-            **_resolve_context(self.config.get('context', {}))
+            "settings": settings,
+            **_resolve_context(self.config.get("context", {})),
         }
 
     @cached_property
@@ -280,18 +276,16 @@ class StaticTemplateEngine:
             the templates
         """
         try:
-            templates = self.config.get('templates', {})
+            templates = self.config.get("templates", {})
             templates = [
-                (
-                    name,
-                    StaticTemplateEngine.TemplateConfig(name=name, **config)
-                )
+                (name, StaticTemplateEngine.TemplateConfig(name=name, **config))
                 for name, config in (
                     templates.items()
                     if isinstance(templates, dict)
                     else [
-                        (entry, {}) if isinstance(entry, str) else
-                        (entry[0], entry[1] or {} if len(entry) > 1 else {})
+                        (entry, {})
+                        if isinstance(entry, str)
+                        else (entry[0], entry[1] or {} if len(entry) > 1 else {})
                         for entry in templates
                     ]
                 )
@@ -332,45 +326,43 @@ class StaticTemplateEngine:
         :raise ImproperlyConfigured: If there are configuration problems with
             the engine backends.
         """
-        engine_defs = self.config.get('ENGINES', None)
+        engine_defs = self.config.get("ENGINES", None)
         if engine_defs is None:
-            self.config['ENGINES'] = self.DEFAULT_ENGINE_CONFIG
-        elif not hasattr(engine_defs, '__iter__'):
+            self.config["ENGINES"] = self.DEFAULT_ENGINE_CONFIG
+        elif not hasattr(engine_defs, "__iter__"):
             raise ImproperlyConfigured(
-                f'ENGINES in STATIC_TEMPLATES setting must be an iterable '
-                f'containing engine configurations! Encountered: '
-                f'{type(engine_defs)}'
+                f"ENGINES in STATIC_TEMPLATES setting must be an iterable "
+                f"containing engine configurations! Encountered: "
+                f"{type(engine_defs)}"
             )
 
         engines = {}
         backend_names = []
-        for backend in self.config.get('ENGINES', []):
+        for backend in self.config.get("ENGINES", []):
             try:
                 # This will raise an exception if 'BACKEND' doesn't exist or
                 # isn't a string containing at least one dot.
-                default_name = backend['BACKEND'].rsplit('.', 2)[-1]
+                default_name = backend["BACKEND"].rsplit(".", 2)[-1]
             except Exception as exp:
-                invalid_backend = backend.get('BACKEND', '<not defined>')
+                invalid_backend = backend.get("BACKEND", "<not defined>")
                 raise ImproperlyConfigured(
-                    f'Invalid BACKEND for a static template engine: '
-                    f'{invalid_backend}. Check your STATIC_TEMPLATES setting.'
+                    f"Invalid BACKEND for a static template engine: "
+                    f"{invalid_backend}. Check your STATIC_TEMPLATES setting."
                 ) from exp
 
             # set defaults
             backend = {
-                'NAME': default_name,
-                'DIRS': [],
-                'APP_DIRS': False,
-                'OPTIONS': {},
+                "NAME": default_name,
+                "DIRS": [],
+                "APP_DIRS": False,
+                "OPTIONS": {},
                 **backend,
             }
-            engines[backend['NAME']] = backend
-            backend_names.append(backend['NAME'])
+            engines[backend["NAME"]] = backend
+            backend_names.append(backend["NAME"])
 
         counts = Counter(backend_names)
-        duplicates = [
-            alias for alias, count in counts.most_common() if count > 1
-        ]
+        duplicates = [alias for alias, count in counts.most_common() if count > 1]
         if duplicates:
             raise ImproperlyConfigured(
                 f"Template engine aliases are not unique, duplicates: "
@@ -380,14 +372,13 @@ class StaticTemplateEngine:
 
         for alias, config in engines.items():
             params = config.copy()
-            backend = params.pop('BACKEND')
+            backend = params.pop("BACKEND")
             engines[alias] = import_string(backend)(params)
 
         return engines
 
     def __getitem__(
-            self,
-            alias: str
+        self, alias: str
     ) -> Union[StaticDjangoTemplates, StaticJinja2Templates]:
         """
         Accessor for backend instances indexed by name.
@@ -401,8 +392,7 @@ class StaticTemplateEngine:
             return self.engines[alias]
         except KeyError as key_error:
             raise InvalidTemplateEngineError(
-                f"Could not find config for '{alias}' "
-                f"in settings.STATIC_TEMPLATES"
+                f"Could not find config for '{alias}' " f"in settings.STATIC_TEMPLATES"
             ) from key_error
 
     def __iter__(self):
@@ -420,10 +410,10 @@ class StaticTemplateEngine:
 
     @staticmethod
     def resolve_destination(
-            config: TemplateConfig,
-            template: Union[Jinja2Template, DjangoTemplate],
-            batch: bool,
-            dest: Optional[Union[str, Path]] = None
+        config: TemplateConfig,
+        template: Union[Jinja2Template, DjangoTemplate],
+        batch: bool,
+        dest: Optional[Union[str, Path]] = None,
     ) -> Path:
         """
         Resolve the destination for a template, given all present configuration
@@ -438,14 +428,14 @@ class StaticTemplateEngine:
         :raises ImproperlyConfigured: if a render destination cannot be
             determined
         """
-        app = getattr(template.origin, 'app', None)
+        app = getattr(template.origin, "app", None)
 
         if dest is None:
             dest = config.dest
 
         if dest is None:
             if app:
-                dest = Path(app.path) / 'static'
+                dest = Path(app.path) / "static"
             else:
                 try:
                     dest = Path(settings.STATIC_ROOT)
@@ -461,16 +451,16 @@ class StaticTemplateEngine:
         elif batch or Path(dest).is_dir():
             dest = Path(dest) / template.template.name
 
-        return Path(dest if dest else '')
+        return Path(dest if dest else "")
 
     def render_to_disk(  # pylint: disable=R0913
-            self,
-            selector: str,
-            context: Optional[Dict] = None,
-            dest: Optional[Union[str, Path]] = None,
-            first_engine: bool = False,
-            first_loader: bool = False,
-            first_preference: bool = False
+        self,
+        selector: str,
+        context: Optional[Dict] = None,
+        dest: Optional[Union[str, Path]] = None,
+        first_engine: bool = False,
+        first_loader: bool = False,
+        first_preference: bool = False,
     ) -> List[Render]:
         """
         Wrap render_each generator function and return the whole list of
@@ -504,24 +494,25 @@ class StaticTemplateEngine:
             render and write the template
         """
         return [  # pylint: disable=R1721
-            render for render in self.render_each(
+            render
+            for render in self.render_each(
                 selector,
                 context=context,
                 dest=dest,
                 first_engine=first_engine,
                 first_loader=first_loader,
-                first_preference=first_preference
+                first_preference=first_preference,
             )
         ]
 
     def render_each(  # pylint: disable=R0914
-            self,
-            *selectors: str,
-            context: Optional[Dict] = None,
-            dest: Optional[Union[str, Path]] = None,
-            first_engine: bool = False,
-            first_loader: bool = False,
-            first_preference: bool = False
+        self,
+        *selectors: str,
+        context: Optional[Dict] = None,
+        dest: Optional[Union[str, Path]] = None,
+        first_engine: bool = False,
+        first_loader: bool = False,
+        first_preference: bool = False,
     ) -> Generator[Render, None, None]:
         """
         A generator function that renders all selected templates of the highest
@@ -568,7 +559,8 @@ class StaticTemplateEngine:
         batch = bool(len(selectors) > 1 and dest)
         for selector in selectors:
             for config in (
-                self.get_templates(selector) or
+                self.get_templates(selector)
+                or
                 # use a default config if no template configuration was found
                 [StaticTemplateEngine.TemplateConfig(name=selector)]
             ):
@@ -579,7 +571,7 @@ class StaticTemplateEngine:
                     dest=dest,
                     first_engine=first_engine,
                     first_loader=first_loader,
-                    first_preference=first_preference
+                    first_preference=first_preference,
                 )
 
         for render in renders:
@@ -593,17 +585,13 @@ class StaticTemplateEngine:
             if render.is_dir:
                 os.makedirs(str(dest), exist_ok=True)
             else:
-                os.makedirs(Path(dest or '').parent, exist_ok=True)
-                with open(str(dest), 'w', encoding='UTF-8') as out:
+                os.makedirs(Path(dest or "").parent, exist_ok=True)
+                with open(str(dest), "w", encoding="UTF-8") as out:
                     out.write(render.template.render(r_ctx))
             yield render
 
     def resolve_renderings(
-            self,
-            selector: str,
-            config: TemplateConfig,
-            batch: bool,
-            **kwargs
+        self, selector: str, config: TemplateConfig, batch: bool, **kwargs
     ) -> Generator[Render, None, None]:
         """
         Resolve the given parameters to a or a set of Render objects containing
@@ -615,31 +603,28 @@ class StaticTemplateEngine:
         :param kwargs: Pass through parameters from render_each
         :yield: Render objects
         """
-        templates: Dict[
-            str, Union[DjangoTemplate, Jinja2Template]
-        ] = {}
+        templates: Dict[str, Union[DjangoTemplate, Jinja2Template]] = {}
         chain = []
         for engine in self.all():
             try:
                 for template_name in engine.select_templates(
                     selector,
-                    first_loader=kwargs.get('first_loader', False),
-                    first_preference=kwargs.get('first_preference', False)
+                    first_loader=kwargs.get("first_loader", False),
+                    first_preference=kwargs.get("first_preference", False),
                 ):
                     try:
                         templates.setdefault(
-                            template_name,
-                            engine.get_template(template_name)
+                            template_name, engine.get_template(template_name)
                         )
                     except TemplateDoesNotExist as tdne:  # pragma: no cover
                         # this should be impossible w/o a loader bug!
                         if len(templates):
                             raise RuntimeError(
-                                f'Selector resolved to template '
-                                f'{template_name} which is not '
-                                f'loadable: {tdne}'
+                                f"Selector resolved to template "
+                                f"{template_name} which is not "
+                                f"loadable: {tdne}"
                             ) from tdne
-                if kwargs.get('first_engine', False) and templates:
+                if kwargs.get("first_engine", False) and templates:
                     break
             except TemplateDoesNotExist as tdne:
                 chain.append(tdne)
@@ -659,6 +644,6 @@ class StaticTemplateEngine:
                     # each selector is a batch if it resolves to
                     # more than one template
                     bool(batch or len(templates) > 1),
-                    kwargs.get('dest', None)
-                )
+                    kwargs.get("dest", None),
+                ),
             )

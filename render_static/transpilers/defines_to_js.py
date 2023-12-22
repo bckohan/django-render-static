@@ -74,14 +74,14 @@ class DefaultDefineTranspiler(Transpiler):
         `Transpiler` params
     """
 
-    include_member_: Callable[[Any], bool] = (
-        lambda name, member: name.isupper()  # type: ignore
-    )
-    const_name_ = 'defines'
+    include_member_: Callable[
+        [Any], bool
+    ] = lambda name, member: name.isupper()  # type: ignore
+    const_name_ = "defines"
 
     members_: Dict[str, Any]
 
-    object_path_: str = ''
+    object_path_: str = ""
 
     @property
     def members(self) -> Dict[str, Any]:
@@ -94,14 +94,14 @@ class DefaultDefineTranspiler(Transpiler):
     @members.setter
     def members(self, target: Union[ModuleType, Type[Any]]):
         self.members_ = {}
-        for ancestor in (
-            list(reversed(getattr(target, '__mro__', []))) + [target]
-        ):
-            self.members_.update({
-                name: member
-                for name, member in vars(ancestor).items()
-                if getattr(self, 'include_member_')(name, member)
-            })
+        for ancestor in list(reversed(getattr(target, "__mro__", []))) + [target]:
+            self.members_.update(
+                {
+                    name: member
+                    for name, member in vars(ancestor).items()
+                    if getattr(self, "include_member_")(name, member)
+                }
+            )
 
     def include_target(self, target: ResolvedTranspilerTarget):
         if isinstance(target, (type, ModuleType)):
@@ -120,24 +120,21 @@ class DefaultDefineTranspiler(Transpiler):
         """
         return {
             **Transpiler.context.fget(self),  # type: ignore
-            'const_name': self.const_name_
+            "const_name": self.const_name_,
         }
 
     def __init__(
         self,
         include_member: Callable[[Any], bool] = include_member_,
         const_name: str = const_name_,
-        **kwargs
+        **kwargs,
     ) -> None:
         self.include_member_ = include_member
         self.const_name_ = const_name
         super().__init__(**kwargs)
 
     def visit(
-            self,
-            target: Union[ModuleType, Type[Any]],
-            is_last: bool,
-            is_final: bool
+        self, target: Union[ModuleType, Type[Any]], is_last: bool, is_final: bool
     ) -> Generator[Optional[str], None, None]:
         """
         Visit a target (module or class) and yield its defines as transpiled
@@ -149,17 +146,13 @@ class DefaultDefineTranspiler(Transpiler):
         :return:
         """
         self.members = target  # type: ignore
-        yield from self.visit_members(
-            self.members,
-            is_last=is_last,
-            is_final=is_final
-        )
+        yield from self.visit_members(self.members, is_last=is_last, is_final=is_final)
 
     def start_visitation(self) -> Generator[Optional[str], None, None]:
         """
         Lay down the const variable declaration.
         """
-        yield f'const {self.const_name_} = {{'
+        yield f"const {self.const_name_} = {{"
         self.indent()
 
     def end_visitation(self) -> Generator[Optional[str], None, None]:
@@ -169,13 +162,10 @@ class DefaultDefineTranspiler(Transpiler):
         for _, override in self.overrides_.items():
             yield from override.transpile(self.context)
         self.outdent()
-        yield '};'
+        yield "};"
 
     def visit_members(
-            self,
-            members: Dict[str, Any],
-            is_last: bool,
-            is_final: bool
+        self, members: Dict[str, Any], is_last: bool, is_final: bool
     ) -> Generator[Optional[str], None, None]:
         """
         Visit the members of a class and yield their rendered javascript.
@@ -193,14 +183,11 @@ class DefaultDefineTranspiler(Transpiler):
                 name,
                 member,
                 is_last=(idx == len(members) and is_last),
-                is_final=(idx == len(members) and is_final)
+                is_final=(idx == len(members) and is_final),
             )
 
     def enter_class(
-            self,
-            cls: Type[Any],
-            is_last: bool,
-            is_final: bool
+        self, cls: Type[Any], is_last: bool, is_final: bool
     ) -> Generator[Optional[str], None, None]:
         """
         Enter a class and yield its rendered javascript.
@@ -212,17 +199,12 @@ class DefaultDefineTranspiler(Transpiler):
             at all.
         """
         self.members = cls  # type: ignore
-        yield f'{cls.__name__}: {{'
+        yield f"{cls.__name__}: {{"
         self.indent()
-        self.object_path_ += (
-            f'{"." if self.object_path_ else ""}{cls.__name__}'
-        )
+        self.object_path_ += f'{"." if self.object_path_ else ""}{cls.__name__}'
 
     def exit_class(
-            self,
-            cls: Type[Any],
-            is_last: bool,
-            is_final: bool
+        self, cls: Type[Any], is_last: bool, is_final: bool
     ) -> Generator[Optional[str], None, None]:
         """
         Exit a class laying down any closing braces.
@@ -234,15 +216,15 @@ class DefaultDefineTranspiler(Transpiler):
             at all.
         """
         self.outdent()
-        yield '},'
-        self.object_path_ = '.'.join(self.object_path_.split('.')[:-1])
+        yield "},"
+        self.object_path_ = ".".join(self.object_path_.split(".")[:-1])
 
     def visit_member(
         self,
         name: str,
         member: Any,
         is_last: bool = False,  # pylint: disable=unused-argument
-        is_final: bool = False  # pylint: disable=unused-argument
+        is_final: bool = False,  # pylint: disable=unused-argument
     ) -> Generator[Optional[str], None, None]:
         """
         Visit a member of a class and yield its rendered javascript.
@@ -257,15 +239,12 @@ class DefaultDefineTranspiler(Transpiler):
         self.object_path_ += f'{"." if self.object_path_ else ""}{name}'
         if self.object_path_ in self.overrides_:
             first = True
-            for line in self.transpile_override(
-                self.object_path_,
-                self.to_js(member)
-            ):
+            for line in self.transpile_override(self.object_path_, self.to_js(member)):
                 if first:
-                    yield f'{name}: {line}'
+                    yield f"{name}: {line}"
                     first = False
                 else:
                     yield line
         else:
-            yield f'{name}: {self.to_js(member)},'
-        self.object_path_ = '.'.join(self.object_path_.split('.')[:-1])
+            yield f"{name}: {self.to_js(member)},"
+        self.object_path_ = ".".join(self.object_path_.split(".")[:-1])

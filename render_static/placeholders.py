@@ -29,11 +29,11 @@ from typing import Any, Dict, Iterable, List, Optional, Type
 from django.urls import converters
 
 __all__ = [
-    'register_converter_placeholder',
-    'register_variable_placeholder',
-    'register_unnamed_placeholders',
-    'resolve_placeholders',
-    'resolve_unnamed_placeholders'
+    "register_converter_placeholder",
+    "register_variable_placeholder",
+    "register_unnamed_placeholders",
+    "resolve_placeholders",
+    "resolve_unnamed_placeholders",
 ]
 
 # DO NOT EXPAND THIS LIST LIGHTLY - for URLs with large numbers of arguments,
@@ -41,14 +41,14 @@ __all__ = [
 # where n is the number of defaults. URLs with large numbers of arguments
 # should be rare - but there is a complexity check that will throw an
 # exception when a maximum number of tries is reached
-ALWAYS_TRY_THESE = [0, 'a', 1, 'A', 'aaaaaaaa-aaaa-aaaa-aaaa-aaaaaaaaaaaa']
+ALWAYS_TRY_THESE = [0, "a", 1, "A", "aaaaaaaa-aaaa-aaaa-aaaa-aaaaaaaaaaaa"]
 
 converter_placeholders: Dict[Type, List] = {
     converters.IntConverter: [0],
-    converters.PathConverter: ['a'],
-    converters.SlugConverter: ['a'],
-    converters.StringConverter: ['a'],
-    converters.UUIDConverter: ['aaaaaaaa-aaaa-aaaa-aaaa-aaaaaaaaaaaa']
+    converters.PathConverter: ["a"],
+    converters.SlugConverter: ["a"],
+    converters.StringConverter: ["a"],
+    converters.UUIDConverter: ["aaaaaaaa-aaaa-aaaa-aaaa-aaaaaaaaaaaa"],
 }
 
 app_variable_placeholders: Dict[str, Dict[str, List]] = {}
@@ -57,10 +57,7 @@ app_unnamed_placeholders: Dict[str, Dict[str, List]] = {}
 unnamed_placeholders: Dict[str, List] = {}
 
 
-def register_converter_placeholder(
-        converter_type: Type,
-        placeholder: Any
-) -> None:
+def register_converter_placeholder(converter_type: Type, placeholder: Any) -> None:
     """
     Register a placeholder for the given converter type. This registry function
     is intended to allow placeholders to be registered for converters outside
@@ -72,8 +69,7 @@ def register_converter_placeholder(
     """
     if not isinstance(converter_type, type):
         raise ValueError(
-            f'converter_type should be of type `type`, got '
-            f'{type(converter_type)}!'
+            f"converter_type should be of type `type`, got " f"{type(converter_type)}!"
         )
 
     placeholders = converter_placeholders.setdefault(converter_type, [])
@@ -82,9 +78,7 @@ def register_converter_placeholder(
 
 
 def register_variable_placeholder(
-        var_name: str,
-        placeholder: Any,
-        app_name: Optional[str] = None
+    var_name: str, placeholder: Any, app_name: Optional[str] = None
 ) -> None:
     """
     Register a placeholder for a specific variable name and also optionally an
@@ -99,17 +93,15 @@ def register_variable_placeholder(
     if placeholder not in placeholders:
         placeholders.append(placeholder)
     if app_name:
-        placeholders = app_variable_placeholders.setdefault(
-            app_name, {}
-        ).setdefault(var_name, [])
+        placeholders = app_variable_placeholders.setdefault(app_name, {}).setdefault(
+            var_name, []
+        )
         if placeholder not in placeholders:
             placeholders.append(placeholder)
 
 
 def register_unnamed_placeholders(
-    url_name: str,
-    placeholders: List,
-    app_name: Optional[str] = None
+    url_name: str, placeholders: List, app_name: Optional[str] = None
 ) -> None:
     """
     Register a list of placeholders for a url_name and optionally an app_name
@@ -126,17 +118,13 @@ def register_unnamed_placeholders(
     if app_name:
         placeholder_lists = app_unnamed_placeholders.setdefault(
             app_name, {}
-        ).setdefault(
-            url_name, []
-        )
+        ).setdefault(url_name, [])
         if placeholders not in placeholder_lists:
             placeholder_lists.append(placeholders)
 
 
 def resolve_placeholders(
-        var_name: str,
-        app_name: Optional[str] = None,
-        converter: Optional[Type] = None
+    var_name: str, app_name: Optional[str] = None, converter: Optional[Type] = None
 ) -> Iterable:
     """
     Resolve placeholders for named variables that match the given lookup
@@ -148,8 +136,10 @@ def resolve_placeholders(
     :return: A list of placeholders to try
     """
 
-    placeholders = [] if not converter else (
-        [converter.placeholder] if hasattr(converter, 'placeholder') else []
+    placeholders = (
+        []
+        if not converter
+        else ([converter.placeholder] if hasattr(converter, "placeholder") else [])
     )
     if converter:
         placeholders.extend(converter_placeholders.get(converter, []))
@@ -164,9 +154,9 @@ def resolve_placeholders(
 
 
 def resolve_unnamed_placeholders(
-        url_name: str,
-        nargs: int,
-        app_name: Optional[str] = None,
+    url_name: str,
+    nargs: int,
+    app_name: Optional[str] = None,
 ) -> Iterable:
     """
     Resolve placeholders to use for a url with unnamed parameters based on the
@@ -186,19 +176,16 @@ def resolve_unnamed_placeholders(
             if len(candidate) == nargs:
                 for idx, arg in enumerate(candidate):
                     placeholders[idx].append(arg)
+
     if app_name:
-        add_candidates(
-            app_unnamed_placeholders.get(app_name, {}).get(url_name, [])
-        )
+        add_candidates(app_unnamed_placeholders.get(app_name, {}).get(url_name, []))
     add_candidates(unnamed_placeholders.get(url_name, []))
 
     for arg in placeholders:
-        arg.extend(
-            [always for always in ALWAYS_TRY_THESE if always not in arg]
-        )
+        arg.extend([always for always in ALWAYS_TRY_THESE if always not in arg])
 
     return placeholders
 
 
-register_variable_placeholder('app_label', 'site', app_name='admin')
-register_variable_placeholder('app_label', 'auth', app_name='admin')
+register_variable_placeholder("app_label", "site", app_name="admin")
+register_variable_placeholder("app_label", "auth", app_name="admin")

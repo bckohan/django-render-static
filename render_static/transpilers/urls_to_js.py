@@ -25,12 +25,12 @@ from render_static.placeholders import (
 from render_static.transpilers import ResolvedTranspilerTarget, Transpiler
 
 __all__ = [
-    'normalize_ns',
-    'build_tree',
-    'Substitute',
-    'URLTreeVisitor',
-    'SimpleURLWriter',
-    'ClassURLWriter'
+    "normalize_ns",
+    "build_tree",
+    "Substitute",
+    "URLTreeVisitor",
+    "SimpleURLWriter",
+    "ClassURLWriter",
 ]
 
 
@@ -40,22 +40,16 @@ def normalize_ns(namespaces: str) -> str:
     :param namespaces: The namespace string to normalize
     :return: The normalized version of the url path name
     """
-    return ':'.join([nmsp for nmsp in namespaces.split(':') if nmsp])
+    return ":".join([nmsp for nmsp in namespaces.split(":") if nmsp])
 
 
 def build_tree(
     patterns: Iterable[URLPattern],
     include: Optional[Iterable[str]] = None,
     exclude: Optional[Iterable[str]] = None,
-    app_name: Optional[str] = None
+    app_name: Optional[str] = None,
 ) -> Tuple[
-    Tuple[
-        Dict,
-        Dict,
-        Optional[str],
-        Optional[Union[RegexPattern, RoutePattern]]
-    ],
-    int
+    Tuple[Dict, Dict, Optional[str], Optional[Union[RegexPattern, RoutePattern]]], int
 ]:
     """
     Generate a tree from the url configuration where the branches are
@@ -102,32 +96,27 @@ def build_tree(
     return _prune_tree(
         _build_branch(
             patterns,
-            not includes or '' in includes,
+            not includes or "" in includes,
             ({}, {}, app_name, None),
             includes,
-            excludes
+            excludes,
         )
     )
 
 
 def _build_branch(  # pylint: disable=R0913
-        nodes: Iterable[URLPattern],
-        included: bool,
-        branch: Tuple[
-            Dict,
-            Dict,
-            Optional[str],
-            Optional[Union[RegexPattern, RoutePattern]]
-        ],
-        includes: Iterable[str],
-        excludes: Iterable[str],
-        namespace: Optional[str] = None,
-        qname: str = '',
-        app_name: Optional[str] = None,
-        route_pattern: Optional[Union[RegexPattern, RoutePattern]] = None
-) -> Tuple[
-    Dict, Dict, Optional[str], Optional[Union[RegexPattern, RoutePattern]]
-]:
+    nodes: Iterable[URLPattern],
+    included: bool,
+    branch: Tuple[
+        Dict, Dict, Optional[str], Optional[Union[RegexPattern, RoutePattern]]
+    ],
+    includes: Iterable[str],
+    excludes: Iterable[str],
+    namespace: Optional[str] = None,
+    qname: str = "",
+    app_name: Optional[str] = None,
+    route_pattern: Optional[Union[RegexPattern, RoutePattern]] = None,
+) -> Tuple[Dict, Dict, Optional[str], Optional[Union[RegexPattern, RoutePattern]]]:
     """
     Recursively walk the branch and add it's subtree to the larger tree.
 
@@ -152,7 +141,7 @@ def _build_branch(  # pylint: disable=R0913
 
     for pattern in nodes:
         if isinstance(pattern, URLPattern):
-            name = getattr(pattern, 'name', None)
+            name = getattr(pattern, "name", None)
             if name is None:
                 continue
 
@@ -161,8 +150,11 @@ def _build_branch(  # pylint: disable=R0913
             # if we aren't implicitly included we must be explicitly included
             # and not explicitly excluded - note if we were implicitly excluded
             # we wouldn't get this far
-            if (not included and url_qname not in includes or
-                    (excludes and url_qname in excludes)):
+            if (
+                not included
+                and url_qname not in includes
+                or (excludes and url_qname in excludes)
+            ):
                 continue
 
             branch[1].setdefault(pattern.name, []).append(pattern)
@@ -186,37 +178,22 @@ def _build_branch(  # pylint: disable=R0913
                 app_name=pattern.app_name,
                 route_pattern=(
                     pattern.pattern
-                    if (
-                        isinstance(
-                            pattern.pattern, (RoutePattern, RegexPattern)
-                        )
-                    )
+                    if (isinstance(pattern.pattern, (RoutePattern, RegexPattern)))
                     else None
-                )
+                ),
             )
         else:
             raise NotImplementedError(
-                f'Unknown pattern type: {type(pattern)}'
+                f"Unknown pattern type: {type(pattern)}"
             )  # pragma: no cover
 
     return branch
 
 
 def _prune_tree(
-        tree: Tuple[
-            Dict,
-            Dict,
-            Optional[str],
-            Optional[Union[RegexPattern, RoutePattern]]
-        ]
+    tree: Tuple[Dict, Dict, Optional[str], Optional[Union[RegexPattern, RoutePattern]]]
 ) -> Tuple[
-    Tuple[
-        Dict,
-        Dict,
-        Optional[str],
-        Optional[Union[RegexPattern, RoutePattern]]
-    ],
-    int
+    Tuple[Dict, Dict, Optional[str], Optional[Union[RegexPattern, RoutePattern]]], int
 ]:
     """
     Remove any branches that don't have any URLs under them.
@@ -271,7 +248,7 @@ class Substitute:
         :return: The JavaScript as a string
         """
         if isinstance(self.arg, int):
-            return f'${{args[{self.arg}]}}'
+            return f"${{args[{self.arg}]}}"
         return f'${{kwargs["{self.arg}"]}}'
 
 
@@ -288,8 +265,8 @@ class BaseURLTranspiler(Transpiler):
         :param target:
         :return:
         """
-        if hasattr(target, 'urlpatterns'):
-            for pattern in getattr(target, 'urlpatterns'):
+        if hasattr(target, "urlpatterns"):
+            for pattern in getattr(target, "urlpatterns"):
                 if not isinstance(pattern, (URLResolver, URLPattern)):
                     return False
             return True
@@ -297,10 +274,7 @@ class BaseURLTranspiler(Transpiler):
 
     @abstractmethod
     def visit(
-        self,
-        target: ResolvedTranspilerTarget,
-        is_last: bool,
-        is_final: bool
+        self, target: ResolvedTranspilerTarget, is_last: bool, is_final: bool
     ) -> Generator[Optional[str], None, None]:
         """
         Deriving url transpilers must implement this method.
@@ -357,25 +331,22 @@ class URLTreeVisitor(BaseURLTranspiler):
         """
         return {
             **BaseURLTranspiler.context.fget(self),  # type: ignore
-            'include': self.include_,
-            'exclude': self.exclude_,
+            "include": self.include_,
+            "exclude": self.exclude_,
         }
 
     def __init__(
-            self,
-            include: Optional[Iterable[str]] = include_,
-            exclude: Optional[Iterable[str]] = exclude_,
-            **kwargs
+        self,
+        include: Optional[Iterable[str]] = include_,
+        exclude: Optional[Iterable[str]] = exclude_,
+        **kwargs,
     ):
         self.include_ = include
         self.exclude_ = exclude
         super().__init__(**kwargs)
 
     @abstractmethod
-    def enter_namespace(
-            self,
-            namespace
-    ) -> Generator[Optional[str], None, None]:
+    def enter_namespace(self, namespace) -> Generator[Optional[str], None, None]:
         """
         Walking down the url tree, the visitor has entered the given namespace.
         Deriving visitors must implement.
@@ -386,10 +357,7 @@ class URLTreeVisitor(BaseURLTranspiler):
         """
 
     @abstractmethod
-    def exit_namespace(
-            self,
-            namespace
-    ) -> Generator[Optional[str], None, None]:
+    def exit_namespace(self, namespace) -> Generator[Optional[str], None, None]:
         """
         Walking down the url tree, the visitor has exited the given namespace.
         Deriving visitors must implement.
@@ -400,12 +368,12 @@ class URLTreeVisitor(BaseURLTranspiler):
         """
 
     def visit_pattern(  # pylint: disable=R0914, R0915, R0912
-            self,
-            endpoint: URLPattern,
-            qname: str,
-            app_name: Optional[str],
-            route: List[RoutePattern],
-            num_patterns: int
+        self,
+        endpoint: URLPattern,
+        qname: str,
+        app_name: Optional[str],
+        route: List[RoutePattern],
+        num_patterns: int,
     ) -> Generator[Optional[str], None, None]:
         """
         Visit a pattern. Translates the pattern into a path component string
@@ -428,60 +396,52 @@ class URLTreeVisitor(BaseURLTranspiler):
         :except URLGenerationFailed: When no successful placeholders are found
             for the given pattern
         """
+
         # first, pull out any named or unnamed parameters that comprise this
         # pattern
-        def get_params(pattern: Union[RoutePattern, RegexPattern]) -> Dict[
-            str, Any
-        ]:
+        def get_params(pattern: Union[RoutePattern, RegexPattern]) -> Dict[str, Any]:
             if isinstance(pattern, RoutePattern):
                 return {
-                    var: {
-                        'converter': converter.__class__,
-                        'app_name': app_name
-                    } for var, converter in pattern.converters.items()
+                    var: {"converter": converter.__class__, "app_name": app_name}
+                    for var, converter in pattern.converters.items()
                 }
             if isinstance(pattern, RegexPattern):
                 return {
-                    var: {
-                        'app_name': app_name
-                    } for var in pattern.regex.groupindex.keys()
+                    var: {"app_name": app_name}
+                    for var in pattern.regex.groupindex.keys()
                 }
             raise URLGenerationFailed(  # pragma: no cover
-                f'Unrecognized pattern type: {type(pattern)}'
+                f"Unrecognized pattern type: {type(pattern)}"
             )
 
         params = get_params(endpoint.pattern)
 
         for rt_pattern in route:
-            params = {
-                **params,
-                **get_params(rt_pattern)
-            }
+            params = {**params, **get_params(rt_pattern)}
 
         # does this url have unnamed or named params?
         unnamed = False
         if not params and endpoint.pattern.regex.groups > 0:
             unnamed = endpoint.pattern.regex.groups
 
-        composite_regex = re.compile(''.join([
-            pattern.regex.pattern.lstrip('^').rstrip('$')
-            for pattern in [
-                *route,
-                endpoint.pattern
-            ]
-        ]))
+        composite_regex = re.compile(
+            "".join(
+                [
+                    pattern.regex.pattern.lstrip("^").rstrip("$")
+                    for pattern in [*route, endpoint.pattern]
+                ]
+            )
+        )
 
         # if we have parameters, resolve the placeholders for them
         if params or unnamed or endpoint.default_args:  # pylint: disable=R1702
             if unnamed:
                 resolved_placeholders = itertools.product(
                     *resolve_unnamed_placeholders(
-                        url_name=endpoint.name,
-                        nargs=unnamed,
-                        app_name=app_name
+                        url_name=endpoint.name, nargs=unnamed, app_name=app_name
                     ),
                 )
-                non_capturing = str(endpoint.pattern.regex).count('(?:')
+                non_capturing = str(endpoint.pattern.regex).count("(?:")
                 if non_capturing > 0:
                     # handle the corner case where there might be some
                     # non-capturing groups driving up the number of expected
@@ -490,22 +450,22 @@ class URLTreeVisitor(BaseURLTranspiler):
                         resolved_placeholders,
                         *resolve_unnamed_placeholders(
                             url_name=endpoint.name,
-                            nargs=unnamed-non_capturing,
-                            app_name=app_name
-                        )
+                            nargs=unnamed - non_capturing,
+                            app_name=app_name,
+                        ),
                     )
             else:
-                resolved_placeholders = itertools.product(*[
-                    resolve_placeholders(
-                        param,
-                        **lookup
-                    ) for param, lookup in params.items()
-                ])
+                resolved_placeholders = itertools.product(
+                    *[
+                        resolve_placeholders(param, **lookup)
+                        for param, lookup in params.items()
+                    ]
+                )
 
             # attempt to reverse the pattern with our list of potential
             # placeholders
             tries = 0
-            limit = getattr(settings, 'RENDER_STATIC_REVERSAL_LIMIT', 2**15)
+            limit = getattr(settings, "RENDER_STATIC_REVERSAL_LIMIT", 2**15)
             for placeholders in resolved_placeholders:
                 # The downside of the guess and check mechanism is that its an
                 # O(n^p) operation where n is the number of candidate
@@ -517,31 +477,26 @@ class URLTreeVisitor(BaseURLTranspiler):
                 # will ensure a quick and successful exit of this process
                 if tries > limit:
                     raise ReversalLimitHit(
-                        f'The maximum number of reversal attempts ({limit}) '
-                        f'has been hit attempting to reverse pattern '
-                        f'{endpoint}. Please register more specific '
-                        f'placeholders.'
+                        f"The maximum number of reversal attempts ({limit}) "
+                        f"has been hit attempting to reverse pattern "
+                        f"{endpoint}. Please register more specific "
+                        f"placeholders."
                     )
                 tries += 1
                 kwargs = {
-                    param: placeholders[idx]
-                    for idx, param in enumerate(params.keys())
+                    param: placeholders[idx] for idx, param in enumerate(params.keys())
                 }
                 try:
                     if unnamed:
                         placeholder_url = reverse(qname, args=placeholders)
                     else:
                         placeholder_url = reverse(
-                            qname,
-                            kwargs={
-                                **kwargs,
-                                **(endpoint.default_args or {})
-                            }
+                            qname, kwargs={**kwargs, **(endpoint.default_args or {})}
                         )
 
                     replacements = []
 
-                    mtch = composite_regex.search(placeholder_url.lstrip('/'))
+                    mtch = composite_regex.search(placeholder_url.lstrip("/"))
 
                     if mtch:
                         # there might be group matches that aren't part of
@@ -549,26 +504,23 @@ class URLTreeVisitor(BaseURLTranspiler):
                         # make sure we aren't subbing spans that aren't
                         # kwargs
                         grp_mp = {
-                            idx: var for var, idx in
-                            composite_regex.groupindex.items()
+                            idx: var for var, idx in composite_regex.groupindex.items()
                         }
 
                         for idx, value in enumerate(  # pylint: disable=W0612
-                            mtch.groups(),
-                            start=1
+                            mtch.groups(), start=1
                         ):
                             if unnamed:
                                 replacements.append(
-                                    (mtch.span(idx), Substitute(idx-1))
+                                    (mtch.span(idx), Substitute(idx - 1))
                                 )
                             else:
                                 # if the regex has non-capturing groups we
                                 # need to filter those out
                                 if idx in grp_mp:
-                                    replacements.append((
-                                        mtch.span(idx),
-                                        Substitute(grp_mp[idx])
-                                    ))
+                                    replacements.append(
+                                        (mtch.span(idx), Substitute(grp_mp[idx]))
+                                    )
 
                         url_idx = 0
                         path = []
@@ -577,25 +529,26 @@ class URLTreeVisitor(BaseURLTranspiler):
                                 path.append(placeholder_url[url_idx])
                                 url_idx += 1
                             path.append(rpl[1])
-                            url_idx += (rpl[0][1] - rpl[0][0])
+                            url_idx += rpl[0][1] - rpl[0][0]
                         if url_idx < len(placeholder_url):
                             path.append(placeholder_url[url_idx:])
 
                         yield from self.visit_path(
                             path,
                             list(kwargs.keys()),
-                            endpoint.default_args if num_patterns > 1 else None
+                            endpoint.default_args if num_patterns > 1 else None,
                         )
 
                     else:
                         # if we're here it means this path was overridden
                         # further down the tree
                         yield (
-                            f'/* Path {composite_regex.pattern} overruled '
-                            'with: ' +
-                            (
-                                f'args={unnamed} */' if unnamed
-                                else f'kwargs={list(params.keys())} */'
+                            f"/* Path {composite_regex.pattern} overruled "
+                            "with: "
+                            + (
+                                f"args={unnamed} */"
+                                if unnamed
+                                else f"kwargs={list(params.keys())} */"
                             )
                         )  # pragma: no cover
                     return
@@ -604,7 +557,7 @@ class URLTreeVisitor(BaseURLTranspiler):
                     continue
         else:
             # this is a simple url with no params
-            if not composite_regex.search(reverse(qname).lstrip('/')):
+            if not composite_regex.search(reverse(qname).lstrip("/")):
                 yield f"/* Path '{composite_regex.pattern}' overruled */"
             else:
                 yield from self.visit_path([reverse(qname)], [])
@@ -618,15 +571,16 @@ class URLTreeVisitor(BaseURLTranspiler):
                 endpoint.pattern.regex.groupindex
             )
             if unaccounted > 0:
-                if unaccounted - str(endpoint.pattern.regex).count('(?:') > 0:
-                    yield '/* this path may not be reversible */'
+                if unaccounted - str(endpoint.pattern.regex).count("(?:") > 0:
+                    yield "/* this path may not be reversible */"
                     return
 
         raise URLGenerationFailed(
-            f'Unable to generate url for {qname} with {unnamed} arguments '
-            if unnamed else f'Unable to generate url for {qname} with kwargs: '
-            f'{params} using pattern {endpoint}! You may need to register '
-            f'placeholders for this url\'s arguments'
+            f"Unable to generate url for {qname} with {unnamed} arguments "
+            if unnamed
+            else f"Unable to generate url for {qname} with kwargs: "
+            f"{params} using pattern {endpoint}! You may need to register "
+            f"placeholders for this url's arguments"
         )
 
     @abstractmethod
@@ -646,10 +600,7 @@ class URLTreeVisitor(BaseURLTranspiler):
         """
 
     @abstractmethod
-    def enter_path_group(
-            self,
-            qname: str
-    ) -> Generator[Optional[str], None, None]:
+    def enter_path_group(self, qname: str) -> Generator[Optional[str], None, None]:
         """
         Visit one or more path(s) all referred to by the same fully qualified
         name. Deriving classes must implement.
@@ -659,10 +610,7 @@ class URLTreeVisitor(BaseURLTranspiler):
         """
 
     @abstractmethod
-    def exit_path_group(
-            self,
-            qname: str
-    ) -> Generator[Optional[str], None, None]:
+    def exit_path_group(self, qname: str) -> Generator[Optional[str], None, None]:
         """
         End visitation to one or more path(s) all referred to by the same fully
         qualified name. Deriving classes must implement.
@@ -673,10 +621,10 @@ class URLTreeVisitor(BaseURLTranspiler):
 
     @abstractmethod
     def visit_path(
-            self,
-            path: List[Union[Substitute, str]],
-            kwargs: List[str],
-            defaults: Optional[Dict[str, Any]] = None
+        self,
+        path: List[Union[Substitute, str]],
+        kwargs: List[str],
+        defaults: Optional[Dict[str, Any]] = None,
     ) -> Generator[Optional[str], None, None]:
         """
         Visit a singular realization of a path into components. This is called
@@ -697,7 +645,7 @@ class URLTreeVisitor(BaseURLTranspiler):
         nodes: List[URLPattern],
         qname: str,
         app_name: Optional[str] = None,
-        route: Optional[List[RoutePattern]] = None
+        route: Optional[List[RoutePattern]] = None,
     ) -> Generator[Optional[str], None, None]:
         """
         Convert a list of URLPatterns all corresponding to the same qualified
@@ -715,11 +663,7 @@ class URLTreeVisitor(BaseURLTranspiler):
         def impl() -> Generator[Optional[str], None, None]:
             for pattern in reversed(nodes):
                 yield from self.visit_pattern(
-                    pattern,
-                    qname,
-                    app_name,
-                    route or [],
-                    num_patterns=len(nodes)
+                    pattern, qname, app_name, route or [], num_patterns=len(nodes)
                 )
 
         if qname in self.overrides_:
@@ -727,12 +671,12 @@ class URLTreeVisitor(BaseURLTranspiler):
                 qname,
                 impl(),
                 {
-                    'qname': qname,
-                    'app_name': app_name,
-                    'route': route,
-                    'patterns': nodes,
-                    'num_patterns': len(nodes)
-                }
+                    "qname": qname,
+                    "app_name": app_name,
+                    "route": route,
+                    "patterns": nodes,
+                    "num_patterns": len(nodes),
+                },
             )
         else:
             yield from impl()
@@ -742,14 +686,11 @@ class URLTreeVisitor(BaseURLTranspiler):
     def visit_branch(
         self,
         branch: Tuple[
-            Dict,
-            Dict,
-            Optional[str],
-            Optional[Union[RegexPattern, RoutePattern]]
+            Dict, Dict, Optional[str], Optional[Union[RegexPattern, RoutePattern]]
         ],
         namespace: Optional[str] = None,
-        parent_qname: str = '',
-        route: Optional[List[RoutePattern]] = None
+        parent_qname: str = "",
+        route: Optional[List[RoutePattern]] = None,
     ) -> Generator[Optional[str], None, None]:
         """
         Walk the tree, writing javascript for URLs indexed by their nested
@@ -773,7 +714,7 @@ class URLTreeVisitor(BaseURLTranspiler):
                 nodes,
                 f"{f'{parent_qname}:' if parent_qname else ''}{name}",
                 branch[2],
-                route
+                route,
             )
 
         if branch[0]:
@@ -781,18 +722,12 @@ class URLTreeVisitor(BaseURLTranspiler):
                 brch = branch[0][nmsp]
                 yield from self.enter_namespace(nmsp)
                 yield from self.visit_branch(
-                    brch,
-                    nmsp,
-                    parent_qname,
-                    [*route, *([brch[3]] if brch[3] else [])]
+                    brch, nmsp, parent_qname, [*route, *([brch[3]] if brch[3] else [])]
                 )
                 yield from self.exit_namespace(nmsp)
 
     def visit(
-        self,
-        target: ResolvedTranspilerTarget,
-        is_last: bool,
-        is_final: bool
+        self, target: ResolvedTranspilerTarget, is_last: bool, is_final: bool
     ) -> Generator[Optional[str], None, None]:
         """
         Visit the nodes of the URL tree, yielding JavaScript where needed.
@@ -809,10 +744,10 @@ class URLTreeVisitor(BaseURLTranspiler):
         self.indent()
         yield from self.visit_branch(
             build_tree(
-                patterns=getattr(target, 'urlpatterns'),
+                patterns=getattr(target, "urlpatterns"),
                 include=self.include_,
                 exclude=self.exclude_,
-                app_name=getattr(target, 'app_name', None)
+                app_name=getattr(target, "app_name", None),
             )[0]
         )
         self.outdent()
@@ -827,10 +762,9 @@ class URLTreeVisitor(BaseURLTranspiler):
         :return: The JavaScript substitution code that will realize a path with
             its arguments
         """
-        return ''.join([
-            comp if isinstance(comp, str) else
-            comp.to_str() for comp in path
-        ])
+        return "".join(
+            [comp if isinstance(comp, str) else comp.to_str() for comp in path]
+        )
 
 
 class SimpleURLWriter(URLTreeVisitor):
@@ -854,7 +788,7 @@ class SimpleURLWriter(URLTreeVisitor):
 
         urls.namespace.path_name({'arg1': 1, 'arg2': 'a'});
 
-    In addition to the base parameters the configuration parameters that 
+    In addition to the base parameters the configuration parameters that
     control the JavaScript output include:
 
         * *raise_on_not_found*
@@ -879,14 +813,13 @@ class SimpleURLWriter(URLTreeVisitor):
         """
         return {
             **URLTreeVisitor.context.fget(self),  # type: ignore
-            'raise_on_not_found': self.raise_on_not_found_,
+            "raise_on_not_found": self.raise_on_not_found_,
         }
 
     def __init__(self, **kwargs) -> None:
         super().__init__(**kwargs)
         self.raise_on_not_found_ = kwargs.pop(
-            'raise_on_not_found',
-            self.raise_on_not_found_
+            "raise_on_not_found", self.raise_on_not_found_
         )
 
     def init_visit(self) -> Generator[Optional[str], None, None]:
@@ -906,10 +839,7 @@ class SimpleURLWriter(URLTreeVisitor):
         for _, override in self.overrides_.items():
             yield from override.transpile(self.context)
 
-    def enter_namespace(
-            self,
-            namespace: str
-    ) -> Generator[Optional[str], None, None]:
+    def enter_namespace(self, namespace: str) -> Generator[Optional[str], None, None]:
         """
         Start the namespace object.
 
@@ -920,10 +850,7 @@ class SimpleURLWriter(URLTreeVisitor):
         yield f'"{namespace}": {{'
         self.indent()
 
-    def exit_namespace(
-            self,
-            namespace: str
-    ) -> Generator[Optional[str], None, None]:
+    def exit_namespace(self, namespace: str) -> Generator[Optional[str], None, None]:
         """
         End the namespace object.
 
@@ -932,12 +859,9 @@ class SimpleURLWriter(URLTreeVisitor):
         :yield: JavaScript ending the namespace object structure.
         """
         self.outdent()
-        yield '},'
+        yield "},"
 
-    def enter_path_group(
-            self,
-            qname: str
-    ) -> Generator[Optional[str], None, None]:
+    def enter_path_group(self, qname: str) -> Generator[Optional[str], None, None]:
         """
         Start of the reversal function for a collection of paths of the given
         qname.
@@ -947,13 +871,10 @@ class SimpleURLWriter(URLTreeVisitor):
         """
         yield f'"{qname.split(":")[-1]}": (options={{}}, args=[]) => {{'
         self.indent()
-        yield 'const kwargs = ((options.kwargs || null) || options) || {};'
-        yield 'args = ((options.args || null) || args) || [];'
+        yield "const kwargs = ((options.kwargs || null) || options) || {};"
+        yield "args = ((options.args || null) || args) || [];"
 
-    def exit_path_group(
-            self,
-            qname: str
-    ) -> Generator[Optional[str], None, None]:
+    def exit_path_group(self, qname: str) -> Generator[Optional[str], None, None]:
         """
         Close out the function for the given qname. If we're configured to
         throw an exception if no path reversal was found, we do that here
@@ -963,16 +884,18 @@ class SimpleURLWriter(URLTreeVisitor):
         :yield: LoC for the close out of the JavaScript reversal function
         """
         if self.raise_on_not_found_:
-            yield f'throw new TypeError("No reversal available for ' \
-                  f'parameters at path: {qname}");'
+            yield (
+                f'throw new TypeError("No reversal available for '
+                f'parameters at path: {qname}");'
+            )
         self.outdent()
-        yield '},'
+        yield "},"
 
     def visit_path(
-            self,
-            path: List[Union[Substitute, str]],
-            kwargs: List[str],
-            defaults: Optional[Dict[str, Any]] = None
+        self,
+        path: List[Union[Substitute, str]],
+        kwargs: List[str],
+        defaults: Optional[Dict[str, Any]] = None,
     ) -> Generator[Optional[str], None, None]:
         """
         Convert a list of path components into JavaScript reverse function. The
@@ -987,27 +910,23 @@ class SimpleURLWriter(URLTreeVisitor):
         :yield: The JavaScript lines of code
         """
         if len(path) == 1:
-            yield 'if (Object.keys(kwargs).length === 0 && args.length === 0)'
+            yield "if (Object.keys(kwargs).length === 0 && args.length === 0)"
             self.indent()
             yield f'return "/{path[0].lstrip("/")}";'  # type: ignore
             self.outdent()
         elif len(kwargs) == 0:
-            nargs = len([
-                comp for comp in path if isinstance(comp, Substitute)
-            ])
-            quote = '`'
-            yield f'if (args.length === {nargs})'
+            nargs = len([comp for comp in path if isinstance(comp, Substitute)])
+            quote = "`"
+            yield f"if (args.length === {nargs})"
             self.indent()
             yield f'return {quote}/{self.path_join(path).lstrip("/")}{quote};'
             self.outdent()
         else:
-            opts_str = ",".join(
-                [self.to_javascript(param) for param in kwargs]
-            )
+            opts_str = ",".join([self.to_javascript(param) for param in kwargs])
             yield (
-                f'if (Object.keys(kwargs).length === {len(kwargs)} && '
-                f'[{opts_str}].every(value => '
-                f'kwargs.hasOwnProperty(value)))'
+                f"if (Object.keys(kwargs).length === {len(kwargs)} && "
+                f"[{opts_str}].every(value => "
+                f"kwargs.hasOwnProperty(value)))"
             )
             self.indent()
             yield f'return `/{self.path_join(path).lstrip("/")}`;'
@@ -1038,7 +957,7 @@ class ClassURLWriter(URLTreeVisitor):
         const urls = new URLResolver();
         urls.reverse('namespace:path_name', {'arg1': 1, 'arg2': 'a'});
 
-    In addition to the base parameters the configuration parameters that 
+    In addition to the base parameters the configuration parameters that
     control the JavaScript output include:
 
         * *class_name*
@@ -1055,7 +974,7 @@ class ClassURLWriter(URLTreeVisitor):
         params
     """
 
-    class_name_ = 'URLResolver'
+    class_name_ = "URLResolver"
     raise_on_not_found_ = True
     export_ = False
 
@@ -1065,25 +984,24 @@ class ClassURLWriter(URLTreeVisitor):
         The template render context passed to overrides. In addition to
         :attr:`render_static.transpilers.urls_to_js.URLTreeVisitor.context`.
         This includes:
-            
+
             - **class_name**: The name of the JavaScript class
             - **raise_on_not_found**: Boolean, True if an exception should be
               raised when no reversal is found, default: True
         """
         return {
             **URLTreeVisitor.context.fget(self),  # type: ignore
-            'class_name': self.class_name_,
-            'raise_on_not_found': self.raise_on_not_found_,
+            "class_name": self.class_name_,
+            "raise_on_not_found": self.raise_on_not_found_,
         }
 
     def __init__(self, **kwargs) -> None:
         super().__init__(**kwargs)
-        self.class_name_ = kwargs.pop('class_name', self.class_name_)
+        self.class_name_ = kwargs.pop("class_name", self.class_name_)
         self.raise_on_not_found_ = kwargs.pop(
-            'raise_on_not_found',
-            self.raise_on_not_found_
+            "raise_on_not_found", self.raise_on_not_found_
         )
-        self.export_ = kwargs.pop('export', self.export_)
+        self.export_ = kwargs.pop("export", self.export_)
 
     def class_jdoc(self) -> Generator[Optional[str], None, None]:
         """
@@ -1105,7 +1023,9 @@ class ClassURLWriter(URLTreeVisitor):
          *      query parameters in the reversed url.
          *
          * @class
-         */""".split('\n'):
+         */""".split(
+            "\n"
+        ):
             yield comment_line[8:]
 
     def constructor_jdoc(self) -> Generator[Optional[str], None, None]:
@@ -1120,7 +1040,9 @@ class ClassURLWriter(URLTreeVisitor):
          * @param {Object} options - The options object.
          * @param {string} options.namespace - When provided, namespace will
          *     prefix all reversed paths with the given namespace.
-         */""".split('\n'):
+         */""".split(
+            "\n"
+        ):
             yield comment_line[8:]
 
     def match_jdoc(self) -> Generator[Optional[str], None, None]:
@@ -1140,7 +1062,9 @@ class ClassURLWriter(URLTreeVisitor):
          * @param {string[]} expected - An array of expected arguments.
          * @param {Object.<string, string>} defaults - An object mapping 
          *     default arguments to their values.
-         */""".split('\n'):
+         */""".split(
+            "\n"
+        ):
             yield comment_line[8:]
 
     def reverse_jdoc(self) -> Generator[Optional[str], None, None]:
@@ -1163,7 +1087,9 @@ class ClassURLWriter(URLTreeVisitor):
          *   positional arguments.
          * @param {Object.<string, string|string[]>} options.query - URL query
          *   parameters to add to the end of the reversed url.
-         */""".split('\n'):
+         */""".split(
+            "\n"
+        ):
             yield comment_line[8:]
 
     def constructor(self) -> Generator[Optional[str], None, None]:
@@ -1171,37 +1097,36 @@ class ClassURLWriter(URLTreeVisitor):
         The constructor() function.
         :yield: The JavaScript jdoc comment lines and constructor() function.
         """
+
         def impl() -> Generator[str, None, None]:
             """constructor default implementation"""
-            yield 'this.options = options || {};'
+            yield "this.options = options || {};"
             yield 'if (this.options.hasOwnProperty("namespace")) {'
             self.indent()
-            yield 'this.namespace = this.options.namespace;'
+            yield "this.namespace = this.options.namespace;"
             yield 'if (!this.namespace.endsWith(":")) {'
             self.indent()
             yield 'this.namespace += ":";'
             self.outdent()
-            yield '}'
+            yield "}"
             self.outdent()
-            yield '} else {'
+            yield "} else {"
             self.indent()
             yield 'this.namespace = "";'
             self.outdent()
-            yield '}'
+            yield "}"
 
-        if 'constructor' in self.overrides_:
-            yield from self.transpile_override('constructor', impl())
+        if "constructor" in self.overrides_:
+            yield from self.transpile_override("constructor", impl())
         else:
             yield from self.constructor_jdoc()
-            yield 'constructor(options=null) {'
+            yield "constructor(options=null) {"
             self.indent()
             yield from impl()
             self.outdent()
-            yield '}'
+            yield "}"
 
-    def deep_equal(
-            self
-    ) -> Generator[Optional[str], None, None]:  # pragma: no cover
+    def deep_equal(self) -> Generator[Optional[str], None, None]:  # pragma: no cover
         """
         The recursive deepEqual function.
         :yield: The JavaScript jdoc comment lines and deepEqual function.
@@ -1209,38 +1134,35 @@ class ClassURLWriter(URLTreeVisitor):
 
         def impl() -> Generator[str, None, None]:
             """deepEqual default implementation"""
-            yield 'if (!(this.isObject(object1) && this.isObject(object2))) {'
+            yield "if (!(this.isObject(object1) && this.isObject(object2))) {"
             self.indent()
-            yield 'return object1 === object2;'
+            yield "return object1 === object2;"
             self.outdent()
-            yield '}'
-            yield 'const keys1 = Object.keys(object1);'
-            yield 'const keys2 = Object.keys(object2);'
-            yield 'if (keys1.length !== keys2.length) {'
+            yield "}"
+            yield "const keys1 = Object.keys(object1);"
+            yield "const keys2 = Object.keys(object2);"
+            yield "if (keys1.length !== keys2.length) {"
             self.indent()
-            yield 'return false;'
+            yield "return false;"
             self.outdent()
-            yield '}'
-            yield 'for (let key of keys1) {'
+            yield "}"
+            yield "for (let key of keys1) {"
             self.indent()
-            yield 'const val1 = object1[key];'
-            yield 'const val2 = object2[key];'
-            yield (
-                'const areObjects = this.isObject(val1) && '
-                'this.isObject(val2);'
-            )
-            yield 'if ('
+            yield "const val1 = object1[key];"
+            yield "const val2 = object2[key];"
+            yield "const areObjects = this.isObject(val1) && this.isObject(val2);"
+            yield "if ("
             self.indent()
-            yield '(areObjects && !this.deepEqual(val1, val2)) ||'
-            yield '(!areObjects && val1 !== val2)'
-            yield ') { return false; }'
+            yield "(areObjects && !this.deepEqual(val1, val2)) ||"
+            yield "(!areObjects && val1 !== val2)"
+            yield ") { return false; }"
             self.outdent()
-            yield '}'
+            yield "}"
             self.outdent()
-            yield 'return true;'
+            yield "return true;"
 
-        if 'deepEqual' in self.overrides_:
-            yield from self.transpile_override('deepEqual', impl())
+        if "deepEqual" in self.overrides_:
+            yield from self.transpile_override("deepEqual", impl())
         else:
             for comment_line in """
             /**
@@ -1249,53 +1171,56 @@ class ClassURLWriter(URLTreeVisitor):
              *
              * @param {Object} object1 - The first object to compare.
              * @param {Object} object2 - The second object to compare.
-             */""".split('\n'):
+             */""".split(
+                "\n"
+            ):
                 yield comment_line[12:]
-            yield 'deepEqual(object1, object2) {'
+            yield "deepEqual(object1, object2) {"
             self.indent()
             yield from impl()
             self.outdent()
-            yield '}'
+            yield "}"
 
-    def is_object(
-            self
-    ) -> Generator[Optional[str], None, None]:  # pragma: no cover
+    def is_object(self) -> Generator[Optional[str], None, None]:  # pragma: no cover
         """
         The isObject() function.
         :yield: The JavaScript jdoc comment lines and isObject function.
         """
         impl = 'return object != null && typeof object === "object";'
-        if 'isObject' in self.overrides_:
-            yield from self.transpile_override('isObject', impl)
+        if "isObject" in self.overrides_:
+            yield from self.transpile_override("isObject", impl)
         else:
             for comment_line in """
             /**
              * Given a variable, return true if it is an object.
              *
              * @param {Object} object - The variable to check.
-             */""".split('\n'):
+             */""".split(
+                "\n"
+            ):
                 yield comment_line[12:]
-            yield 'isObject(object) {'
+            yield "isObject(object) {"
             self.indent()
             yield impl
             self.outdent()
-            yield '}'
+            yield "}"
 
     def match(self) -> Generator[Optional[str], None, None]:
         """
         The #match() function.
         :yield: The JavaScript jdoc comment lines and #match() function.
         """
+
         def impl() -> Generator[str, None, None]:
             """match default implementation"""
-            yield 'if (defaults) {'
+            yield "if (defaults) {"
             self.indent()
-            yield 'kwargs = Object.assign({}, kwargs);'
-            yield 'for (const [key, val] of Object.entries(defaults)) {'
+            yield "kwargs = Object.assign({}, kwargs);"
+            yield "for (const [key, val] of Object.entries(defaults)) {"
             self.indent()
-            yield 'if (kwargs.hasOwnProperty(key)) {'
+            yield "if (kwargs.hasOwnProperty(key)) {"
             self.indent()
-            if DJANGO_VERSION[0:2] >= (4,1):  # pragma: no cover
+            if DJANGO_VERSION[0:2] >= (4, 1):  # pragma: no cover
                 # there was a change in Django 4.1 that seems to coerce kwargs
                 # given to the default kwarg type of the same name if one
                 # exists for the purposes of reversal. Thus 1 will == '1'
@@ -1306,122 +1231,117 @@ class ClassURLWriter(URLTreeVisitor):
                 # and extra_kwargs - that this wasn't caught in Django's CI is
                 # evidence that previous behavior wasn't considered spec.
                 yield (
-                    'if (kwargs[key] !== val && '
-                    'JSON.stringify(kwargs[key]) !== JSON.stringify(val) '
-                    '&& !expected.includes(key)) '
-                    '{ return false; }'
+                    "if (kwargs[key] !== val && "
+                    "JSON.stringify(kwargs[key]) !== JSON.stringify(val) "
+                    "&& !expected.includes(key)) "
+                    "{ return false; }"
                 )
             else:  # pragma: no cover
-                yield (
-                    'if (!this.deepEqual(kwargs[key], val)) { return false; }'
-                )
-            yield (
-                'if (!expected.includes(key)) '
-                '{ delete kwargs[key]; }'
-            )
+                yield "if (!this.deepEqual(kwargs[key], val)) { return false; }"
+            yield "if (!expected.includes(key)) { delete kwargs[key]; }"
             self.outdent()
-            yield '}'
+            yield "}"
             self.outdent()
-            yield '}'
+            yield "}"
             self.outdent()
-            yield '}'
-            yield 'if (Array.isArray(expected)) {'
+            yield "}"
+            yield "if (Array.isArray(expected)) {"
             self.indent()
             yield (
-                'return Object.keys(kwargs).length === expected.length && '
-                'expected.every(value => kwargs.hasOwnProperty(value));'
+                "return Object.keys(kwargs).length === expected.length && "
+                "expected.every(value => kwargs.hasOwnProperty(value));"
             )
             self.outdent()
-            yield '} else if (expected) {'
+            yield "} else if (expected) {"
             self.indent()
-            yield 'return args.length === expected;'
+            yield "return args.length === expected;"
             self.outdent()
-            yield '} else {'
+            yield "} else {"
             self.indent()
-            yield 'return Object.keys(kwargs).length === 0 && ' \
-                'args.length === 0;'
+            yield "return Object.keys(kwargs).length === 0 && " "args.length === 0;"
             self.outdent()
-            yield '}'
+            yield "}"
 
-        if '#match' in self.overrides_:
-            yield from self.transpile_override('#match', impl())
+        if "#match" in self.overrides_:
+            yield from self.transpile_override("#match", impl())
         else:
             yield from self.match_jdoc()
-            yield '#match(kwargs, args, expected, defaults={}) {'
+            yield "#match(kwargs, args, expected, defaults={}) {"
             self.indent()
             yield from impl()
             self.outdent()
-            yield '}'
+            yield "}"
 
     def reverse(self) -> Generator[Optional[str], None, None]:
         """
         The reverse() function.
         :yield: The JavaScript jdoc comment lines and reverse() function.
         """
+
         def impl() -> Generator[str, None, None]:
             """reverse default implementation"""
-            yield 'if (this.namespace) {'
+            yield "if (this.namespace) {"
             self.indent()
             yield (
-                'qname = `${this.namespace}'
-                '${qname.replace(this.namespace, "")}`;'
+                "qname = `${this.namespace}" '${qname.replace(this.namespace, "")}`;'
             )
             self.outdent()
-            yield '}'
-            yield 'const kwargs = options.kwargs || {};'
-            yield 'const args = options.args || [];'
-            yield 'const query = options.query || {};'
-            yield 'let url = this.urls;'
+            yield "}"
+            yield "const kwargs = options.kwargs || {};"
+            yield "const args = options.args || [];"
+            yield "const query = options.query || {};"
+            yield "let url = this.urls;"
             yield "for (const ns of qname.split(':')) {"
             self.indent()
-            yield 'if (ns && url) { url = url.hasOwnProperty(ns) ? ' \
-                'url[ns] : null; }'
+            yield "if (ns && url) { url = url.hasOwnProperty(ns) ? " "url[ns] : null; }"
             self.outdent()
-            yield '}'
-            yield 'if (url) {'
+            yield "}"
+            yield "if (url) {"
             self.indent()
-            yield 'let pth = url(kwargs, args);'
+            yield "let pth = url(kwargs, args);"
             yield 'if (typeof pth === "string") {'
             self.indent()
-            yield 'if (Object.keys(query).length !== 0) {'
+            yield "if (Object.keys(query).length !== 0) {"
             self.indent()
-            yield 'const params = new URLSearchParams();'
-            yield 'for (const [key, value] of Object.entries(query)) {'
+            yield "const params = new URLSearchParams();"
+            yield "for (const [key, value] of Object.entries(query)) {"
             self.indent()
             yield "if (value === null || value === '') continue;"
-            yield 'if (Array.isArray(value)) value.forEach(element => ' \
-                'params.append(key, element));'
-            yield 'else params.append(key, value);'
+            yield (
+                "if (Array.isArray(value)) value.forEach(element => "
+                "params.append(key, element));"
+            )
+            yield "else params.append(key, value);"
             self.outdent()
-            yield '}'
-            yield 'const qryStr = params.toString();'
+            yield "}"
+            yield "const qryStr = params.toString();"
             yield r"if (qryStr) return `${pth.replace(/\/+$/, '')}?${qryStr}`;"
             self.outdent()
-            yield '}'
-            yield 'return pth;'
+            yield "}"
+            yield "return pth;"
             self.outdent()
-            yield '}'
+            yield "}"
             self.outdent()
-            yield '}'
+            yield "}"
             if self.raise_on_not_found_:
                 yield (
-                    'throw new TypeError('
-                    '`No reversal available for parameters at path: '
-                    '${qname}`);'
+                    "throw new TypeError("
+                    "`No reversal available for parameters at path: "
+                    "${qname}`);"
                 )
 
-        if 'reverse' in self.overrides_:
-            yield from self.transpile_override('reverse', impl())
+        if "reverse" in self.overrides_:
+            yield from self.transpile_override("reverse", impl())
         else:
             yield from self.reverse_jdoc()
-            yield 'reverse(qname, options={}) {'
+            yield "reverse(qname, options={}) {"
             self.indent()
             yield from impl()
             self.outdent()
-            yield '}'
+            yield "}"
 
     def init_visit(  # pylint: disable=R0915
-            self
+        self,
     ) -> Generator[Optional[str], None, None]:
         """
         Start the tree visitation - this is where we write out all the common
@@ -1430,24 +1350,21 @@ class ClassURLWriter(URLTreeVisitor):
         :yield: JavaScript LoC for the reversal class
         """
         yield from self.class_jdoc()
-        yield (
-            f'{"export " if self.export_ else ""}'
-            f'class {self.class_name_} {{'
-        )
+        yield f'{"export " if self.export_ else ""} class {self.class_name_} {{'
         self.indent()
-        yield ''
+        yield ""
         yield from self.constructor()
-        yield ''
+        yield ""
         yield from self.match()
-        yield ''
+        yield ""
         if DJANGO_VERSION[0:2] < (4, 1):  # pragma: no cover
             yield from self.deep_equal()
-            yield ''
+            yield ""
             yield from self.is_object()
-            yield ''
+            yield ""
         yield from self.reverse()
-        yield ''
-        yield 'urls = {'
+        yield ""
+        yield "urls = {"
 
     def close_visit(self) -> Generator[Optional[str], None, None]:
         """
@@ -1455,16 +1372,13 @@ class ClassURLWriter(URLTreeVisitor):
 
         :yield: Trailing JavaScript LoC
         """
-        yield '}'
+        yield "}"
         for _, override in self.overrides_.items():
             yield from override.transpile(self.context)
         self.outdent()
-        yield '};'
+        yield "};"
 
-    def enter_namespace(
-            self,
-            namespace: str
-    ) -> Generator[Optional[str], None, None]:
+    def enter_namespace(self, namespace: str) -> Generator[Optional[str], None, None]:
         """
         Start the namespace object.
 
@@ -1475,10 +1389,7 @@ class ClassURLWriter(URLTreeVisitor):
         yield f'"{namespace}": {{'
         self.indent()
 
-    def exit_namespace(
-            self,
-            namespace: str
-    ) -> Generator[Optional[str], None, None]:
+    def exit_namespace(self, namespace: str) -> Generator[Optional[str], None, None]:
         """
         End the namespace object.
 
@@ -1487,12 +1398,9 @@ class ClassURLWriter(URLTreeVisitor):
         :yield: JavaScript ending the namespace object structure.
         """
         self.outdent()
-        yield '},'
+        yield "},"
 
-    def enter_path_group(
-            self,
-            qname: str
-    ) -> Generator[Optional[str], None, None]:
+    def enter_path_group(self, qname: str) -> Generator[Optional[str], None, None]:
         """
         Start of the reversal function for a collection of paths of the given
         qname. If in ES5 mode, sets default args.
@@ -1503,10 +1411,7 @@ class ClassURLWriter(URLTreeVisitor):
         yield f'"{qname.split(":")[-1]}": (kwargs={{}}, args=[]) => {{'
         self.indent()
 
-    def exit_path_group(
-            self,
-            qname: str
-    ) -> Generator[Optional[str], None, None]:
+    def exit_path_group(self, qname: str) -> Generator[Optional[str], None, None]:
         """
         Close out the function for the given qname.
 
@@ -1514,13 +1419,13 @@ class ClassURLWriter(URLTreeVisitor):
         :yield: LoC for the close out of the JavaScript reversal function
         """
         self.outdent()
-        yield '},'
+        yield "},"
 
     def visit_path(
-            self,
-            path: List[Union[Substitute, str]],
-            kwargs: List[str],
-            defaults: Optional[Dict[str, Any]] = None
+        self,
+        path: List[Union[Substitute, str]],
+        kwargs: List[str],
+        defaults: Optional[Dict[str, Any]] = None,
     ) -> Generator[Optional[str], None, None]:
         """
         Convert a list of path components into JavaScript reverse function. The
@@ -1534,8 +1439,9 @@ class ClassURLWriter(URLTreeVisitor):
         :param defaults: Any default kwargs specified on the path definition
         :yield: The JavaScript lines of code
         """
-        quote = '`'
+        quote = "`"
         visitor = self
+
         class ArgEncoder(DjangoJSONEncoder):
             """
             An encoder that uses the configured to javascript function to
@@ -1548,37 +1454,37 @@ class ClassURLWriter(URLTreeVisitor):
         defaults_str = json.dumps(defaults, cls=ArgEncoder)
         if len(path) == 1:  # there are no substitutions
             if defaults:
-                yield f'if (this.#match(kwargs, args, [], {defaults_str})) ' \
-                      f'{{ return "/{str(path[0]).lstrip("/")}"; }}'
+                yield (
+                    f"if (this.#match(kwargs, args, [], {defaults_str})) "
+                    f'{{ return "/{str(path[0]).lstrip("/")}"; }}'
+                )
             else:
-                yield f'if (this.#match(kwargs, args)) ' \
-                      f'{{ return "/{str(path[0]).lstrip("/")}"; }}'
+                yield (
+                    f"if (this.#match(kwargs, args)) "
+                    f'{{ return "/{str(path[0]).lstrip("/")}"; }}'
+                )
         elif len(kwargs) == 0:
-            nargs = len([
-                comp for comp in path if isinstance(comp, Substitute)
-            ])
+            nargs = len([comp for comp in path if isinstance(comp, Substitute)])
             # no need to handle defaults - there should not be any because
             # Django reverse does not allow mixing args and kwargs in calls
             # to reverse
             yield (
-                f'if (this.#match(kwargs, args, {nargs})) {{'
+                f"if (this.#match(kwargs, args, {nargs})) {{"
                 f' return {quote}/{self.path_join(path).lstrip("/")}'
-                f'{quote}; }}'
+                f"{quote}; }}"
             )
         else:
-            opts_str = ",".join(
-                [self.to_javascript(param) for param in kwargs]
-            )
+            opts_str = ",".join([self.to_javascript(param) for param in kwargs])
             if defaults:
                 yield (
-                    f'if (this.#match(kwargs, args, [{opts_str}], '
-                    f'{defaults_str})) {{'
+                    f"if (this.#match(kwargs, args, [{opts_str}], "
+                    f"{defaults_str})) {{"
                     f' return {quote}/{self.path_join(path).lstrip("/")}'
-                    f'{quote}; }}'
+                    f"{quote}; }}"
                 )
             else:
                 yield (
-                    f'if (this.#match(kwargs, args, [{opts_str}])) {{'
+                    f"if (this.#match(kwargs, args, [{opts_str}])) {{"
                     f' return {quote}/{self.path_join(path).lstrip("/")}'
-                    f'{quote}; }}'
+                    f"{quote}; }}"
                 )

@@ -36,13 +36,13 @@ if TYPE_CHECKING:
 
 
 __all__ = [
-    'to_js',
-    'to_js_datetime',
-    'CodeWriter',
-    'Transpiler',
-    'TranspilerTargets',
-    'TranspilerTarget',
-    'ResolvedTranspilerTarget'
+    "to_js",
+    "to_js_datetime",
+    "CodeWriter",
+    "Transpiler",
+    "TranspilerTargets",
+    "TranspilerTarget",
+    "ResolvedTranspilerTarget",
 ]
 
 ResolvedTranspilerTarget = Union[Type[Any], ModuleType, AppConfig]
@@ -98,19 +98,17 @@ class _TargetTreeNode:
     """
 
     target: Optional[TranspilerTarget]
-    children: List['_TargetTreeNode']
+    children: List["_TargetTreeNode"]
     transpile = False
 
     def __init__(
-        self,
-        target: Optional[TranspilerTarget] = None,
-        transpile: bool = False
+        self, target: Optional[TranspilerTarget] = None, transpile: bool = False
     ):
         self.target = target
         self.children = []
         self.transpile = transpile
 
-    def append(self, child: '_TargetTreeNode'):
+    def append(self, child: "_TargetTreeNode"):
         """
         Only appends children that are to be transpiled or that have children.
 
@@ -134,28 +132,28 @@ class CodeWriter:
 
     rendered_: str
     level_: int = 0
-    prefix_: str = ''
-    indent_: str = ' '*4
-    nl_: str = '\n'
+    prefix_: str = ""
+    indent_: str = " " * 4
+    nl_: str = "\n"
 
     def __init__(
         self,
         level: int = level_,
         indent: Optional[str] = indent_,
         prefix: str = prefix_,
-        **kwargs  # pylint: disable=unused-argument
+        **kwargs,  # pylint: disable=unused-argument
     ) -> None:
-        self.rendered_ = ''
+        self.rendered_ = ""
         self.level_ = level
-        self.indent_ = indent or ''
-        self.prefix_ = prefix or ''
-        self.nl_ = self.nl_ if self.indent_ else ''  # pylint: disable=C0103
+        self.indent_ = indent or ""
+        self.prefix_ = prefix or ""
+        self.nl_ = self.nl_ if self.indent_ else ""  # pylint: disable=C0103
 
     def get_line(self, line: Optional[str]) -> str:
         """
         Returns a line with indentation and newline.
         """
-        return f'{self.prefix_}{self.indent_ * self.level_}{line}{self.nl_}'
+        return f"{self.prefix_}{self.indent_ * self.level_}{line}{self.nl_}"
 
     def write_line(self, line: Optional[str]) -> None:
         """
@@ -209,7 +207,7 @@ class Transpiler(CodeWriter, metaclass=ABCMeta):
     parents_: List[Union[ModuleType, Type[Any]]]
     target_: ResolvedTranspilerTarget
 
-    overrides_: Dict[str, 'OverrideNode']
+    overrides_: Dict[str, "OverrideNode"]
 
     @property
     def target(self):
@@ -222,11 +220,7 @@ class Transpiler(CodeWriter, metaclass=ABCMeta):
         When in visit() this returns the parents (modules and classes) of the
         visited target.
         """
-        return [
-            parent
-            for parent in self.parents_
-            if parent is not self.target
-        ]
+        return [parent for parent in self.parents_ if parent is not self.target]
 
     @property
     def context(self):
@@ -235,34 +229,30 @@ class Transpiler(CodeWriter, metaclass=ABCMeta):
 
             - **transpiler**: The transpiler instance
         """
-        return {
-            'transpiler': self
-        }
+        return {"transpiler": self}
 
     def __init__(
         self,
         to_javascript: Union[str, Callable] = to_javascript_,
-        overrides: Optional[Dict[str, 'OverrideNode']] = None,
-        **kwargs
+        overrides: Optional[Dict[str, "OverrideNode"]] = None,
+        **kwargs,
     ) -> None:
         super().__init__(**kwargs)
         self.to_javascript = (
-            to_javascript
-            if callable(to_javascript)
-            else import_string(to_javascript)
+            to_javascript if callable(to_javascript) else import_string(to_javascript)
         )
         self.overrides_ = overrides or {}
         self.parents_ = []
-        assert callable(self.to_javascript), 'To_javascript is not callable!'
+        assert callable(self.to_javascript), "To_javascript is not callable!"
 
     def transpile_override(
-            self,
-            override: str,
-            default_impl: Union[str, Generator[Optional[str], None, None]],
-            context: Optional[Dict[str, Any]] = None
+        self,
+        override: str,
+        default_impl: Union[str, Generator[Optional[str], None, None]],
+        context: Optional[Dict[str, Any]] = None,
     ) -> Generator[str, None, None]:
         """
-        Returns a string of lines from a generator with the indentation and 
+        Returns a string of lines from a generator with the indentation and
         newlines added. This is meant to be used in place during overrides,
         so the first newline has no indents. So it will have the line prefix
         of {{ default_impl }}.
@@ -275,22 +265,20 @@ class Transpiler(CodeWriter, metaclass=ABCMeta):
         """
         d_impl = default_impl
         if isinstance(default_impl, Generator):
-            d_impl = ''
+            d_impl = ""
             for idx, line in enumerate(default_impl):
                 if idx == 0:
-                    d_impl += f'{line}{self.nl_}'
+                    d_impl += f"{line}{self.nl_}"
                 else:
                     d_impl += self.get_line(line)
             d_impl.rstrip(self.nl_)
 
-        yield from self.overrides_.pop(override).transpile({
-            **self.context,
-            'default_impl': SafeString(d_impl),
-            **(context or {})
-        })
+        yield from self.overrides_.pop(override).transpile(
+            {**self.context, "default_impl": SafeString(d_impl), **(context or {})}
+        )
 
     @abstractmethod
-    def include_target(self, target:  TranspilerTarget):
+    def include_target(self, target: TranspilerTarget):
         """
         Deriving transpilers must implement this method to filter targets
         (modules or classes) in and out of transpilation. Transpilers are
@@ -302,8 +290,7 @@ class Transpiler(CodeWriter, metaclass=ABCMeta):
         return True
 
     def transpile(  # pylint: disable=too-many-branches, disable=too-many-statements
-            self,
-            targets: TranspilerTargets
+        self, targets: TranspilerTargets
     ) -> str:
         """
         Generate and return javascript as a string given the targets. This
@@ -321,19 +308,13 @@ class Transpiler(CodeWriter, metaclass=ABCMeta):
 
         def walk_class(cls: _TargetTreeNode):
             for name, cls_member in vars(cls.target).items():
-                if name.startswith('_'):
+                if name.startswith("_"):
                     continue
-                if (
-                    isinstance(cls_member, type) and
-                    cls_member not in deduplicate_set
-                ):
+                if isinstance(cls_member, type) and cls_member not in deduplicate_set:
                     deduplicate_set.add(cls_member)
                     cls.append(
                         walk_class(
-                            _TargetTreeNode(
-                                cls_member,
-                                self.include_target(cls_member)
-                            )
+                            _TargetTreeNode(cls_member, self.include_target(cls_member))
                         )
                     )
             return cls
@@ -351,26 +332,24 @@ class Transpiler(CodeWriter, metaclass=ABCMeta):
                     try:
                         target = apps.get_app_config(target)
                     except LookupError:
-                        parts = target.split('.')
+                        parts = target.split(".")
                         tries = 0
                         while True:
                             try:
                                 tries += 1
                                 target = import_string(
-                                    '.'.join(
-                                        parts[0:
-                                            None if tries == 1
-                                            else -(tries-1)
-                                        ])
+                                    ".".join(
+                                        parts[0 : None if tries == 1 else -(tries - 1)]
+                                    )
                                 )
                                 if tries > 1:
-                                    for attr in parts[-(tries-1):]:
+                                    for attr in parts[-(tries - 1) :]:
                                         target = getattr(target, attr)
                                 break
                             except (ImportError, AttributeError):
                                 if tries == 1:
                                     try:
-                                        target = import_module('.'.join(parts))
+                                        target = import_module(".".join(parts))
                                     except (ImportError, ModuleNotFoundError):
                                         if len(parts) == 1:
                                             raise
@@ -392,10 +371,7 @@ class Transpiler(CodeWriter, metaclass=ABCMeta):
                     if isinstance(member, type):
                         node.append(
                             walk_class(
-                                _TargetTreeNode(
-                                    member,
-                                    self.include_target(member)
-                                )
+                                _TargetTreeNode(member, self.include_target(member))
                             )
                         )
                 root.append(node)
@@ -403,12 +379,10 @@ class Transpiler(CodeWriter, metaclass=ABCMeta):
                 root.append(node)
 
         if not root.transpile and not root.children:
-            raise ValueError(f'No targets were transpilable: {targets}')
+            raise ValueError(f"No targets were transpilable: {targets}")
 
         def visit_depth_first(
-                branch: _TargetTreeNode,
-                is_last: bool = False,
-                final: bool = True
+            branch: _TargetTreeNode, is_last: bool = False, final: bool = True
         ):
             is_final = final and not branch.children
             if branch.target:
@@ -425,7 +399,7 @@ class Transpiler(CodeWriter, metaclass=ABCMeta):
                     visit_depth_first(
                         child,
                         idx == len(branch.children) - 1,
-                        (idx == len(branch.children) - 1) and final
+                        (idx == len(branch.children) - 1) and final,
                     )
 
             if branch.target:
@@ -443,10 +417,7 @@ class Transpiler(CodeWriter, metaclass=ABCMeta):
         return self.rendered_
 
     def enter_parent(
-            self,
-            parent: ResolvedTranspilerTarget,
-            is_last: bool,
-            is_final: bool
+        self, parent: ResolvedTranspilerTarget, is_last: bool, is_final: bool
     ) -> Generator[Optional[str], None, None]:
         """
         Enter and visit a target, pushing it onto the parent stack.
@@ -465,10 +436,7 @@ class Transpiler(CodeWriter, metaclass=ABCMeta):
             yield from self.enter_class(parent, is_last, is_final)
 
     def exit_parent(
-            self,
-            parent: ResolvedTranspilerTarget,
-            is_last: bool,
-            is_final: bool
+        self, parent: ResolvedTranspilerTarget, is_last: bool, is_final: bool
     ) -> Generator[Optional[str], None, None]:
         """
         Exit a target, removing it from the parent stack.
@@ -487,10 +455,10 @@ class Transpiler(CodeWriter, metaclass=ABCMeta):
             yield from self.exit_class(parent, is_last, is_final)
 
     def enter_module(
-            self,
-            module: ModuleType,  # pylint: disable=unused-argument
-            is_last: bool,  # pylint: disable=unused-argument
-            is_final: bool  # pylint: disable=unused-argument
+        self,
+        module: ModuleType,  # pylint: disable=unused-argument
+        is_last: bool,  # pylint: disable=unused-argument
+        is_final: bool,  # pylint: disable=unused-argument
     ) -> Generator[Optional[str], None, None]:
         """
         Transpile a module.
@@ -504,10 +472,10 @@ class Transpiler(CodeWriter, metaclass=ABCMeta):
         yield None
 
     def exit_module(
-            self,
-            module: ModuleType,  # pylint: disable=unused-argument
-            is_last: bool,  # pylint: disable=unused-argument
-            is_final: bool  # pylint: disable=unused-argument
+        self,
+        module: ModuleType,  # pylint: disable=unused-argument
+        is_last: bool,  # pylint: disable=unused-argument
+        is_final: bool,  # pylint: disable=unused-argument
     ) -> Generator[Optional[str], None, None]:
         """
         Close transpilation of a module.
@@ -521,10 +489,10 @@ class Transpiler(CodeWriter, metaclass=ABCMeta):
         yield None
 
     def enter_class(
-            self,
-            cls: Type[Any],  # pylint: disable=unused-argument
-            is_last: bool,  # pylint: disable=unused-argument
-            is_final: bool  # pylint: disable=unused-argument
+        self,
+        cls: Type[Any],  # pylint: disable=unused-argument
+        is_last: bool,  # pylint: disable=unused-argument
+        is_final: bool,  # pylint: disable=unused-argument
     ) -> Generator[Optional[str], None, None]:
         """
         Transpile a class.
@@ -538,10 +506,10 @@ class Transpiler(CodeWriter, metaclass=ABCMeta):
         yield None
 
     def exit_class(
-            self,
-            cls: Type[Any],  # pylint: disable=unused-argument
-            is_last: bool,  # pylint: disable=unused-argument
-            is_final: bool  # pylint: disable=unused-argument
+        self,
+        cls: Type[Any],  # pylint: disable=unused-argument
+        is_last: bool,  # pylint: disable=unused-argument
+        is_final: bool,  # pylint: disable=unused-argument
     ) -> Generator[Optional[str], None, None]:
         """
         Close transpilation of a class.
@@ -574,10 +542,7 @@ class Transpiler(CodeWriter, metaclass=ABCMeta):
 
     @abstractmethod
     def visit(
-        self,
-        target: ResolvedTranspilerTarget,
-        is_last: bool,
-        is_final: bool
+        self, target: ResolvedTranspilerTarget, is_last: bool, is_final: bool
     ) -> Generator[Optional[str], None, None]:
         """
         Deriving transpilers must implement this method.

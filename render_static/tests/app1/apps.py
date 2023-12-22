@@ -4,7 +4,7 @@ from render_static.placeholders import register_converter_placeholder
 
 
 class YearConverter:
-    regex = '[1|2][0-9]{3}'
+    regex = "[1|2][0-9]{3}"
     placeholder = 2000
 
     def to_python(self, value):
@@ -15,7 +15,7 @@ class YearConverter:
 
 
 class NameConverter:
-    regex = '(?:name1|name2)'
+    regex = "(?:name1|name2)"
 
     def to_python(self, value):
         return str(value)
@@ -24,15 +24,15 @@ class NameConverter:
         return str(value)
 
 
-register_converter(YearConverter, 'year')
-register_converter(NameConverter, 'name')
+register_converter(YearConverter, "year")
+register_converter(NameConverter, "name")
 
 # this doesnt actually work - but it shouldn't matter because YearConverter.placeholder will
 # eventually be tried
-register_converter_placeholder(YearConverter, 'deadbeef')
-register_converter_placeholder(YearConverter, 'deadbeef')
+register_converter_placeholder(YearConverter, "deadbeef")
+register_converter_placeholder(YearConverter, "deadbeef")
 
 
 class App1Config(AppConfig):
-    name = 'render_static.tests.app1'
-    label = name.replace('.', '_')
+    name = "render_static.tests.app1"
+    label = name.replace(".", "_")

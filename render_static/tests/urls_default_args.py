@@ -18,22 +18,18 @@ urlpatterns = [
     path(
         "sitemap.xml",
         sitemap,
-        {"sitemaps": {
-            "blog": BlogSitemap(),
-        }},
+        {
+            "sitemaps": {
+                "blog": BlogSitemap(),
+            }
+        },
         name="sitemap",
     ),
     path(
-        'complex_default/<str:def>',
+        "complex_default/<str:def>",
         TestView.as_view(),
-        {'complex_default': {
-            'blog': Default
-        }},
-        name='default'
+        {"complex_default": {"blog": Default}},
+        name="default",
     ),
-    path(
-        'default/<str:def>',
-        TestView.as_view(),
-        name='default'
-    ),
-] 
+    path("default/<str:def>", TestView.as_view(), name="default"),
+]

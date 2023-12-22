@@ -9,9 +9,9 @@ from render_static.loaders.django import (
 )
 
 __all__ = [
-    'StaticAppDirectoriesBatchLoader',
-    'StaticAppDirectoriesLoader',
-    'StaticFilesystemBatchLoader',
-    'StaticFilesystemLoader',
-    'StaticLocMemLoader',
+    "StaticAppDirectoriesBatchLoader",
+    "StaticAppDirectoriesLoader",
+    "StaticFilesystemBatchLoader",
+    "StaticFilesystemLoader",
+    "StaticLocMemLoader",
 ]

@@ -11,7 +11,7 @@ import types
 from functools import singledispatch
 from typing import Optional, Union
 
-__all__ = ['resource']
+__all__ = ["resource"]
 
 # Distinguishing between different versions of Python:
 if sys.version_info >= (3, 9):
@@ -23,15 +23,15 @@ else:
     try:  # pragma: no cover
         from importlib_resources import as_file, files
     except ImportError:  # pragma: no cover
+
         @singledispatch
         def need_install(*args, **kwargs):
             """
             On platforms <3.9, the importlib_resources backport needs to be
             available to use resources.
             """
-            raise ImportError(
-                'Install importlib_resources to enable resources.'
-            )
+            raise ImportError("Install importlib_resources to enable resources.")
+
         files = need_install
         as_file = need_install
 
@@ -66,14 +66,13 @@ class _Resource(str):  # noqa: WPS600
         cls,
         package: Union[str, types.ModuleType],
         filename: str,
-    ) -> '_Resource':
-
+    ) -> "_Resource":
         # the type ignores workaround a known mypy issue
         # https://github.com/python/mypy/issues/1021
         try:
             ref = files(package) / filename
         except ModuleNotFoundError:
-            rsrc = super().__new__(cls, f'{package}: {filename}')
+            rsrc = super().__new__(cls, f"{package}: {filename}")
             rsrc.module_not_found = True
             return rsrc
 

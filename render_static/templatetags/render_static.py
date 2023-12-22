@@ -36,21 +36,14 @@ from render_static.transpilers.defines_to_js import DefaultDefineTranspiler
 from render_static.transpilers.enums_to_js import EnumClassWriter
 from render_static.transpilers.urls_to_js import ClassURLWriter
 
-__all__ = [
-    'split',
-    'defines_to_js',
-    'urls_to_js',
-    'enums_to_js'
-]
+__all__ = ["split", "defines_to_js", "urls_to_js", "enums_to_js"]
 
 Targets = Union[TranspilerTargets, TranspilerTarget]
 TranspilerType = Union[Type[Transpiler], str]
 
 
 def do_transpile(
-        targets: Targets,
-        transpiler: TranspilerType,
-        kwargs: Dict[Any, Any]
+    targets: Targets, transpiler: TranspilerType, kwargs: Dict[Any, Any]
 ) -> str:
     """
     Transpile the given target(s) using the given transpiler and
@@ -67,8 +60,7 @@ def do_transpile(
         targets = [targets]
 
     transpiler = (
-        import_string(transpiler)
-        if isinstance(transpiler, str) else transpiler
+        import_string(transpiler) if isinstance(transpiler, str) else transpiler
     )
     return SafeString(transpiler(**kwargs).transpile(targets))
 
@@ -82,7 +74,7 @@ class OverrideNode(Node):
     """
 
     def __init__(self, override_name: Optional[str], nodelist: NodeList):
-        self.override_name = override_name or f'_{id(self)}'
+        self.override_name = override_name or f"_{id(self)}"
         self.nodelist = nodelist
         self.context = Context()
 
@@ -96,10 +88,14 @@ class OverrideNode(Node):
         :return: The name of the override.
         """
         self.context = copy(context)
-        return self.override_name.resolve(context) if isinstance(
-            self.override_name,
-            (template.base.Variable, template.base.FilterExpression)
-        ) else self.override_name
+        return (
+            self.override_name.resolve(context)
+            if isinstance(
+                self.override_name,
+                (template.base.Variable, template.base.FilterExpression),
+            )
+            else self.override_name
+        )
 
     def transpile(self, context: Context) -> Generator[str, None, None]:
         """
@@ -112,7 +108,6 @@ class OverrideNode(Node):
         lines = self.nodelist.render(self.context).splitlines()
         for line in lines:
             yield line
-
 
 
 class TranspilerNode(Node):
@@ -129,12 +124,12 @@ class TranspilerNode(Node):
     """
 
     def __init__(
-            self,
-            func: Callable,
-            targets: Optional[str],
-            kwargs: Dict[str, Any],
-            nodelist: Optional[NodeList] = None,
-        ):
+        self,
+        func: Callable,
+        targets: Optional[str],
+        kwargs: Dict[str, Any],
+        nodelist: Optional[NodeList] = None,
+    ):
         self.func = func
         self.targets = targets
         self.kwargs = kwargs
@@ -143,26 +138,20 @@ class TranspilerNode(Node):
     def get_resolved_arguments(self, context: Context) -> Dict[str, Any]:
         """
         Resolve the arguments to the transpiler.
-        
+
         :param context: The context of the template being rendered.
         :return: A dictionary of resolved arguments.
         """
         resolved_kwargs = {
             k: v.resolve(context)
-            if isinstance(
-                v,
-                (
-                    template.base.Variable,
-                    template.base.FilterExpression
-                )
-            ) else v
+            if isinstance(v, (template.base.Variable, template.base.FilterExpression))
+            else v
             for k, v in self.kwargs.items()
         }
         overrides = self.get_nodes_by_type(OverrideNode)
         if overrides:
-            resolved_kwargs['overrides'] = {
-                override.bind(context): override
-                for override in overrides
+            resolved_kwargs["overrides"] = {
+                override.bind(context): override for override in overrides
             }
         return resolved_kwargs
 
@@ -178,31 +167,37 @@ class TranspilerNode(Node):
 
 register = template.Library()
 
+
 def transpiler_tag(
     func: Optional[Callable] = None,
     targets: Union[int, str] = 0,
     name: Optional[str] = None,
-    node: Type[Node] = TranspilerNode
+    node: Type[Node] = TranspilerNode,
 ):
     """
     Register a callable as a transpiler tag. This decorator is similar
     to simple_tag but also passes the parser and token to the decorated
     function.
     """
+
     def dec(func: Callable):
         (
-            pos_args, varargs, varkw,
-            defaults, kwonly, kwonly_defaults, _
+            pos_args,
+            varargs,
+            varkw,
+            defaults,
+            kwonly,
+            kwonly_defaults,
+            _,
         ) = getfullargspec(unwrap(func))
-        function_name = (
-            name or getattr(func, '_decorated_function', func).__name__
-        )
+        function_name = name or getattr(func, "_decorated_function", func).__name__
 
-        assert 'transpiler' in pos_args or 'transpiler' in kwonly, \
-            f'{function_name} must accept a transpiler argument.'
+        assert (
+            "transpiler" in pos_args or "transpiler" in kwonly
+        ), f"{function_name} must accept a transpiler argument."
 
         param_defaults = {
-            pos_args[len(pos_args or [])-len(defaults or [])+idx]: default
+            pos_args[len(pos_args or []) - len(defaults or []) + idx]: default
             for idx, default in enumerate(defaults or [])
         }
 
@@ -215,19 +210,27 @@ def transpiler_tag(
             for lookahead in reversed(parser.tokens):
                 if lookahead.token_type == template.base.TokenType.BLOCK:
                     command = lookahead.contents.split()[0]
-                    if command == f'end{function_name}':
+                    if command == f"end{function_name}":
                         is_block = True
                         break
-                    if command == f'{function_name}':
+                    if command == f"{function_name}":
                         break
             if is_block:
-                nodelist = parser.parse(parse_until=(f'end{function_name}',))
+                nodelist = parser.parse(parse_until=(f"end{function_name}",))
                 parser.delete_first_token()
 
             bits = token.split_contents()[1:]
             pargs, pkwargs = parse_bits(
-                parser, bits, pos_args, varargs, varkw, defaults,
-                kwonly, kwonly_defaults, False, function_name,
+                parser,
+                bits,
+                pos_args,
+                varargs,
+                varkw,
+                defaults,
+                kwonly,
+                kwonly_defaults,
+                False,
+                function_name,
             )
             # we rearrange everything here to turn all arguments into
             # keyword arguments b/c while this eliminates variadic positional
@@ -240,7 +243,7 @@ def transpiler_tag(
                 func,
                 pos_args[targets] if isinstance(targets, int) else targets,
                 {**(kwonly_defaults or {}), **param_defaults, **pkwargs},
-                nodelist
+                nodelist,
             )
 
         register.tag(function_name, compile_func)
@@ -252,10 +255,10 @@ def transpiler_tag(
     if callable(func):
         # @register.transpile_tag
         return dec(func)
-    raise ValueError('Invalid arguments provided to transpiler_tag')
+    raise ValueError("Invalid arguments provided to transpiler_tag")
 
 
-@register.filter(name='split')
+@register.filter(name="split")
 def split(to_split: str, sep: Optional[str] = None) -> List[str]:
     """
     Django template for python's standard split function. Splits a string into
@@ -283,22 +286,18 @@ def transpile(targets: Targets, transpiler: TranspilerType, **kwargs) -> str:
     :param kwargs: Any kwargs that the transpiler takes.
     :return:
     """
-    return do_transpile(
-        targets=targets,
-        transpiler=transpiler,
-        kwargs=kwargs
-    )
+    return do_transpile(targets=targets, transpiler=transpiler, kwargs=kwargs)
 
 
-@transpiler_tag(targets='url_conf')
+@transpiler_tag(targets="url_conf")
 def urls_to_js(  # pylint: disable=R0913,R0915
-        transpiler: TranspilerType = ClassURLWriter,
-        url_conf: Optional[Union[ModuleType, str]] = None,
-        indent: str = '\t',
-        depth: int = 0,
-        include: Optional[Iterable[str]] = None,
-        exclude: Optional[Iterable[str]] = ('admin',),
-        **kwargs
+    transpiler: TranspilerType = ClassURLWriter,
+    url_conf: Optional[Union[ModuleType, str]] = None,
+    indent: str = "\t",
+    depth: int = 0,
+    include: Optional[Iterable[str]] = None,
+    exclude: Optional[Iterable[str]] = ("admin",),
+    **kwargs,
 ) -> str:
     """
     Dump reversible URLs to javascript. The javascript generated provides
@@ -412,27 +411,24 @@ def urls_to_js(  # pylint: disable=R0913,R0915
         targets=url_conf or settings.ROOT_URLCONF,
         transpiler=transpiler,
         kwargs={
-            'depth': depth,
-            'indent': indent,
-            'include': include,
-            'exclude': exclude,
-            **kwargs
-        }
+            "depth": depth,
+            "indent": indent,
+            "include": include,
+            "exclude": exclude,
+            **kwargs,
+        },
     )
 
 
 @transpiler_tag
 def defines_to_js(
-        defines: Union[
-            ModuleType,
-            Type[Any],
-            str,
-            Collection[Union[ModuleType, Type[Any], str]]
-        ],
-        transpiler: TranspilerType = DefaultDefineTranspiler,
-        indent: str = '\t',
-        depth: int = 0,
-        **kwargs
+    defines: Union[
+        ModuleType, Type[Any], str, Collection[Union[ModuleType, Type[Any], str]]
+    ],
+    transpiler: TranspilerType = DefaultDefineTranspiler,
+    indent: str = "\t",
+    depth: int = 0,
+    **kwargs,
 ) -> str:
     """
     Transpile defines from the given modules or classes into javascript.
@@ -449,22 +445,19 @@ def defines_to_js(
     return do_transpile(
         targets=defines,
         transpiler=transpiler,
-        kwargs={'indent': indent, 'depth': depth, **kwargs}
+        kwargs={"indent": indent, "depth": depth, **kwargs},
     )
 
 
 @transpiler_tag
 def enums_to_js(
-        enums: Union[
-            ModuleType,
-            Type[Enum],
-            str,
-            Collection[Union[ModuleType, Type[Enum], str]]
-        ],
-        transpiler: TranspilerType = EnumClassWriter,
-        indent: str = '\t',
-        depth: int = 0,
-        **kwargs
+    enums: Union[
+        ModuleType, Type[Enum], str, Collection[Union[ModuleType, Type[Enum], str]]
+    ],
+    transpiler: TranspilerType = EnumClassWriter,
+    indent: str = "\t",
+    depth: int = 0,
+    **kwargs,
 ) -> str:
     """
     Transpile the given enumeration(s).
@@ -482,20 +475,28 @@ def enums_to_js(
     return do_transpile(
         targets=enums,
         transpiler=transpiler,
-        kwargs={'indent': indent, 'depth': depth, **kwargs}
+        kwargs={"indent": indent, "depth": depth, **kwargs},
     )
 
 
-@register.tag(name='override')
+@register.tag(name="override")
 def override(parser, token):
     """
     Override a function in the parent transpilation.
     """
-    nodelist = parser.parse(parse_until=('endoverride',))
+    nodelist = parser.parse(parse_until=("endoverride",))
     parser.delete_first_token()
     p_args, _ = parse_bits(
-        parser, token.split_contents()[1:], ['override'], [], [], [],
-        [], {}, False, 'override',
+        parser,
+        token.split_contents()[1:],
+        ["override"],
+        [],
+        [],
+        [],
+        [],
+        {},
+        False,
+        "override",
     )
     name = p_args[0] if p_args else None
     return OverrideNode(name, nodelist)

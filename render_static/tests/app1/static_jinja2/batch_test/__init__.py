@@ -1,1 +1,1 @@
-{{ variable }}
+{{variable}}

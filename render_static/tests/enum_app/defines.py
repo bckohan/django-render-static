@@ -8,7 +8,6 @@ except ImportError:
 
 
 class Def(IntEnum):
-
     VALUE1 = auto()
     VALUE2 = auto()
     VALUE3 = auto()
@@ -26,7 +25,6 @@ class Def(IntEnum):
 
 
 class TimeEnum(Enum):
-
     YEAR1 = date(year=2020, month=1, day=1)
     YEAR2 = date(year=2021, month=1, day=1)
     YEAR3 = date(year=2022, month=1, day=1)
@@ -38,5 +36,5 @@ class TimeEnum(Enum):
             year=self.value.year,
             month=self.value.month,
             day=self.value.day,
-            tzinfo=timezone.utc
+            tzinfo=timezone.utc,
         )

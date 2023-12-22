@@ -29,6 +29,7 @@ except ImportError:
 IGNORED_ENUMS = {Enum, IntEnum, IntFlag, Flag, TextChoices, IntegerChoices}
 if sys.version_info >= (3, 11):  # pragma: no cover
     from enum import EnumCheck, FlagBoundary, ReprEnum, StrEnum
+
     IGNORED_ENUMS.update({FlagBoundary, ReprEnum, StrEnum, EnumCheck})
 
 
@@ -63,8 +64,9 @@ class EnumTranspiler(Transpiler):
         """
         if isinstance(target, type) and issubclass(target, Enum):
             return (
-                target not in IGNORED_ENUMS and
-                target.__module__ != 'enum' and
+                target not in IGNORED_ENUMS
+                and target.__module__ != "enum"
+                and
                 # make sure this enum type actually has values
                 list(target)
             )
@@ -74,9 +76,9 @@ class EnumTranspiler(Transpiler):
     def visit(
         self,
         enum: Type[Enum],  # type: ignore
-                           # pylint: disable=arguments-renamed
+        # pylint: disable=arguments-renamed
         is_last: bool,
-        is_final: bool
+        is_final: bool,
     ) -> Generator[Optional[str], None, None]:
         """
         Visit and transpile the given Enum class. Deriving classes must
@@ -99,8 +101,8 @@ class EnumClassWriter(EnumTranspiler):  # pylint: disable=R0902
         be a string that will be formatted with the class name of each enum.
         The default string '{}' will resolve to the python class name.
     :param on_unrecognized: If the given value cannot be mapped to an
-        enum instance, either "THROW_EXCEPTION", "RETURN_NULL", or 
-        "RETURN_INPUT". See 
+        enum instance, either "THROW_EXCEPTION", "RETURN_NULL", or
+        "RETURN_INPUT". See
         :py:class:`render_static.transpilers.enums_to_js.UnrecognizedBehavior`.
     :param export: If true the classes will be exported - Default: False
     :param include_properties: If true, any python properties present on the
@@ -128,12 +130,11 @@ class EnumClassWriter(EnumTranspiler):  # pylint: disable=R0902
 
     enum_: Type[Enum]
 
-    class_name_pattern_: str = '{}'
+    class_name_pattern_: str = "{}"
     class_name_: str
     class_name_map_: Dict[Type[Enum], str] = {}
 
-    on_unrecognized_: UnrecognizedBehavior = \
-        UnrecognizedBehavior.THROW_EXCEPTION
+    on_unrecognized_: UnrecognizedBehavior = UnrecognizedBehavior.THROW_EXCEPTION
 
     export_: bool = False
 
@@ -146,7 +147,7 @@ class EnumClassWriter(EnumTranspiler):  # pylint: disable=R0902
     class_properties_: List[str] = []
 
     include_properties_: Union[Collection[str], bool] = True
-    builtins_: List[str] = ['value', 'name']
+    builtins_: List[str] = ["value", "name"]
     properties_: List[str] = []
     exclude_properties_: Set[str]
 
@@ -166,7 +167,7 @@ class EnumClassWriter(EnumTranspiler):  # pylint: disable=R0902
         """
         if isinstance(value, Enum):
             if value.__class__ in self.class_name_map_:
-                return f'{self.class_name_map_[value.__class__]}.{value.name}'
+                return f"{self.class_name_map_[value.__class__]}.{value.name}"
         return self.to_javascript(value)
 
     @property
@@ -199,41 +200,45 @@ class EnumClassWriter(EnumTranspiler):  # pylint: disable=R0902
         :param enum: The enum class being transpiled
         """
         builtins = [
-            bltin for bltin in self.builtins_
-            if bltin == 'value' or bltin not in self.exclude_properties_
+            bltin
+            for bltin in self.builtins_
+            if bltin == "value" or bltin not in self.exclude_properties_
         ]
         if (
-            hasattr(list(enum)[0], 'label') and
-            'label' not in builtins and
-            'label' not in self.exclude_properties_ and
-            self.include_properties_
+            hasattr(list(enum)[0], "label")
+            and "label" not in builtins
+            and "label" not in self.exclude_properties_
+            and self.include_properties_
         ):
-            builtins.append('label')
+            builtins.append("label")
 
         props_on_class = [
             str(name)
             for name, member in vars(enum).items()
             if (
-                isinstance(member, property) and
-                name not in self.exclude_properties_
+                isinstance(member, property)
+                and name not in self.exclude_properties_
                 and str(name) not in builtins
             )
         ]
         prop_def_order = [
             *builtins,
             *[
-                prop for prop in getattr(enum, '_properties_', [])
+                prop
+                for prop in getattr(enum, "_properties_", [])
                 if prop not in self.exclude_properties_
-                and prop not in builtins and prop not in props_on_class
+                and prop not in builtins
+                and prop not in props_on_class
             ],
-            *props_on_class
+            *props_on_class,
         ]
         if self.include_properties_ is True:
             self.properties_ = prop_def_order
         elif self.include_properties_:
             self.properties_ = [
-                prop for prop in prop_def_order
-                if prop in self.include_properties_ or prop == 'value'
+                prop
+                for prop in prop_def_order
+                if prop in self.include_properties_ or prop == "value"
             ]
         else:
             self.properties_ = builtins
@@ -258,16 +263,17 @@ class EnumClassWriter(EnumTranspiler):  # pylint: disable=R0902
         if self.symmetric_properties_kwarg_ is True:
             self.symmetric_properties_ = []
             self.isymmetric_properties_ = (
-                [] if self.find_ci_ else
-                self.isymmetric_properties_
+                [] if self.find_ci_ else self.isymmetric_properties_
             )
+
             def ever_other_case(test_str: str) -> str:
-                return ''.join(
+                return "".join(
                     c.upper() if i % 2 == 0 else c.lower()
                     for i, c in enumerate(test_str)
                 )
+
             for prop in self.properties:
-                if prop == 'value':
+                if prop == "value":
                     continue
                 count = 0
                 i_count = 0
@@ -276,7 +282,8 @@ class EnumClassWriter(EnumTranspiler):  # pylint: disable=R0902
                         e_prop = getattr(enm, prop)
                         count += int(enum(e_prop) is enm)
                         i_count += int(
-                            self.find_ci_ and isinstance(e_prop, str)
+                            self.find_ci_
+                            and isinstance(e_prop, str)
                             and enum(e_prop.swapcase()) is enm
                             and enum(ever_other_case(e_prop)) is enm
                         )
@@ -290,7 +297,8 @@ class EnumClassWriter(EnumTranspiler):  # pylint: disable=R0902
             self.symmetric_properties_ = []
         else:
             self.symmetric_properties_ = [
-                prop for prop in self.symmetric_properties_kwarg_
+                prop
+                for prop in self.symmetric_properties_kwarg_
                 if hasattr(enum(enum.values[0]), prop)  # type: ignore
             ]
 
@@ -312,15 +320,15 @@ class EnumClassWriter(EnumTranspiler):  # pylint: disable=R0902
         """
         if self.class_properties_kwarg_ is True:
             self.class_properties_ = [
-                name for name, member in vars(enum).items()
+                name
+                for name, member in vars(enum).items()
                 if isinstance(member, classproperty)
             ]
         elif self.class_properties_kwarg_ is False:
             self.class_properties_ = []
         else:
             self.class_properties_ = [
-                prop for prop in self.class_properties_kwarg_
-                if hasattr(enum, prop)
+                prop for prop in self.class_properties_kwarg_ if hasattr(enum, prop)
             ]
 
     @property
@@ -353,10 +361,10 @@ class EnumClassWriter(EnumTranspiler):  # pylint: disable=R0902
                 self.str_is_prop_ = True
                 return
 
-        candidate = 'str'
+        candidate = "str"
         idx = 0
         while candidate in self.properties:
-            candidate = f'str{idx}'
+            candidate = f"str{idx}"
             idx += 1
         self.str_prop_ = candidate
 
@@ -394,76 +402,64 @@ class EnumClassWriter(EnumTranspiler):  # pylint: disable=R0902
               the enum to transpile
             - **symmetric_properties**: The list of property names that the
               enum can be instantiated from
-            - **to_string**: Boolean, True if the enum should have a 
+            - **to_string**: Boolean, True if the enum should have a
               toString() method
         """
         return {
             **EnumTranspiler.context.fget(self),  # type: ignore
-            'enum': self.enum,
-            'class_name': self.class_name,
-            'properties': self.properties,
-            'str_prop': self.str_prop,
-            'class_properties': self.class_properties,
-            'symmetric_properties': self.symmetric_properties,
-            'to_string': self.to_string_
+            "enum": self.enum,
+            "class_name": self.class_name,
+            "properties": self.properties,
+            "str_prop": self.str_prop,
+            "class_properties": self.class_properties,
+            "symmetric_properties": self.symmetric_properties,
+            "to_string": self.to_string_,
         }
 
     def __init__(  # pylint: disable=R0913
         self,
         class_name: str = class_name_pattern_,
-        on_unrecognized: Union[
-            str,
-            UnrecognizedBehavior
-        ] = on_unrecognized_,
+        on_unrecognized: Union[str, UnrecognizedBehavior] = on_unrecognized_,
         export: bool = export_,
-        include_properties: Union[
-            bool,
-            Collection[str]
-        ] = include_properties_,
+        include_properties: Union[bool, Collection[str]] = include_properties_,
         symmetric_properties: Union[
-            bool,
-            Collection[str]
+            bool, Collection[str]
         ] = symmetric_properties_kwarg_,
         exclude_properties: Optional[Collection[str]] = None,
-        class_properties: Union[
-            bool,
-            Collection[str]
-        ] = class_properties_kwarg_,
+        class_properties: Union[bool, Collection[str]] = class_properties_kwarg_,
         to_string: bool = to_string_,
         isymmetric_properties: Optional[Union[Collection[str], bool]] = None,
-        **kwargs
+        **kwargs,
     ) -> None:
         super().__init__(**kwargs)
         self.class_name_pattern_ = class_name
-        raise_on_not_found = kwargs.pop('raise_on_not_found', None)
+        raise_on_not_found = kwargs.pop("raise_on_not_found", None)
         self.on_unrecognized_ = (
             UnrecognizedBehavior[on_unrecognized]
-            if isinstance(on_unrecognized, str) else
-            on_unrecognized
+            if isinstance(on_unrecognized, str)
+            else on_unrecognized
         )
         if raise_on_not_found is not None:
             warnings.warn(
-                'raise_on_not_found is deprecated, use on_unrecognized '
-                'instead.',
+                "raise_on_not_found is deprecated, use on_unrecognized instead.",
                 DeprecationWarning,
-                stacklevel=2
+                stacklevel=2,
             )
             self.on_unrecognized_ = (
                 UnrecognizedBehavior.THROW_EXCEPTION
-                if raise_on_not_found else
-                UnrecognizedBehavior.RETURN_NULL
+                if raise_on_not_found
+                else UnrecognizedBehavior.RETURN_NULL
             )
         self.export_ = export
         self.include_properties_ = include_properties
         self.include_properties_ = (
             set(include_properties)
-            if isinstance(include_properties, Collection) else
-            include_properties
+            if isinstance(include_properties, Collection)
+            else include_properties
         )
         self.symmetric_properties_kwarg_ = symmetric_properties
         self.exclude_properties_ = (
-            set(exclude_properties)
-            if exclude_properties else set()
+            set(exclude_properties) if exclude_properties else set()
         )
         self.class_properties_kwarg_ = class_properties
         self.class_name_map_ = {}
@@ -471,15 +467,16 @@ class EnumClassWriter(EnumTranspiler):  # pylint: disable=R0902
         self.find_ci_ = isymmetric_properties in [True, None]
         self.isymmetric_properties_ = (
             list(isymmetric_properties or [])  # type: ignore
-            if isymmetric_properties not in [True, None] else []
+            if isymmetric_properties not in [True, None]
+            else []
         )
 
     def visit(
-            self,
-            enum: Type[Enum],  # type: ignore
-                               # pylint: disable=arguments-renamed
-            is_last: bool,
-            is_final: bool  # pylint: disable=unused-argument
+        self,
+        enum: Type[Enum],  # type: ignore
+        # pylint: disable=arguments-renamed
+        is_last: bool,
+        is_final: bool,  # pylint: disable=unused-argument
     ) -> Generator[Optional[str], None, None]:
         """
         Transpile the enum in sections.
@@ -493,34 +490,33 @@ class EnumClassWriter(EnumTranspiler):  # pylint: disable=R0902
         self.enum = enum
         yield from self.declaration(enum)
         self.indent()
-        yield ''
+        yield ""
         yield from self.enumerations(enum)
-        yield ''
+        yield ""
         if self.class_properties:
             yield from self.static_properties(enum)
-            yield ''
+            yield ""
         yield from self.constructor(enum)
-        yield ''
+        yield ""
         if self.isymmetric_properties_:
             yield from self.ci_compare()
-            yield ''
+            yield ""
         if self.to_string_:
             yield from self.to_string(enum)
-            yield ''
-        if 'get' in self.overrides_:
-            yield from self.transpile_override('get', self.getter_impl())
+            yield ""
+        if "get" in self.overrides_:
+            yield from self.transpile_override("get", self.getter_impl())
         else:
             yield from self.getter()
-        yield ''
+        yield ""
         yield from self.iterator(enum)
         for _, override in self.overrides_.items():
             yield from override.transpile(self.context)
         self.outdent()
-        yield '}'
+        yield "}"
 
     def declaration(  # pylint: disable=W0613
-            self,
-            enum: Type[Enum]
+        self, enum: Type[Enum]
     ) -> Generator[Optional[str], None, None]:
         """
         Transpile the class declaration.
@@ -530,10 +526,7 @@ class EnumClassWriter(EnumTranspiler):  # pylint: disable=R0902
         """
         yield f'{"export " if self.export_ else ""}class {self.class_name} {{'
 
-    def enumerations(
-            self,
-            enum: Type[Enum]
-    ) -> Generator[Optional[str], None, None]:
+    def enumerations(self, enum: Type[Enum]) -> Generator[Optional[str], None, None]:
         """
         Transpile the enumeration value instances as static member on the class
 
@@ -541,19 +534,15 @@ class EnumClassWriter(EnumTranspiler):  # pylint: disable=R0902
         :yield: transpiled javascript lines
         """
         for enm in enum:
-            values = [
-                self.to_js(getattr(enm, prop)) for prop in self.properties
-            ]
+            values = [self.to_js(getattr(enm, prop)) for prop in self.properties]
             if not self.str_is_prop_ and self.to_string_:
                 values.append(self.to_js(str(enm)))
             yield (
-                f'static {enm.name} = new {self.class_name}'
-                f'({", ".join(values)});'
+                f"static {enm.name} = new {self.class_name}" f'({", ".join(values)});'
             )
 
     def static_properties(
-            self,
-            enum: Type[Enum]
+        self, enum: Type[Enum]
     ) -> Generator[Optional[str], None, None]:
         """
         Transpile any classproperties as static members on the class.
@@ -562,11 +551,10 @@ class EnumClassWriter(EnumTranspiler):  # pylint: disable=R0902
         :yield: transpiled javascript lines
         """
         for prop in self.class_properties:
-            yield f'static {prop} = {self.to_js(getattr(enum, prop))};'
+            yield f"static {prop} = {self.to_js(getattr(enum, prop))};"
 
     def constructor(  # pylint: disable=W0613
-            self,
-            enum: Type[Enum]
+        self, enum: Type[Enum]
     ) -> Generator[Optional[str], None, None]:
         """
         Transpile the constructor for the enum instances.
@@ -576,28 +564,23 @@ class EnumClassWriter(EnumTranspiler):  # pylint: disable=R0902
         """
         props = [
             *self.properties,
-            *(
-                [] if self.str_is_prop_ or not self.to_string_
-                else [self.str_prop]
-            )
+            *([] if self.str_is_prop_ or not self.to_string_ else [self.str_prop]),
         ]
+
         def constructor_impl() -> Generator[str, None, None]:
             for prop in self.properties:
-                yield f'this.{prop} = {prop};'
+                yield f"this.{prop} = {prop};"
             if not self.str_is_prop_ and self.to_string_:
-                yield f'this.{self.str_prop} = {self.str_prop};'
+                yield f"this.{self.str_prop} = {self.str_prop};"
 
-        if 'constructor' in self.overrides_:
-            yield from self.transpile_override(
-                'constructor',
-                constructor_impl()
-            )
+        if "constructor" in self.overrides_:
+            yield from self.transpile_override("constructor", constructor_impl())
         else:
             yield f'constructor ({", ".join(props)}) {{'
             self.indent()
             yield from constructor_impl()
             self.outdent()
-            yield '}'
+            yield "}"
 
     def ci_compare(self) -> Generator[Optional[str], None, None]:
         """
@@ -608,18 +591,17 @@ class EnumClassWriter(EnumTranspiler):  # pylint: disable=R0902
             "a.localeCompare(b, undefined, { sensitivity: 'accent' }) "
             "=== 0 : a === b;"
         )
-        if 'ciCompare' in self.overrides_:
-            yield from self.transpile_override('ciCompare', impl)
+        if "ciCompare" in self.overrides_:
+            yield from self.transpile_override("ciCompare", impl)
         else:
-            yield 'static ciCompare(a, b) {'
+            yield "static ciCompare(a, b) {"
             self.indent()
             yield impl
             self.outdent()
-            yield '}'
+            yield "}"
 
     def to_string(  # pylint: disable=W0613
-            self,
-            enum: Type[Enum]
+        self, enum: Type[Enum]
     ) -> Generator[Optional[str], None, None]:
         """
         Transpile the toString() method that converts enum instances to
@@ -628,15 +610,15 @@ class EnumClassWriter(EnumTranspiler):  # pylint: disable=R0902
         :param enum: The enum class being transpiled
         :yield: transpiled javascript lines
         """
-        impl = f'return this.{self.str_prop};'
-        if 'toString' in self.overrides_:
-            yield from self.transpile_override('toString', impl)
+        impl = f"return this.{self.str_prop};"
+        if "toString" in self.overrides_:
+            yield from self.transpile_override("toString", impl)
         else:
-            yield 'toString() {'
+            yield "toString() {"
             self.indent()
             yield impl
             self.outdent()
-            yield '}'
+            yield "}"
 
     def getter(self) -> Generator[Optional[str], None, None]:
         """
@@ -646,34 +628,36 @@ class EnumClassWriter(EnumTranspiler):  # pylint: disable=R0902
         :param enum: The enum class being transpiled
         :yield: transpiled javascript lines
         """
-        yield 'static get(value) {'
+        yield "static get(value) {"
         self.indent()
         yield from self.getter_impl()
         self.outdent()
-        yield '}'
+        yield "}"
 
     def getter_impl(self) -> Generator[Optional[str], None, None]:
         """
         Transpile the default implementation of get() that converts values and
         properties into instances of the Enum type.
         """
-        yield 'if (value instanceof this) {'
+        yield "if (value instanceof this) {"
         self.indent()
-        yield 'return value;'
+        yield "return value;"
         self.outdent()
-        yield '}'
-        yield ''
+        yield "}"
+        yield ""
 
-        for prop in ['value'] + self.symmetric_properties:
+        for prop in ["value"] + self.symmetric_properties:
             yield from self.prop_getter(prop)
 
         if self.on_unrecognized_ is UnrecognizedBehavior.RETURN_INPUT:
-            yield 'return value;'
+            yield "return value;"
         elif self.on_unrecognized_ is UnrecognizedBehavior.RETURN_NULL:
-            yield 'return null;'
+            yield "return null;"
         else:
-            yield f'throw new TypeError(`No {self.class_name} ' \
-                  f'enumeration maps to value ${{value}}`);'
+            yield (
+                f"throw new TypeError(`No {self.class_name} "
+                f"enumeration maps to value ${{value}}`);"
+            )
 
     def prop_getter(self, prop: str) -> Generator[Optional[str], None, None]:
         """
@@ -684,36 +668,33 @@ class EnumClassWriter(EnumTranspiler):  # pylint: disable=R0902
         :param prop:
         :yield: transpiled javascript lines
         """
-        yield 'for (const en of this) {'
+        yield "for (const en of this) {"
         self.indent()
         if prop in (self.isymmetric_properties_ or []):
-            yield f'if (this.ciCompare(en.{prop}, value)) {{'
+            yield f"if (this.ciCompare(en.{prop}, value)) {{"
         else:
-            yield f'if (en.{prop} === value) {{'
+            yield f"if (en.{prop} === value) {{"
         self.indent()
-        yield 'return en;'
+        yield "return en;"
         self.outdent()
-        yield '}'
+        yield "}"
         self.outdent()
-        yield '}'
+        yield "}"
 
-    def iterator(
-            self,
-            enum: Type[Enum]
-    ) -> Generator[Optional[str], None, None]:
+    def iterator(self, enum: Type[Enum]) -> Generator[Optional[str], None, None]:
         """
         Transpile the iterator for iterating through enum value instances.
 
         :param enum: The enum class being transpiled
         :yield: transpiled javascript lines
         """
-        enums = [f'{self.class_name}.{enm.name}' for enm in enum]
+        enums = [f"{self.class_name}.{enm.name}" for enm in enum]
         impl = f'return [{", ".join(enums)}][Symbol.iterator]();'
-        if '[Symbol.iterator]' in self.overrides_:
-            yield from self.transpile_override('[Symbol.iterator]', impl)
+        if "[Symbol.iterator]" in self.overrides_:
+            yield from self.transpile_override("[Symbol.iterator]", impl)
         else:
-            yield 'static [Symbol.iterator]() {'
+            yield "static [Symbol.iterator]() {"
             self.indent()
             yield impl
             self.outdent()
-            yield '}'
+            yield "}"
