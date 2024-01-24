@@ -58,18 +58,18 @@ jobs:
       matrix:
         python-version: ['3.8', '3.9', '3.10', '3.11', '3.12']
         django-version:
-          - 'Django~=3.2.0' # LTS April 2024
-          - 'Django~=4.2.0' # LTS April 2026
-          - 'Django~=5.0.0' # April 2025
+          - '3.2.0' # LTS April 2024
+          - '4.2.0' # LTS April 2026
+          - '5.0.0' # April 2025
         exclude:
           - python-version: '3.11'
-            django-version: 'Django~=3.2.0'
+            django-version: '3.2.0'
           - python-version: '3.12'
-            django-version: 'Django~=3.2.0'
+            django-version: '3.2.0'
           - python-version: '3.8'
-            django-version: 'Django~=5.0.0'
+            django-version: '5.0.0'
           - python-version: '3.9'
-            django-version: 'Django~=5.0.0'
+            django-version: '5.0.0'
 
     steps:
     - uses: actions/checkout@v3
@@ -91,10 +91,11 @@ jobs:
         poetry config virtualenvs.in-project true
         poetry run pip install --upgrade pip
         poetry install -E all
-        poetry run pip install -U "${{ matrix.django-version }}"
+        poetry run pip install -U "Django~=${{ matrix.django-version }}"
     - name: Run Unit Tests
       run: |
         poetry run pytest
+        mv .coverage py${{ matrix.python-version }}-dj${{ matrix.django-version }}.coverage
 
     - name: Store coverage files
       uses: actions/upload-artifact@v4

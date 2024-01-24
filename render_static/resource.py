@@ -15,10 +15,7 @@ __all__ = ["resource"]
 
 # Distinguishing between different versions of Python:
 if sys.version_info >= (3, 9):
-    from importlib.resources import (  # pylint: disable=E0611
-        as_file,
-        files,
-    )
+    from importlib.resources import as_file, files  # pylint: disable=E0611
 else:
     try:
         from importlib_resources import as_file, files

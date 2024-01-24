@@ -183,9 +183,7 @@ def _build_branch(  # pylint: disable=R0913
                 ),
             )
         else:
-            raise NotImplementedError(
-                f"Unknown pattern type: {type(pattern)}"
-            )
+            raise NotImplementedError(f"Unknown pattern type: {type(pattern)}")
 
     return branch
 
@@ -410,9 +408,7 @@ class URLTreeVisitor(BaseURLTranspiler):
                     var: {"app_name": app_name}
                     for var in pattern.regex.groupindex.keys()
                 }
-            raise URLGenerationFailed(
-                f"Unrecognized pattern type: {type(pattern)}"
-            )
+            raise URLGenerationFailed(f"Unrecognized pattern type: {type(pattern)}")
 
         params = get_params(endpoint.pattern)
 

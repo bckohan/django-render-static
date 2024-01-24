@@ -25,9 +25,7 @@ class BatchLoaderMixin:
         Return a priority ordered list of directories on the search path of
         this loader.
         """
-        raise NotImplementedError(
-            f"{self.__class__.__name__} must implement get_dirs!"
-        )
+        raise NotImplementedError(f"{self.__class__.__name__} must implement get_dirs!")
 
     def select_templates(self, selector: str) -> Generator[List[str], None, None]:
         """

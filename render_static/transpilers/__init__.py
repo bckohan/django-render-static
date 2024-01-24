@@ -30,9 +30,7 @@ from django.utils.module_loading import import_module, import_string
 from django.utils.safestring import SafeString
 
 if TYPE_CHECKING:
-    from render_static.templatetags.render_static import (
-        OverrideNode,
-    )
+    from render_static.templatetags.render_static import OverrideNode
 
 
 __all__ = [
