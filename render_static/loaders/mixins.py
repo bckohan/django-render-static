@@ -27,7 +27,7 @@ class BatchLoaderMixin:
         """
         raise NotImplementedError(
             f"{self.__class__.__name__} must implement get_dirs!"
-        )  # pragma: no cover
+        )
 
     def select_templates(self, selector: str) -> Generator[List[str], None, None]:
         """

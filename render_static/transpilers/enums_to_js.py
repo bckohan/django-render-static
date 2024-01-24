@@ -27,7 +27,7 @@ except ImportError:
 
 
 IGNORED_ENUMS = {Enum, IntEnum, IntFlag, Flag, TextChoices, IntegerChoices}
-if sys.version_info >= (3, 11):  # pragma: no cover
+if sys.version_info >= (3, 11):
     from enum import EnumCheck, FlagBoundary, ReprEnum, StrEnum
 
     IGNORED_ENUMS.update({FlagBoundary, ReprEnum, StrEnum, EnumCheck})

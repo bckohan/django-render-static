@@ -30,6 +30,6 @@ class Jinja2DependencyNeeded:  # pylint: disable=R0903
     """
 
     def __init__(self, *args, **kwargs):
-        raise ImportError(  # pragma: no cover
+        raise ImportError(
             "To use the Jinja2 backend you must install the Jinja2 python package."
         )

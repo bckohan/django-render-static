@@ -220,5 +220,5 @@ try:
                 f"template names."
             )
 
-except ImportError:  # pragma: no cover
+except ImportError:
     StaticJinja2Templates = Jinja2DependencyNeeded  # type: ignore

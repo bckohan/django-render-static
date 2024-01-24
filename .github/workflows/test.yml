@@ -52,7 +52,7 @@ jobs:
           poetry export --without-hashes --format=requirements.txt | poetry run safety check --stdin
           poetry run python -m readme_renderer ./README.rst -o /tmp/README.html
 
-  build:
+  test:
     runs-on: ubuntu-latest
     strategy:
       matrix:
@@ -96,7 +96,47 @@ jobs:
       run: |
         poetry run pytest
 
-    - name: Upload coverage to Codecov
-      uses: codecov/codecov-action@v3
+    - name: Store coverage files
+      uses: actions/upload-artifact@v4
       with:
-        file: ./coverage.xml
+        name: coverage-py${{ matrix.python-version }}-dj${{ matrix.django-version }}
+        path: py${{ matrix.python-version }}-dj${{ matrix.django-version }}.coverage
+  
+  coverage-combine:
+    needs: [test]
+    runs-on: ubuntu-latest
+
+    steps:
+      - uses: actions/checkout@v3
+      - uses: actions/setup-python@v4
+        with:
+          python-version: '3.12'
+
+      - name: Install Poetry
+        uses: snok/install-poetry@v1
+        with:
+          virtualenvs-create: true
+          virtualenvs-in-project: true
+    
+      - name: Install Release Dependencies
+        run: |
+          poetry config virtualenvs.in-project true
+          poetry run pip install --upgrade pip
+          poetry install
+
+      - name: Get coverage files
+        uses: actions/download-artifact@v4
+        with:
+          pattern: coverage-*
+          merge-multiple: true
+
+      - run: ls -la *.coverage
+      - run: poetry run coverage combine *.coverage
+      - run: poetry run coverage report
+      - run: poetry run coverage xml
+
+      - name: Upload coverage to Codecov
+        uses: codecov/codecov-action@v3
+        with:
+          token: ${{ secrets.CODECOV_TOKEN }}
+          file: ./coverage.xml

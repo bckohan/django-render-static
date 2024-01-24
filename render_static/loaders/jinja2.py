@@ -34,9 +34,9 @@ try:
     )
 
     if TYPE_CHECKING:
-        from jinja2 import Environment, Template  # pragma: no cover
+        from jinja2 import Environment, Template
 
-except ImportError:  # pragma: no cover
+except ImportError:
     ChoiceLoader = Jinja2DependencyNeeded  # type: ignore
     DictLoader = Jinja2DependencyNeeded  # type: ignore
     FileSystemLoader = Jinja2DependencyNeeded  # type: ignore
@@ -97,7 +97,7 @@ class StaticFileSystemLoader(FileSystemLoader):  # pylint: disable=R0903
                 if pth.is_dir():
                     self.is_dir = True
                     # code cov bug here, ignore it
-                    return ("", normpath(pth), lambda: True)  # pragma: no cover
+                    return ("", normpath(pth), lambda: True)
             raise
 
 

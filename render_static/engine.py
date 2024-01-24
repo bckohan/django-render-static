@@ -21,7 +21,7 @@ from render_static.exceptions import InvalidContext
 try:
     # pylint: disable=C0412
     from django.template.backends.jinja2 import Template as Jinja2Template
-except ImportError:  # pragma: no cover
+except ImportError:
     Jinja2Template = Jinja2DependencyNeeded
 
 __all__ = ["StaticTemplateEngine", "Render"]

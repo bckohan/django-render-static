@@ -16,7 +16,7 @@ from render_static.exceptions import InvalidContext
 try:
     from yaml import FullLoader
     from yaml import load as yaml_load
-except ImportError:  # pragma: no cover
+except ImportError:
 
     def yaml_load(*args, **kwargs):  # type: ignore
         """

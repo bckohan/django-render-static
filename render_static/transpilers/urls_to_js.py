@@ -185,7 +185,7 @@ def _build_branch(  # pylint: disable=R0913
         else:
             raise NotImplementedError(
                 f"Unknown pattern type: {type(pattern)}"
-            )  # pragma: no cover
+            )
 
     return branch
 
@@ -410,7 +410,7 @@ class URLTreeVisitor(BaseURLTranspiler):
                     var: {"app_name": app_name}
                     for var in pattern.regex.groupindex.keys()
                 }
-            raise URLGenerationFailed(  # pragma: no cover
+            raise URLGenerationFailed(
                 f"Unrecognized pattern type: {type(pattern)}"
             )
 
@@ -550,7 +550,7 @@ class URLTreeVisitor(BaseURLTranspiler):
                                 if unnamed
                                 else f"kwargs={list(params.keys())} */"
                             )
-                        )  # pragma: no cover
+                        )
                     return
 
                 except NoReverseMatch:
@@ -1126,7 +1126,7 @@ class ClassURLWriter(URLTreeVisitor):
             self.outdent()
             yield "}"
 
-    def deep_equal(self) -> Generator[Optional[str], None, None]:  # pragma: no cover
+    def deep_equal(self) -> Generator[Optional[str], None, None]:
         """
         The recursive deepEqual function.
         :yield: The JavaScript jdoc comment lines and deepEqual function.
@@ -1181,7 +1181,7 @@ class ClassURLWriter(URLTreeVisitor):
             self.outdent()
             yield "}"
 
-    def is_object(self) -> Generator[Optional[str], None, None]:  # pragma: no cover
+    def is_object(self) -> Generator[Optional[str], None, None]:
         """
         The isObject() function.
         :yield: The JavaScript jdoc comment lines and isObject function.
@@ -1220,7 +1220,7 @@ class ClassURLWriter(URLTreeVisitor):
             self.indent()
             yield "if (kwargs.hasOwnProperty(key)) {"
             self.indent()
-            if DJANGO_VERSION[0:2] >= (4, 1):  # pragma: no cover
+            if DJANGO_VERSION[0:2] >= (4, 1):
                 # there was a change in Django 4.1 that seems to coerce kwargs
                 # given to the default kwarg type of the same name if one
                 # exists for the purposes of reversal. Thus 1 will == '1'
@@ -1236,7 +1236,7 @@ class ClassURLWriter(URLTreeVisitor):
                     "&& !expected.includes(key)) "
                     "{ return false; }"
                 )
-            else:  # pragma: no cover
+            else:
                 yield "if (!this.deepEqual(kwargs[key], val)) { return false; }"
             yield "if (!expected.includes(key)) { delete kwargs[key]; }"
             self.outdent()
@@ -1357,7 +1357,7 @@ class ClassURLWriter(URLTreeVisitor):
         yield ""
         yield from self.match()
         yield ""
-        if DJANGO_VERSION[0:2] < (4, 1):  # pragma: no cover
+        if DJANGO_VERSION[0:2] < (4, 1):
             yield from self.deep_equal()
             yield ""
             yield from self.is_object()

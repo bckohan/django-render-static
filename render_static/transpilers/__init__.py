@@ -31,7 +31,7 @@ from django.utils.safestring import SafeString
 
 if TYPE_CHECKING:
     from render_static.templatetags.render_static import (
-        OverrideNode,  # pragma: no cover
+        OverrideNode,
     )
 
 

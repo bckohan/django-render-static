@@ -15,14 +15,14 @@ __all__ = ["resource"]
 
 # Distinguishing between different versions of Python:
 if sys.version_info >= (3, 9):
-    from importlib.resources import (  # pragma: no cover, pylint: disable=E0611
+    from importlib.resources import (  # pylint: disable=E0611
         as_file,
         files,
     )
 else:
-    try:  # pragma: no cover
+    try:
         from importlib_resources import as_file, files
-    except ImportError:  # pragma: no cover
+    except ImportError:
 
         @singledispatch
         def need_install(*args, **kwargs):
