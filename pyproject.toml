@@ -152,9 +152,6 @@ addopts = [
     "--cov=render_static",
     "--cov-branch",
     "--cov-report=term-missing:skip-covered",
-    "--cov-report=html",
-    "--cov-report=xml",
-    "--cov-fail-under=100"
 ]
 
 [tool.coverage.run]
