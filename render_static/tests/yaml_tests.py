@@ -18,9 +18,9 @@ try:
 except ImportError:
     yaml = None
 
-@pytest.mark.skipif(not yaml, reason='PyYAML is not installed')
+
+@pytest.mark.skipif(not yaml, reason="PyYAML is not installed")
 class TestYAMLContext(BaseTestCase):
-    
     def test_yaml_context(self):
         self.assertEqual(
             resolve_context(str(Path(__file__).parent / "resources" / "context.yaml")),
@@ -28,7 +28,7 @@ class TestYAMLContext(BaseTestCase):
         )
 
 
-@pytest.mark.skipif(not yaml, reason='PyYAML is not installed')
+@pytest.mark.skipif(not yaml, reason="PyYAML is not installed")
 @override_settings(
     STATIC_TEMPLATES={
         "context": {"to": "world", "punc": "!"},
@@ -59,7 +59,7 @@ class TestYAMLContextOverride(BaseTestCase):
         )
 
 
-@pytest.mark.skipif(yaml, reason='PyYAML is installed')
+@pytest.mark.skipif(yaml, reason="PyYAML is installed")
 class TestYAMLMissingImport(BaseTestCase):
     """
     Tests that per template contexts override global contexts and that the
@@ -68,5 +68,6 @@ class TestYAMLMissingImport(BaseTestCase):
 
     def test_no_yaml_error_on_load(self):
         from render_static.context import yaml_load
+
         with self.assertRaises(ImportError):
             yaml_load()
