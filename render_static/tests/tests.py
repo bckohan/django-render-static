@@ -1756,13 +1756,13 @@ def test_resources_38():
     from render_static.resource import as_file, files
 
     try:
-        files()
+        files("dummy")
         assert False, "file() should raise ImportError"
     except ImportError:
         pass
 
     try:
-        as_file()
+        as_file("dummy")
         assert False, "file() should raise ImportError"
     except ImportError:
         pass
