@@ -9,14 +9,7 @@ https://jinja.palletsprojects.com/en/3.0.x/api/#loaders
 """
 from os.path import normpath
 from pathlib import Path
-from typing import (
-    TYPE_CHECKING,
-    Any,
-    Callable,
-    MutableMapping,
-    Optional,
-    Tuple,
-)
+from typing import TYPE_CHECKING, Any, Callable, MutableMapping, Optional, Tuple
 
 from render_static import Jinja2DependencyNeeded
 from render_static.loaders.mixins import BatchLoaderMixin

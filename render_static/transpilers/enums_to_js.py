@@ -5,19 +5,10 @@ import sys
 import warnings
 from abc import abstractmethod
 from enum import Enum, Flag, IntEnum, IntFlag, auto
-from typing import (
-    Any,
-    Collection,
-    Dict,
-    Generator,
-    List,
-    Optional,
-    Set,
-    Type,
-    Union,
-)
+from typing import Any, Collection, Dict, Generator, List, Optional, Set, Type, Union
 
 from django.db.models import IntegerChoices, TextChoices
+
 from render_static.transpilers import Transpiler, TranspilerTarget
 
 try:

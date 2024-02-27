@@ -10,6 +10,7 @@ from django.core.exceptions import ImproperlyConfigured
 from django.core.management import CommandError, call_command
 from django.template.exceptions import TemplateDoesNotExist
 from django.test import TestCase, override_settings
+
 from render_static import resolve_context, resource
 from render_static.engine import StaticTemplateEngine
 from render_static.exceptions import InvalidContext
@@ -43,19 +44,6 @@ def empty_or_dne(directory):
     if os.path.exists(str(directory)):
         return len(os.listdir(directory)) == 0
     return True
-
-
-class TestGenerateStaticParserAccessor(TestCase):
-    """
-    This test is just to get to 100% coverage - the get_parser function is private and is only
-    available to serve the sphinx docs
-    """
-
-    def test_get_parser(self):
-        from django.core.management.base import CommandParser
-        from render_static.management.commands.renderstatic import get_parser
-
-        self.assertTrue(isinstance(get_parser(), CommandParser))
 
 
 class AppOriginTestCase(TestCase):

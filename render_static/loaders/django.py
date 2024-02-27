@@ -20,6 +20,7 @@ from django.template.loaders.app_directories import Loader as AppDirLoader
 from django.template.loaders.filesystem import Loader as FilesystemLoader
 from django.template.loaders.filesystem import safe_join
 from django.template.loaders.locmem import Loader as LocMemLoader
+
 from render_static.loaders.mixins import BatchLoaderMixin
 from render_static.origin import AppOrigin
 

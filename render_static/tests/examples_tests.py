@@ -11,6 +11,7 @@ from deepdiff import DeepDiff
 from django.core.management import call_command
 from django.test import override_settings
 from django.urls import reverse
+
 from render_static.tests.js_tests import (
     GLOBAL_STATIC_DIR,
     EnumComparator,

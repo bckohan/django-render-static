@@ -10,107 +10,116 @@ A template name supplied as an argument does not need to be specified in
 ``STATIC_TEMPLATES`` for it to be found and rendered. Such templates will be
 given the global context as specified in ``STATIC_TEMPLATES``.
 """
-from django.core.management.base import BaseCommand, CommandError
+import sys
+import typing as t
+from pathlib import Path
+
+from django.core.management.base import CommandError
+from django.utils.translation import gettext_lazy as _
+from django_typer import TyperCommand
+from typer import Argument, Option
+
 from render_static.engine import StaticTemplateEngine
 
-
-def get_parser():
-    """
-    This instantiates an argparser parser for this command so sphinx doc can
-    autogenerate the docs for it.
-    """
-    cmd = Command()
-    parser = cmd.create_parser("manage.py", "render_static")
-    return parser
+if sys.version_info >= (3, 9):
+    from typing import Annotated
+else:
+    from typing_extensions import Annotated
 
 
-class Command(BaseCommand):
+class Command(TyperCommand):
     # pylint: disable=C0115
 
-    help = "Generate static files from static templates."
+    help = _("Generate static files from static templates.")
 
-    def add_arguments(self, parser):
-        parser.add_argument(
-            "selectors",
-            metavar="S",
-            nargs="*",
-            type=str,
-            help="Template name selectors for the templates to render. "
-            "Selectors are like template names, but can be glob patterns,"
-            " or patterns understood by specifically configured loaders. "
-            "Template selectors can resolve to more than one valid "
-            "template name. Default: All template selectors specified in "
-            "settings.",
-        )
-        parser.add_argument(
-            "-c",
-            "--context",
-            dest="context",
-            type=str,
-            default=None,
-            help="An alternate context to use when rendering the selected "
-            "templates. This will override any conflicting context "
-            "parameters in the context(s) specified in settings. Will be"
-            " treated as a path to any of the following file types: "
-            "python files, json files, yaml files, or pickled python "
-            "dictionaries.",
-        )
-
-        parser.add_argument(
-            "-d",
-            "--destination",
-            dest="dest",
-            type=str,
-            default=None,
-            help="The location to render templates to. This will override the "
-            "destination specified in settings for selected template, if "
-            "one exists. If no destination is specified in settings or "
-            "here, the default destination is settings.STATIC_ROOT.",
-        )
-
-        parser.add_argument(
-            "--first-engine",
-            dest="first_engine",
-            action="store_true",
-            default=False,
-            help="Render only the set of templates that match the selector "
-            "that are found by the highest priority rendering engine. By "
-            "default (False) any templates that match the selector from "
-            "any engine will be rendered.",
-        )
-
-        parser.add_argument(
-            "--first-loader",
-            dest="first_loader",
-            action="store_true",
-            default=False,
-            help="Render only the set of templates found by the first loader "
-            "that match any part of the selector. By default (False) any "
-            "template name that matches the selector from any loader will"
-            " be rendered.",
-        )
-
-        parser.add_argument(
-            "--first-preference",
-            dest="first_preference",
-            action="store_true",
-            default=False,
-            help="Render only the templates that match the first preference "
-            "for each loader. When combined with --first-loader render "
-            "only the first preference(s) of the first loader. "
-            "Preferences are loader specific and documented on the "
-            "loader. For instance, for the App directories loader "
-            "preference is defined as app precedence in settings - so if "
-            "any templates match the selector for the highest priority "
-            "app, only those templates would be rendered.",
-        )
-
-    def handle(self, *args, **options):
+    def handle(  # pylint: disable=W0221
+        self,
+        selectors: Annotated[
+            t.Optional[t.List[str]],
+            Argument(
+                help=_(
+                    "Template name selectors for the templates to render. "
+                    "Selectors are like template names, but can be glob patterns,"
+                    " or patterns understood by specifically configured loaders. "
+                    "Template selectors can resolve to more than one valid "
+                    "template name. Default: All template selectors specified in "
+                    "settings."
+                )
+            ),
+        ] = None,
+        context: Annotated[
+            t.Optional[Path],
+            Option(
+                "--context",
+                "-c",
+                help=_(
+                    "An alternate context to use when rendering the selected "
+                    "templates. This will override any conflicting context "
+                    "parameters in the context(s) specified in settings. Must be "
+                    "a path to any of the following file types: "
+                    "python files, json files, yaml files, or pickled python "
+                    "dictionaries.",
+                ),
+            ),
+        ] = None,
+        destination: Annotated[
+            t.Optional[Path],
+            Option(
+                "--destination",
+                "-d",
+                help=_(
+                    "The location to render templates to. This will override the "
+                    "destination specified in settings for selected template, if "
+                    "one exists. If no destination is specified in settings or "
+                    "here, the default destination is settings.STATIC_ROOT."
+                ),
+            ),
+        ] = None,
+        first_engine: Annotated[
+            bool,
+            Option(
+                "--first-engine",
+                help=_(
+                    "Render only the set of templates that match the selector "
+                    "that are found by the highest priority rendering engine. By "
+                    "default (False) any templates that match the selector from "
+                    "any engine will be rendered."
+                ),
+            ),
+        ] = False,
+        first_loader: Annotated[
+            bool,
+            Option(
+                "--first-loader",
+                help=_(
+                    "Render only the set of templates found by the first loader "
+                    "that match any part of the selector. By default (False) any "
+                    "template name that matches the selector from any loader will "
+                    "be rendered."
+                ),
+            ),
+        ] = False,
+        first_preference: Annotated[
+            bool,
+            Option(
+                "--first-preference",
+                help=_(
+                    "Render only the templates that match the first preference "
+                    "for each loader. When combined with --first-loader render "
+                    "only the first preference(s) of the first loader. "
+                    "Preferences are loader specific and documented on the "
+                    "loader. For instance, for the App directories loader "
+                    "preference is defined as app precedence in settings - so if "
+                    "any templates match the selector for the highest priority "
+                    "app, only those templates would be rendered."
+                ),
+            ),
+        ] = False,
+    ):
         engine = StaticTemplateEngine()
 
-        selectors = options.get("selectors", [])
         if not selectors:
-            selectors = {selector for selector, _ in engine.templates}
+            selectors = list({selector for selector, _ in engine.templates})
 
         if not selectors:
             self.stdout.write(
@@ -123,11 +132,11 @@ class Command(BaseCommand):
         try:
             for render in engine.render_each(
                 *selectors,
-                dest=options.get("dest", None),
-                context=options.get("context", None),
-                first_engine=options.get("first_engine", False),
-                first_loader=options.get("first_loader", False),
-                first_preference=options.get("first_preference", False),
+                dest=destination,
+                context=context,
+                first_engine=first_engine,
+                first_loader=first_loader,
+                first_preference=first_preference,
             ):
                 self.stdout.write(
                     self.style.SUCCESS(f"Rendered {render}.")  # pylint: disable=E1101

@@ -8,12 +8,10 @@ from django.template.exceptions import TemplateDoesNotExist
 from django.template.utils import InvalidTemplateEngineError
 from django.test import TestCase, override_settings
 from django.urls import reverse
+
 from render_static.backends import StaticDjangoTemplates, StaticJinja2Templates
 from render_static.engine import StaticTemplateEngine
-from render_static.loaders.jinja2 import (
-    StaticDictLoader,
-    StaticFileSystemLoader,
-)
+from render_static.loaders.jinja2 import StaticDictLoader, StaticFileSystemLoader
 from render_static.tests import defines
 from render_static.tests.js_tests import (
     ClassURLWriter,

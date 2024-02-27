@@ -13,6 +13,7 @@ from django.template.exceptions import TemplateDoesNotExist
 from django.template.utils import InvalidTemplateEngineError
 from django.utils.functional import cached_property
 from django.utils.module_loading import import_string
+
 from render_static import Jinja2DependencyNeeded
 from render_static.backends import StaticDjangoTemplates, StaticJinja2Templates
 from render_static.context import resolve_context
@@ -508,7 +509,7 @@ class StaticTemplateEngine:
     def render_each(  # pylint: disable=R0914
         self,
         *selectors: str,
-        context: Optional[Dict] = None,
+        context: Optional[Union[Dict, str, Path, Callable]] = None,
         dest: Optional[Union[str, Path]] = None,
         first_engine: bool = False,
         first_loader: bool = False,

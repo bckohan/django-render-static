@@ -2,6 +2,7 @@ from django.contrib.sitemaps import Sitemap
 from django.contrib.sitemaps.views import sitemap
 from django.urls import include, path
 from django.utils.timezone import now
+
 from render_static.tests.views import TestView
 
 

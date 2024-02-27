@@ -46,11 +46,12 @@ jobs:
           poetry run black render_static --check
           poetry run pylint render_static
           poetry run mypy render_static
-          poetry run doc8 -q doc
           poetry check
           poetry run pip check
           poetry export --without-hashes --format=requirements.txt | poetry run safety check --stdin
           poetry run python -m readme_renderer ./README.rst -o /tmp/README.html
+          cd ./doc
+          poetry run doc8 --ignore-path build --max-line-length 100
 
   test:
     runs-on: ubuntu-latest

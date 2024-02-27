@@ -27,11 +27,8 @@ from django.template.context import Context
 from django.template.library import parse_bits
 from django.utils.module_loading import import_string
 from django.utils.safestring import SafeString
-from render_static.transpilers import (
-    Transpiler,
-    TranspilerTarget,
-    TranspilerTargets,
-)
+
+from render_static.transpilers import Transpiler, TranspilerTarget, TranspilerTargets
 from render_static.transpilers.defines_to_js import DefaultDefineTranspiler
 from render_static.transpilers.enums_to_js import EnumClassWriter
 from render_static.transpilers.urls_to_js import ClassURLWriter
@@ -106,8 +103,7 @@ class OverrideNode(Node):
         """
         self.context.update(context)
         lines = self.nodelist.render(self.context).splitlines()
-        for line in lines:
-            yield line
+        yield from lines
 
 
 class TranspilerNode(Node):

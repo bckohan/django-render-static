@@ -13,11 +13,12 @@ import pytest
 from django.core.management import call_command
 from django.test import LiveServerTestCase, override_settings
 from django.urls import reverse
-from render_static.tests.tests import LOCAL_STATIC_DIR, BaseTestCase
 from selenium import webdriver
 from selenium.webdriver.chrome.options import Options
 from selenium.webdriver.chrome.service import Service
 from selenium.webdriver.common.by import By
+
+from render_static.tests.tests import LOCAL_STATIC_DIR, BaseTestCase
 
 logger = logging.getLogger(__name__)
 

@@ -9,10 +9,8 @@ from typing import Dict, List, Tuple
 
 from django.apps import apps
 from django.apps.config import AppConfig
-from django.template.backends.django import (
-    DjangoTemplates,
-    TemplateDoesNotExist,
-)
+from django.template.backends.django import DjangoTemplates, TemplateDoesNotExist
+
 from render_static import Jinja2DependencyNeeded
 from render_static.loaders.jinja2 import StaticFileSystemBatchLoader
 from render_static.origin import AppOrigin

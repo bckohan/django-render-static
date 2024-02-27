@@ -5,6 +5,7 @@ from pathlib import Path
 import pytest
 from django.core.management import call_command
 from django.test import override_settings
+
 from render_static.tests.tests import (
     APP1_STATIC_DIR,
     EXPECTED_DIR,

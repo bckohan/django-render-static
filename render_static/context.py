@@ -11,6 +11,7 @@ from pathlib import Path
 from typing import Callable, Dict, Optional, Sequence, Tuple, Union
 
 from django.utils.module_loading import import_string
+
 from render_static.exceptions import InvalidContext
 
 try:
