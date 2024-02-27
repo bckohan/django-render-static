@@ -111,7 +111,8 @@ class EnumClassWriter(EnumTranspiler):  # pylint: disable=R0902
         static members on the transpiled Enum class. May also be an iterable
         of specific property names to include.
     :param to_string: If true (default) include a toString() method that
-        returns a string representation of the enum.
+        returns a string representation of the enum. If a non-empty string,
+        use that string as the name of the property to return from toString().
     :param isymmetric_properties: If provided, case insensitive symmetric
         properties will be limited to those listed. If not provided, case
         insensitive properties will be dynamically determined. Provide
@@ -144,7 +145,7 @@ class EnumClassWriter(EnumTranspiler):  # pylint: disable=R0902
 
     str_prop_: Optional[str] = None
     str_is_prop_: bool = False
-    to_string_: bool = True
+    to_string_: Union[bool, str] = True
 
     def to_js(self, value: Any):
         """
@@ -323,11 +324,22 @@ class EnumClassWriter(EnumTranspiler):  # pylint: disable=R0902
             ]
 
     @property
+    def str_is_prop(self):
+        """
+        True if toString() is a property, False otherwise.
+        """
+        if self.to_string_ and isinstance(self.to_string_, str):
+            return True
+        return self.str_is_prop_
+
+    @property
     def str_prop(self):
         """
         The property that is the string representation of the field or
         None if the string is different
         """
+        if self.to_string_ and isinstance(self.to_string_, str):
+            return self.to_string_
         return self.str_prop_
 
     @str_prop.setter
@@ -418,7 +430,7 @@ class EnumClassWriter(EnumTranspiler):  # pylint: disable=R0902
         ] = symmetric_properties_kwarg_,
         exclude_properties: Optional[Collection[str]] = None,
         class_properties: Union[bool, Collection[str]] = class_properties_kwarg_,
-        to_string: bool = to_string_,
+        to_string: Union[bool, str] = to_string_,
         isymmetric_properties: Optional[Union[Collection[str], bool]] = None,
         **kwargs,
     ) -> None:
@@ -526,7 +538,7 @@ class EnumClassWriter(EnumTranspiler):  # pylint: disable=R0902
         """
         for enm in enum:
             values = [self.to_js(getattr(enm, prop)) for prop in self.properties]
-            if not self.str_is_prop_ and self.to_string_:
+            if not self.str_is_prop and self.to_string_:
                 values.append(self.to_js(str(enm)))
             yield (
                 f"static {enm.name} = new {self.class_name}" f'({", ".join(values)});'
@@ -555,13 +567,13 @@ class EnumClassWriter(EnumTranspiler):  # pylint: disable=R0902
         """
         props = [
             *self.properties,
-            *([] if self.str_is_prop_ or not self.to_string_ else [self.str_prop]),
+            *([] if self.str_is_prop or not self.to_string_ else [self.str_prop]),
         ]
 
         def constructor_impl() -> Generator[str, None, None]:
             for prop in self.properties:
                 yield f"this.{prop} = {prop};"
-            if not self.str_is_prop_ and self.to_string_:
+            if not self.str_is_prop and self.to_string_:
                 yield f"this.{self.str_prop} = {self.str_prop};"
 
         if "constructor" in self.overrides_:

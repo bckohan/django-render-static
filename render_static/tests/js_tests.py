@@ -2933,7 +2933,11 @@ class EnumComparator:
                         "strings": {
                             en.value.isoformat()
                             if isinstance(en.value, date)
-                            else str(en.value): str(en)
+                            else str(en.value): (
+                                str(getattr(en, to_string))
+                                if isinstance(to_string, str)
+                                else str(en)
+                            )
                             for en in cls
                         }
                     }
@@ -3198,6 +3202,36 @@ class EnumGeneratorTest(EnumComparator, BaseTestCase):
         )
         self.assertNotIn("toString", get_content(ENUM_STATIC_DIR / "enum_app/test.js"))
         self.assertNotIn("this.str", get_content(ENUM_STATIC_DIR / "enum_app/test.js"))
+        self.assertNotIn(", str) {", get_content(ENUM_STATIC_DIR / "enum_app/test.js"))
+        self.assertNotIn(', "1");', get_content(ENUM_STATIC_DIR / "enum_app/test.js"))
+
+    @override_settings(
+        STATIC_TEMPLATES={
+            "context": {
+                "include_properties": True,
+                "class_properties": False,
+                "properties": True,
+                "symmetric_properties": False,
+                "to_string": "uri",
+            },
+            "templates": [
+                ("enum_app/test.js", {"context": {"enums": EnumTester.MapBoxStyle}}),
+            ],
+        }
+    )
+    def test_to_string_is_prop(self):
+        call_command("renderstatic", "enum_app/test.js")
+        self.enums_compare(
+            js_file=ENUM_STATIC_DIR / "enum_app/test.js",
+            enum_classes=[EnumTester.MapBoxStyle],
+            class_properties=False,
+            to_string="uri",
+        )
+        self.assertNotIn(
+            "class_name", get_content(ENUM_STATIC_DIR / "enum_app/test.js")
+        )
+        self.assertIn("toString", get_content(ENUM_STATIC_DIR / "enum_app/test.js"))
+        self.assertIn("this.uri", get_content(ENUM_STATIC_DIR / "enum_app/test.js"))
         self.assertNotIn(", str) {", get_content(ENUM_STATIC_DIR / "enum_app/test.js"))
         self.assertNotIn(', "1");', get_content(ENUM_STATIC_DIR / "enum_app/test.js"))
 
