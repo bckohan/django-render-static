@@ -97,14 +97,13 @@ jobs:
       run: |
         poetry run pytest
         poetry run pip uninstall -y jinja2 pyyaml
-        pip uninstall -y jinja2 pyyaml
         poetry run pytest --cov-append
         mv .coverage py${{ matrix.python-version }}-dj${{ matrix.django-version }}.coverage
-    - name: Setup tmate session
-      uses: mxschmitt/action-tmate@v3
-      with:
-        detached: true
-      timeout-minutes: 60
+    # - name: Setup tmate session
+    #   uses: mxschmitt/action-tmate@v3
+    #   with:
+    #     detached: true
+    #   timeout-minutes: 60
     - name: Store coverage files
       uses: actions/upload-artifact@v4
       with:

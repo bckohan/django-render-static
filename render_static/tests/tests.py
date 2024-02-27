@@ -44,9 +44,12 @@ CONTEXT_PICKLE = Path(__file__).parent / "resources" / "context.pickle"
 
 
 try:
-    import jinja2
+    # weird issue where cant just import jinja2 b/c leftover __pycache__
+    # allows it to "import"
+    from jinja2 import environment
+    jinja2 = True
 except ImportError:
-    jinja2 = None
+    jinja2 = False
 
 
 def empty_or_dne(directory):
