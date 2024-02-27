@@ -29,7 +29,7 @@ from django.apps.config import AppConfig
 from django.utils.module_loading import import_module, import_string
 from django.utils.safestring import SafeString
 
-if TYPE_CHECKING:
+if TYPE_CHECKING:  # pragma: no cover
     from render_static.templatetags.render_static import OverrideNode
 
 

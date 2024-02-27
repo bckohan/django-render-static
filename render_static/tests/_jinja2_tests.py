@@ -34,11 +34,6 @@ from render_static.tests.tests import (
     generate_context2,
 )
 
-try:
-    import jinja2
-except:
-    jinja2 = False
-
 
 @override_settings(
     STATIC_TEMPLATES={

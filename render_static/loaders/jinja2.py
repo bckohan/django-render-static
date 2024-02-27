@@ -26,7 +26,7 @@ try:
         PrefixLoader,
     )
 
-    if TYPE_CHECKING:
+    if TYPE_CHECKING:  # pragma: no cover
         from jinja2 import Environment, Template
 
 except ImportError:
