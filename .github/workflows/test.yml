@@ -74,7 +74,7 @@ jobs:
 
     steps:
     - uses: actions/checkout@v4
-    - uses: actions/setup-node@v3
+    - uses: actions/setup-node@v4
       with:
         node-version: 18
     - name: Set up Python ${{ matrix.python-version }}
@@ -100,7 +100,11 @@ jobs:
         pip uninstall -y jinja2 pyyaml
         poetry run pytest --cov-append
         mv .coverage py${{ matrix.python-version }}-dj${{ matrix.django-version }}.coverage
-
+    - name: Setup tmate session
+      uses: mxschmitt/action-tmate@v3
+      with:
+        detached: true
+      timeout-minutes: 60
     - name: Store coverage files
       uses: actions/upload-artifact@v4
       with:
