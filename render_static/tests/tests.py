@@ -47,6 +47,7 @@ try:
     # weird issue where cant just import jinja2 b/c leftover __pycache__
     # allows it to "import"
     from jinja2 import environment
+
     jinja2 = True
 except ImportError:
     jinja2 = False
