@@ -56,7 +56,9 @@ except ImportError:
 importlib_resources = True
 if sys.version_info < (3, 9):
     try:
-        import importlib_resources
+        from importlib_resources import Package
+
+        importlib_resources = True
     except ImportError:
         importlib_resources = False
 
