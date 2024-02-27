@@ -96,7 +96,7 @@ jobs:
     - name: Run Unit Tests
       run: |
         poetry run pytest
-        poetry run pip uninstall -y jinja2 pyyaml
+        poetry run pip uninstall -y jinja2 pyyaml importlib-resources
         poetry run pytest --cov-append
         mv .coverage py${{ matrix.python-version }}-dj${{ matrix.django-version }}.coverage
     # - name: Setup tmate session

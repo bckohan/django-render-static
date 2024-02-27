@@ -3,6 +3,7 @@ import filecmp
 import os
 import pickle
 import shutil
+import sys
 from io import StringIO
 from pathlib import Path
 
@@ -51,6 +52,13 @@ try:
     jinja2 = True
 except ImportError:
     jinja2 = False
+
+importlib_resources = True
+if sys.version_info < (3, 9):
+    try:
+        import importlib_resources
+    except ImportError:
+        importlib_resources = False
 
 
 def empty_or_dne(directory):
@@ -1724,4 +1732,23 @@ def test_batch_loader_mixin_not_impl():
         BatchLoaderMixin().get_dirs()
         assert False, 'BatchLoaderMixin.get_dirs() should raise "NotImplementedError"'
     except NotImplementedError:
+        pass
+
+
+@pytest.mark.skipif(
+    sys.version_info < (3, 9) or importlib_resources, reason="jinja2 installed"
+)
+def test_resources_38():
+    from render_static.resource import as_file, files
+
+    try:
+        files()
+        assert False, "file() should raise ImportError"
+    except ImportError:
+        pass
+
+    try:
+        as_file()
+        assert False, "file() should raise ImportError"
+    except ImportError:
         pass
