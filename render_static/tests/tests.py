@@ -1750,7 +1750,7 @@ def test_batch_loader_mixin_not_impl():
 
 
 @pytest.mark.skipif(
-    sys.version_info < (3, 9) or importlib_resources, reason="jinja2 installed"
+    sys.version_info >= (3, 9) or importlib_resources, reason="jinja2 installed"
 )
 def test_resources_38():
     from render_static.resource import as_file, files
