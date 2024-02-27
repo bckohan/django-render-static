@@ -14,7 +14,10 @@ import sys
 import typing as t
 from pathlib import Path
 
+from click import Context, Parameter
+from click.shell_completion import CompletionItem
 from django.core.management.base import CommandError
+from django.template.exceptions import TemplateDoesNotExist
 from django.utils.translation import gettext_lazy as _
 from django_typer import TyperCommand
 from typer import Argument, Option
@@ -25,6 +28,30 @@ if sys.version_info >= (3, 9):
     from typing import Annotated
 else:
     from typing_extensions import Annotated
+
+
+def complete_selector(
+    ctx: Context, param: Parameter, incomplete: str
+) -> t.List[CompletionItem]:
+    """
+    Generate completions for the template selectors.
+    """
+    engine = StaticTemplateEngine()
+    present = ctx.params.get(param.name or "") or []
+    completions = []
+    try:
+        for render in engine.search(
+            f"{incomplete}*/**",
+            dest=ctx.params.get("destination") or None,
+            first_engine=bool(ctx.params.get("first_engine")),
+            first_loader=bool(ctx.params.get("first_loader")),
+            first_preference=bool(ctx.params.get("first_preference")),
+        ):
+            if render.template.template.name not in present:
+                completions.append(CompletionItem(render.template.template.name))
+    except TemplateDoesNotExist:
+        return []
+    return completions
 
 
 class Command(TyperCommand):
@@ -43,8 +70,9 @@ class Command(TyperCommand):
                     " or patterns understood by specifically configured loaders. "
                     "Template selectors can resolve to more than one valid "
                     "template name. Default: All template selectors specified in "
-                    "settings."
-                )
+                    "settings.",
+                ),
+                shell_complete=complete_selector,
             ),
         ] = None,
         context: Annotated[

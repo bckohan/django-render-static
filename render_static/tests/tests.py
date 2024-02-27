@@ -1,7 +1,9 @@
+import contextlib
 import filecmp
 import os
 import pickle
 import shutil
+from io import StringIO
 from pathlib import Path
 
 from django.apps import apps
@@ -1614,3 +1616,38 @@ class BatchRenderTestCase(BaseTestCase):
 
     # def tearDown(self):
     #     pass
+
+
+class TestTabCompletion(BaseTestCase):
+    def test_tab_completion(self):
+        stdout = StringIO()
+        # see https://github.com/bckohan/django-typer/issues/19
+        with contextlib.redirect_stdout(stdout):
+            call_command("shellcompletion", "complete", "renderstatic ", stdout=stdout)
+        completions = stdout.getvalue()
+        self.assertTrue("app1/html/base.html" in completions)
+        self.assertTrue("app1/html/hello.html" in completions)
+        self.assertTrue("app1/html/nominal2.html" in completions)
+        self.assertTrue("examples/enums.js" in completions)
+
+        stdout = StringIO()
+        with contextlib.redirect_stdout(stdout):
+            call_command(
+                "shellcompletion", "complete", "renderstatic app1", stdout=stdout
+            )
+        completions = stdout.getvalue()
+        self.assertTrue("app1/html/base.html" in completions)
+        self.assertTrue("app1/html/hello.html" in completions)
+        self.assertTrue("app1/html/nominal2.html" in completions)
+        self.assertFalse("examples/enums.js" in completions)
+
+        stdout = StringIO()
+        with contextlib.redirect_stdout(stdout):
+            call_command(
+                "shellcompletion", "complete", "renderstatic adfa3", stdout=stdout
+            )
+        completions = stdout.getvalue()
+        self.assertFalse("app1/html/base.html" in completions)
+        self.assertFalse("app1/html/hello.html" in completions)
+        self.assertFalse("app1/html/nominal2.html" in completions)
+        self.assertFalse("examples/enums.js" in completions)

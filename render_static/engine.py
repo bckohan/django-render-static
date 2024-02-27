@@ -506,6 +506,46 @@ class StaticTemplateEngine:
             )
         ]
 
+    def search(  # pylint: disable=R0914
+        self,
+        *selectors: str,
+        dest: Optional[Union[str, Path]] = None,
+        first_engine: bool = False,
+        first_loader: bool = False,
+        first_preference: bool = False,
+    ) -> Generator[Render, None, None]:
+        """
+        Search for all templates that match the given selectors and yield
+        Render objects for each one.
+
+        :param selectors: The name(s) of the template(s) to render to disk
+        :param dest: see render_each
+        :param first_engine: See render_each
+        :param first_loader: See render_each
+        :param first_preference: See render_each
+        :yield: Render objects for each template to disk
+        :raises TemplateDoesNotExist: if no template by the given name is found
+        """
+        # all jobs are considered part of a batch if dest is provided and more
+        # than one selector is provided
+        batch = bool(len(selectors) > 1 and dest)
+        for selector in selectors:
+            for config in (
+                self.get_templates(selector)
+                or
+                # use a default config if no template configuration was found
+                [StaticTemplateEngine.TemplateConfig(name=selector)]
+            ):
+                yield from self.resolve_renderings(
+                    selector,
+                    config,
+                    batch,
+                    dest=dest,
+                    first_engine=first_engine,
+                    first_loader=first_loader,
+                    first_preference=first_preference,
+                )
+
     def render_each(  # pylint: disable=R0914
         self,
         *selectors: str,
@@ -553,29 +593,13 @@ class StaticTemplateEngine:
         if context:
             context = resolve_context(context)
 
-        renders: List[Render] = []
-
-        # all jobs are considered part of a batch if dest is provided and more
-        # than one selector is provided
-        batch = bool(len(selectors) > 1 and dest)
-        for selector in selectors:
-            for config in (
-                self.get_templates(selector)
-                or
-                # use a default config if no template configuration was found
-                [StaticTemplateEngine.TemplateConfig(name=selector)]
-            ):
-                renders += self.resolve_renderings(
-                    selector,
-                    config,
-                    batch,
-                    dest=dest,
-                    first_engine=first_engine,
-                    first_loader=first_loader,
-                    first_preference=first_preference,
-                )
-
-        for render in renders:
+        for render in self.search(
+            *selectors,
+            dest=dest,
+            first_engine=first_engine,
+            first_loader=first_loader,
+            first_preference=first_preference,
+        ):
             ctx = render.config.context.copy()
             if context is not None:
                 ctx.update(context)
