@@ -1294,6 +1294,7 @@ class GenerateNothing(BaseTestCase):
         call_command("renderstatic")
 
 
+@pytest.mark.skipif(not importlib_resources, reason="importlib_resources not available")
 class TestContextResolution(BaseTestCase):
     def setUp(self):
         super().setUp()
