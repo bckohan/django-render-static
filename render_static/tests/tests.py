@@ -6,6 +6,7 @@ import shutil
 from io import StringIO
 from pathlib import Path
 
+import pytest
 from django.apps import apps
 from django.conf import settings
 from django.core.exceptions import ImproperlyConfigured
@@ -40,6 +41,12 @@ LOCAL_STATIC_DIR = Path(__file__).parent / "local_static"
 BAD_PICKLE = Path(__file__).parent / "resources" / "bad.pickle"
 NOT_A_DICT_PICKLE = Path(__file__).parent / "resources" / "not_a_dict.pickle"
 CONTEXT_PICKLE = Path(__file__).parent / "resources" / "context.pickle"
+
+
+try:
+    import jinja2
+except ImportError:
+    jinja2 = None
 
 
 def empty_or_dne(directory):
@@ -1665,3 +1672,42 @@ class TestTabCompletion(BaseTestCase):
         self.assertTrue("app1/html/hello.html" in completions)
         self.assertTrue("app1/html/nominal2.html" in completions)
         self.assertTrue("examples/enums.js" in completions)
+
+
+@pytest.mark.skipif(bool(jinja2), reason="jinja2 not installed")
+class TestJinja2MissingImportLoaders(TestCase):
+    def test_jinja2_loader_imports(self):
+        from render_static.loaders.jinja2 import (
+            StaticChoiceLoader,
+            StaticDictLoader,
+            StaticFileSystemBatchLoader,
+            StaticFileSystemLoader,
+            StaticFunctionLoader,
+            StaticModuleLoader,
+            StaticPackageLoader,
+            StaticPrefixLoader,
+        )
+
+        with self.assertRaises(ImportError):
+            StaticFileSystemLoader()
+
+        with self.assertRaises(ImportError):
+            StaticFileSystemBatchLoader()
+
+        with self.assertRaises(ImportError):
+            StaticPackageLoader()
+
+        with self.assertRaises(ImportError):
+            StaticPrefixLoader()
+
+        with self.assertRaises(ImportError):
+            StaticFunctionLoader()
+
+        with self.assertRaises(ImportError):
+            StaticDictLoader()
+
+        with self.assertRaises(ImportError):
+            StaticChoiceLoader()
+
+        with self.assertRaises(ImportError):
+            StaticModuleLoader()
