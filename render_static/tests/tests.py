@@ -1674,7 +1674,7 @@ class TestTabCompletion(BaseTestCase):
         self.assertTrue("examples/enums.js" in completions)
 
 
-@pytest.mark.skipif(bool(jinja2), reason="jinja2 not installed")
+@pytest.mark.skipif(bool(jinja2), reason="jinja2 installed")
 class TestJinja2MissingImportLoaders(TestCase):
     def test_jinja2_loader_imports(self):
         from render_static.loaders.jinja2 import (
@@ -1711,3 +1711,13 @@ class TestJinja2MissingImportLoaders(TestCase):
 
         with self.assertRaises(ImportError):
             StaticModuleLoader()
+
+
+def test_batch_loader_mixin_not_impl():
+    from render_static.loaders.mixins import BatchLoaderMixin
+
+    try:
+        BatchLoaderMixin().get_dirs()
+        assert False, 'BatchLoaderMixin.get_dirs() should raise "NotImplementedError"'
+    except NotImplementedError:
+        pass

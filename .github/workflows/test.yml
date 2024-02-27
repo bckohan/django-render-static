@@ -97,6 +97,7 @@ jobs:
       run: |
         poetry run pytest
         poetry run pip uninstall -y jinja2 pyyaml
+        pip uninstall -y jinja2 pyyaml
         poetry run pytest --cov-append
         mv .coverage py${{ matrix.python-version }}-dj${{ matrix.django-version }}.coverage
 
