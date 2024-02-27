@@ -91,13 +91,12 @@ jobs:
       run: |
         poetry config virtualenvs.in-project true
         poetry run pip install --upgrade pip
-        poetry install
+        poetry install -E all
         poetry run pip install -U "Django~=${{ matrix.django-version }}"
     - name: Run Unit Tests
       run: |
-        pip uninstall -y Jinja2 PyYAML
-        poetry run pytest --cov-append
-        poetry install -E all
+        poetry run pytest
+        pip uninstall -y jinja2 pyyaml
         poetry run pytest --cov-append
         mv .coverage py${{ matrix.python-version }}-dj${{ matrix.django-version }}.coverage
 
