@@ -1294,7 +1294,6 @@ class GenerateNothing(BaseTestCase):
         call_command("renderstatic")
 
 
-@pytest.mark.skipif(not importlib_resources, reason="importlib_resources not available")
 class TestContextResolution(BaseTestCase):
     def setUp(self):
         super().setUp()
@@ -1323,6 +1322,9 @@ class TestContextResolution(BaseTestCase):
             {"context": "python"},
         )
 
+    @pytest.mark.skipif(
+        not importlib_resources, reason="importlib_resources not available"
+    )
     def test_pickle_context_resource(self):
         self.assertEqual(
             resolve_context(
@@ -1331,6 +1333,9 @@ class TestContextResolution(BaseTestCase):
             {"context": "pickle"},
         )
 
+    @pytest.mark.skipif(
+        not importlib_resources, reason="importlib_resources not available"
+    )
     def test_json_context_resource(self):
         self.assertEqual(
             resolve_context(resource("render_static.tests.resources", "context.json")),
@@ -1342,6 +1347,9 @@ class TestContextResolution(BaseTestCase):
             resolve_context(resource(resources, "context.json")), {"context": "json"}
         )
 
+    @pytest.mark.skipif(
+        not importlib_resources, reason="importlib_resources not available"
+    )
     def test_python_context_resource(self):
         self.assertEqual(
             resolve_context(resource("render_static.tests.resources", "context.py")),
@@ -1360,6 +1368,9 @@ class TestContextResolution(BaseTestCase):
             {"context": "embedded_callable"},
         )
 
+    @pytest.mark.skipif(
+        not importlib_resources, reason="importlib_resources not available"
+    )
     def test_bad_contexts(self):
         self.assertRaises(
             InvalidContext,
