@@ -16,14 +16,11 @@ from typing import (
     Generator,
     MutableMapping,
     Optional,
-    Protocol,
     Tuple,
-    runtime_checkable,
 )
 
 from render_static import Jinja2DependencyNeeded
 from render_static.loaders.mixins import BatchLoaderMixin
-from render_static.loaders.utils import walk
 
 try:
     from jinja2.exceptions import TemplateNotFound
@@ -61,8 +58,7 @@ __all__ = [
 ]
 
 
-@runtime_checkable
-class SearchableLoader(Protocol):
+class SearchableLoader:
     """
     Loaders should implement this protocol to support shell tab-completion.
     """
@@ -76,9 +72,17 @@ class SearchableLoader(Protocol):
         :param selector: A glob pattern, or file name
         :yield: Yields templates matching the incomplete selector prefix
         """
+        try:
+            for template in self.list_templates():  # type: ignore
+                if template.startswith(prefix):
+                    yield self.load(environment, template)  # type: ignore
+        except (TypeError, AttributeError):  # pragma: no cover
+            pass
 
 
-class StaticFileSystemLoader(FileSystemLoader):  # pylint: disable=R0903
+class StaticFileSystemLoader(
+    SearchableLoader, FileSystemLoader
+):  # pylint: disable=R0903
     """
     https://jinja.palletsprojects.com/en/3.0.x/api/#jinja2.FileSystemLoader
 
@@ -121,24 +125,6 @@ class StaticFileSystemLoader(FileSystemLoader):  # pylint: disable=R0903
                     return ("", normpath(pth), lambda: True)
             raise
 
-    def search(
-        self, environment: "Environment", prefix: str
-    ) -> Generator["Template", None, None]:
-        """
-        Return all Template objects at paths that start with the given path
-        prefix.
-
-        :param environment: The Jinja2 environment
-        :param prefix: A partial template name to search for.
-        :yield: All Template objects that have names that start with the prefix
-        """
-        prefix = str(Path(prefix)) if prefix else ""  # normalize!
-        for template_dir in self.searchpath:
-            template_dir = Path(template_dir)
-            for path in walk(template_dir):
-                if str(path).startswith(prefix):
-                    yield self.load(environment, str(path))
-
 
 class StaticFileSystemBatchLoader(StaticFileSystemLoader, BatchLoaderMixin):
     """
@@ -155,13 +141,13 @@ class StaticFileSystemBatchLoader(StaticFileSystemLoader, BatchLoaderMixin):
         return self.searchpath
 
 
-class StaticPackageLoader(PackageLoader):  # pylint: disable=R0903
+class StaticPackageLoader(SearchableLoader, PackageLoader):  # pylint: disable=R0903
     """
     https://jinja.palletsprojects.com/en/3.0.x/api/#jinja2.PackageLoader
     """
 
 
-class StaticPrefixLoader(PrefixLoader):  # pylint: disable=R0903
+class StaticPrefixLoader(SearchableLoader, PrefixLoader):  # pylint: disable=R0903
     """
     https://jinja.palletsprojects.com/en/3.0.x/api/#jinja2.PrefixLoader
     """
@@ -173,13 +159,13 @@ class StaticFunctionLoader(FunctionLoader):  # pylint: disable=R0903
     """
 
 
-class StaticDictLoader(DictLoader):  # pylint: disable=R0903
+class StaticDictLoader(SearchableLoader, DictLoader):  # pylint: disable=R0903
     """
     https://jinja.palletsprojects.com/en/3.0.x/api/#jinja2.DictLoader
     """
 
 
-class StaticChoiceLoader(ChoiceLoader):  # pylint: disable=R0903
+class StaticChoiceLoader(SearchableLoader, ChoiceLoader):  # pylint: disable=R0903
     """
     https://jinja.palletsprojects.com/en/3.0.x/api/#jinja2.ChoiceLoader
     """

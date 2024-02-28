@@ -580,6 +580,31 @@ class Jinja2DefinesToJavascriptTest(DefinesToJavascriptTest):
         # override will override this one
         super().test_split.__wrapped__(self)
 
+    def test_tab_completion(self):
+        stdout = StringIO()
+        # see https://github.com/bckohan/django-typer/issues/19
+        with contextlib.redirect_stdout(stdout):
+            call_command("shellcompletion", "complete", "renderstatic ", stdout=stdout)
+        completions = stdout.getvalue()
+
+        self.assertTrue("defines1.js" in completions)
+        self.assertTrue("defines2.js" in completions)
+        self.assertTrue("defines_error.js" in completions)
+        self.assertTrue("empty_defines.js" in completions)
+
+        stdout = StringIO()
+        # see https://github.com/bckohan/django-typer/issues/19
+        with contextlib.redirect_stdout(stdout):
+            call_command(
+                "shellcompletion", "complete", "renderstatic define", stdout=stdout
+            )
+        completions = stdout.getvalue()
+
+        self.assertTrue("defines1.js" in completions)
+        self.assertTrue("defines2.js" in completions)
+        self.assertTrue("defines_error.js" in completions)
+        self.assertFalse("empty_defines.js" in completions)
+
 
 @override_settings(
     INSTALLED_APPS=[
@@ -722,10 +747,22 @@ class Jinja2BatchRenderTestCase(BatchRenderTestCase):
 def test_func_loader_does_not_support_search():
     # the func loader interface is a black box and cannot support search
     from render_static.loaders.jinja2 import (
-        FunctionLoader,
         SearchableLoader,
+        StaticChoiceLoader,
+        StaticDictLoader,
         StaticFileSystemBatchLoader,
+        StaticFileSystemLoader,
+        StaticFunctionLoader,
+        StaticModuleLoader,
+        StaticPackageLoader,
+        StaticPrefixLoader,
     )
 
     assert issubclass(StaticFileSystemBatchLoader, SearchableLoader)
-    assert not issubclass(FunctionLoader, SearchableLoader)
+    assert issubclass(StaticPackageLoader, SearchableLoader)
+    assert issubclass(StaticPrefixLoader, SearchableLoader)
+    assert issubclass(StaticChoiceLoader, SearchableLoader)
+    assert issubclass(StaticDictLoader, SearchableLoader)
+    assert issubclass(StaticFileSystemLoader, SearchableLoader)
+    assert not issubclass(StaticFunctionLoader, SearchableLoader)
+    assert not issubclass(StaticModuleLoader, SearchableLoader)
