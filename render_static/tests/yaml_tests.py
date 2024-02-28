@@ -5,6 +5,7 @@ from pathlib import Path
 import pytest
 from django.core.management import call_command
 from django.test import override_settings
+
 from render_static.tests.tests import (
     APP1_STATIC_DIR,
     EXPECTED_DIR,
@@ -12,9 +13,13 @@ from render_static.tests.tests import (
     resolve_context,
 )
 
-pytest.importorskip("yaml")
+try:
+    import yaml
+except ImportError:
+    yaml = None
 
 
+@pytest.mark.skipif(not yaml, reason="PyYAML is not installed")
 class TestYAMLContext(BaseTestCase):
     def test_yaml_context(self):
         self.assertEqual(
@@ -23,6 +28,7 @@ class TestYAMLContext(BaseTestCase):
         )
 
 
+@pytest.mark.skipif(not yaml, reason="PyYAML is not installed")
 @override_settings(
     STATIC_TEMPLATES={
         "context": {"to": "world", "punc": "!"},
@@ -51,3 +57,17 @@ class TestYAMLContextOverride(BaseTestCase):
                 shallow=False,
             )
         )
+
+
+@pytest.mark.skipif(yaml, reason="PyYAML is installed")
+class TestYAMLMissingImport(BaseTestCase):
+    """
+    Tests that per template contexts override global contexts and that the
+    global context is also used.
+    """
+
+    def test_no_yaml_error_on_load(self):
+        from render_static.context import yaml_load
+
+        with self.assertRaises(ImportError):
+            yaml_load()

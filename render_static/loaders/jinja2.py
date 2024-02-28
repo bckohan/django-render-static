@@ -13,6 +13,7 @@ from typing import (
     TYPE_CHECKING,
     Any,
     Callable,
+    Generator,
     MutableMapping,
     Optional,
     Tuple,
@@ -24,6 +25,7 @@ from render_static.loaders.mixins import BatchLoaderMixin
 try:
     from jinja2.exceptions import TemplateNotFound
     from jinja2.loaders import (
+        BaseLoader,
         ChoiceLoader,
         DictLoader,
         FileSystemLoader,
@@ -33,7 +35,7 @@ try:
         PrefixLoader,
     )
 
-    if TYPE_CHECKING:
+    if TYPE_CHECKING:  # pragma: no cover
         from jinja2 import Environment, Template
 
 except ImportError:
@@ -44,6 +46,7 @@ except ImportError:
     ModuleLoader = Jinja2DependencyNeeded  # type: ignore
     PackageLoader = Jinja2DependencyNeeded  # type: ignore
     PrefixLoader = Jinja2DependencyNeeded  # type: ignore
+    BaseLoader = Jinja2DependencyNeeded  # type: ignore
 
 __all__ = [
     "StaticFileSystemLoader",
@@ -57,7 +60,34 @@ __all__ = [
 ]
 
 
-class StaticFileSystemLoader(FileSystemLoader):  # pylint: disable=R0903
+class SearchableLoader(BaseLoader):
+    """
+    Loaders should implement this protocol to support shell tab-completion.
+    """
+
+    def search(
+        self, environment: "Environment", prefix: str
+    ) -> Generator["Template", None, None]:
+        """
+        Search for templates matching the selector pattern.
+
+        :param selector: A glob pattern, or file name
+        :yield: Yields templates matching the incomplete selector prefix
+        """
+        try:
+            for template in self.list_templates():
+                if template.startswith(prefix):
+                    try:
+                        yield self.load(environment, template)
+                    except TemplateNotFound:  # pragma: no cover
+                        continue
+        except (TypeError, AttributeError):  # pragma: no cover
+            pass
+
+
+class StaticFileSystemLoader(
+    SearchableLoader, FileSystemLoader
+):  # pylint: disable=R0903
     """
     https://jinja.palletsprojects.com/en/3.0.x/api/#jinja2.FileSystemLoader
 
@@ -116,13 +146,13 @@ class StaticFileSystemBatchLoader(StaticFileSystemLoader, BatchLoaderMixin):
         return self.searchpath
 
 
-class StaticPackageLoader(PackageLoader):  # pylint: disable=R0903
+class StaticPackageLoader(SearchableLoader, PackageLoader):  # pylint: disable=R0903
     """
     https://jinja.palletsprojects.com/en/3.0.x/api/#jinja2.PackageLoader
     """
 
 
-class StaticPrefixLoader(PrefixLoader):  # pylint: disable=R0903
+class StaticPrefixLoader(SearchableLoader, PrefixLoader):  # pylint: disable=R0903
     """
     https://jinja.palletsprojects.com/en/3.0.x/api/#jinja2.PrefixLoader
     """
@@ -134,13 +164,13 @@ class StaticFunctionLoader(FunctionLoader):  # pylint: disable=R0903
     """
 
 
-class StaticDictLoader(DictLoader):  # pylint: disable=R0903
+class StaticDictLoader(SearchableLoader, DictLoader):  # pylint: disable=R0903
     """
     https://jinja.palletsprojects.com/en/3.0.x/api/#jinja2.DictLoader
     """
 
 
-class StaticChoiceLoader(ChoiceLoader):  # pylint: disable=R0903
+class StaticChoiceLoader(SearchableLoader, ChoiceLoader):  # pylint: disable=R0903
     """
     https://jinja.palletsprojects.com/en/3.0.x/api/#jinja2.ChoiceLoader
     """

@@ -49,6 +49,7 @@ INSTALLED_APPS = (
     "render_static.tests.app2",
     "render_static.tests.app3",
     "render_static",
+    "django_typer",
     "django.contrib.auth",
     "django.contrib.contenttypes",
     "django.contrib.sessions",

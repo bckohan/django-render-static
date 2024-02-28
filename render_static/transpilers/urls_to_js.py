@@ -17,6 +17,7 @@ from django.core.serializers.json import DjangoJSONEncoder
 from django.urls import URLPattern, URLResolver, reverse
 from django.urls.exceptions import NoReverseMatch
 from django.urls.resolvers import RegexPattern, RoutePattern
+
 from render_static.exceptions import ReversalLimitHit, URLGenerationFailed
 from render_static.placeholders import (
     resolve_placeholders,
@@ -182,7 +183,7 @@ def _build_branch(  # pylint: disable=R0913
                     else None
                 ),
             )
-        else:
+        else:  # pragma: no cover
             raise NotImplementedError(f"Unknown pattern type: {type(pattern)}")
 
     return branch

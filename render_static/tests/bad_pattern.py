@@ -1,6 +1,7 @@
 import re
 
 from django.urls import path
+
 from render_static.tests.views import TestView
 
 

@@ -5,6 +5,7 @@ from enum import Enum
 from django import template
 from django.utils.module_loading import import_string
 from django.utils.safestring import SafeString
+
 from render_static.transpilers.enums_to_js import EnumTranspiler
 
 try:

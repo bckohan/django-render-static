@@ -1,8 +1,13 @@
 from datetime import datetime
 import sys
+import os
 from pathlib import Path
 sys.path.append(str(Path(__file__).parent.parent.parent))
 import render_static
+import django
+
+os.environ.setdefault('DJANGO_SETTINGS_MODULE', 'render_static.tests.settings')
+django.setup()
 
 # Configuration file for the Sphinx documentation builder.
 #
@@ -40,8 +45,8 @@ extensions = [
     'sphinx_rtd_theme',
     'sphinx.ext.autodoc',
     'sphinx.ext.viewcode',
-    'sphinxarg.ext',
     'sphinx.ext.todo',
+    'sphinxcontrib.typer'
     # 'sphinx_js'
 ]
 

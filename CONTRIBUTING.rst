@@ -43,6 +43,7 @@ new feature PRs must provide updated documentation for the features added. To bu
 .. code-block::
 
     cd ./doc
+    poetry run doc8 --ignore-path build --max-line-length 100
     poetry run make html
 
 
@@ -60,7 +61,6 @@ or warnings where justified is acceptable:
     poetry run black render_static
     poetry run mypy render_static
     poetry run pylint render_static
-    poetry run doc8 -q doc
     poetry check
     poetry run pip check
     poetry run python -m readme_renderer ./README.rst

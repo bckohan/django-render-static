@@ -1,5 +1,6 @@
 from django.apps import AppConfig
 from django.urls.converters import register_converter
+
 from render_static.placeholders import register_converter_placeholder
 
 

@@ -5,15 +5,16 @@ These backends should be used instead of the standard backends!
 """
 from os.path import normpath
 from pathlib import Path
-from typing import Dict, List, Tuple
+from typing import Dict, Generator, List, Tuple
 
 from django.apps import apps
 from django.apps.config import AppConfig
-from django.template.backends.django import (
-    DjangoTemplates,
-    TemplateDoesNotExist,
-)
+from django.template import Template
+from django.template.backends.django import DjangoTemplates, TemplateDoesNotExist
+
 from render_static import Jinja2DependencyNeeded
+from render_static.loaders.django import SearchableLoader
+from render_static.loaders.jinja2 import SearchableLoader as SearchableJinja2Loader
 from render_static.loaders.jinja2 import StaticFileSystemBatchLoader
 from render_static.origin import AppOrigin
 from render_static.templatetags import render_static
@@ -94,12 +95,25 @@ class StaticDjangoTemplates(DjangoTemplates):
             f"Template selector {selector} did not resolve to any template " f"names."
         )
 
+    def search_templates(
+        self, prefix: str, first_loader: bool = False
+    ) -> Generator[Template, None, None]:
+        """
+        Resolves a partial template selector into a list of template names from the
+        loaders configured on this backend engine.
+
+        :param prefix: The template prefix to search for
+        :param first_loader: Search only the first loader
+        :return: The list of resolved template names
+        """
+        for loader in self.engine.template_loaders[: 1 if first_loader else None]:
+            if isinstance(loader, SearchableLoader):
+                yield from loader.search(prefix)
+
 
 try:
-    from django.template.backends.jinja2 import (  # pylint: disable=C0412
-        Jinja2,
-        Template,
-    )
+    from django.template.backends.jinja2 import Jinja2  # pylint: disable=C0412
+    from django.template.backends.jinja2 import Template as Jinja2Template
     from jinja2 import Environment
 
     def default_env(**options):
@@ -159,7 +173,7 @@ try:
 
             super().__init__(params)
 
-        def get_template(self, template_name: str) -> Template:
+        def get_template(self, template_name: str) -> Jinja2Template:
             """
             We override the Jinja2 get_template method so we can monkey patch
             in the AppConfig of the origin if this template was from an app
@@ -183,7 +197,7 @@ try:
         def select_templates(
             self,
             selector: str,
-            first_loader: bool = False,
+            first_loader: bool = False,  # pylint: disable=unused-argument
             first_preference: bool = False,
         ) -> List[str]:
             """
@@ -210,15 +224,30 @@ try:
                 self.get_template(selector)
                 template_names.add(selector)
 
-            if first_loader and template_names:
-                return list(template_names)
-
             if template_names:
                 return list(template_names)
+
             raise TemplateDoesNotExist(
                 f"Template selector {selector} did not resolve to any "
                 f"template names."
             )
+
+        def search_templates(
+            self,
+            prefix: str,
+            first_loader: bool = False,  # pylint: disable=unused-argument
+        ) -> Generator[Jinja2Template, None, None]:
+            """
+            Resolves a partial template selector into a list of template names from the
+            loaders configured on this backend engine.
+
+            :param prefix: The template prefix to search for
+            :param first_loader: This is ignored for the Jinja2 engine because there is
+                only one loader
+            :return: The list of resolved template names
+            """
+            if isinstance(self.env.loader, SearchableJinja2Loader):
+                yield from self.env.loader.search(self.env, prefix)
 
 except ImportError:
     StaticJinja2Templates = Jinja2DependencyNeeded  # type: ignore

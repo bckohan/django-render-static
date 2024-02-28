@@ -14,10 +14,9 @@ renderstatic
 Usage
 ~~~~~
 
-.. argparse::
-    :module: render_static.management.commands.renderstatic
-    :func: get_parser
-    :prog: manage.py
+.. typer:: render_static.management.commands.renderstatic.Command:typer_app
+    :prog: manage.py renderstatic
+    :width: 90
 
 Example
 ~~~~~~~

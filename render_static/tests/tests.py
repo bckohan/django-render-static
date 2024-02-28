@@ -1,15 +1,20 @@
+import contextlib
 import filecmp
 import os
 import pickle
 import shutil
+import sys
+from io import StringIO
 from pathlib import Path
 
+import pytest
 from django.apps import apps
 from django.conf import settings
 from django.core.exceptions import ImproperlyConfigured
 from django.core.management import CommandError, call_command
 from django.template.exceptions import TemplateDoesNotExist
 from django.test import TestCase, override_settings
+
 from render_static import resolve_context, resource
 from render_static.engine import StaticTemplateEngine
 from render_static.exceptions import InvalidContext
@@ -39,23 +44,29 @@ NOT_A_DICT_PICKLE = Path(__file__).parent / "resources" / "not_a_dict.pickle"
 CONTEXT_PICKLE = Path(__file__).parent / "resources" / "context.pickle"
 
 
+try:
+    # weird issue where cant just import jinja2 b/c leftover __pycache__
+    # allows it to "import"
+    from jinja2 import environment
+
+    jinja2 = True
+except ImportError:
+    jinja2 = False
+
+importlib_resources = True
+if sys.version_info < (3, 9):
+    try:
+        from importlib_resources import Package
+
+        importlib_resources = True
+    except ImportError:
+        importlib_resources = False
+
+
 def empty_or_dne(directory):
     if os.path.exists(str(directory)):
         return len(os.listdir(directory)) == 0
     return True
-
-
-class TestGenerateStaticParserAccessor(TestCase):
-    """
-    This test is just to get to 100% coverage - the get_parser function is private and is only
-    available to serve the sphinx docs
-    """
-
-    def test_get_parser(self):
-        from django.core.management.base import CommandParser
-        from render_static.management.commands.renderstatic import get_parser
-
-        self.assertTrue(isinstance(get_parser(), CommandParser))
 
 
 class AppOriginTestCase(TestCase):
@@ -1313,6 +1324,9 @@ class TestContextResolution(BaseTestCase):
             {"context": "python"},
         )
 
+    @pytest.mark.skipif(
+        not importlib_resources, reason="importlib_resources not available"
+    )
     def test_pickle_context_resource(self):
         self.assertEqual(
             resolve_context(
@@ -1321,6 +1335,9 @@ class TestContextResolution(BaseTestCase):
             {"context": "pickle"},
         )
 
+    @pytest.mark.skipif(
+        not importlib_resources, reason="importlib_resources not available"
+    )
     def test_json_context_resource(self):
         self.assertEqual(
             resolve_context(resource("render_static.tests.resources", "context.json")),
@@ -1332,6 +1349,9 @@ class TestContextResolution(BaseTestCase):
             resolve_context(resource(resources, "context.json")), {"context": "json"}
         )
 
+    @pytest.mark.skipif(
+        not importlib_resources, reason="importlib_resources not available"
+    )
     def test_python_context_resource(self):
         self.assertEqual(
             resolve_context(resource("render_static.tests.resources", "context.py")),
@@ -1350,6 +1370,9 @@ class TestContextResolution(BaseTestCase):
             {"context": "embedded_callable"},
         )
 
+    @pytest.mark.skipif(
+        not importlib_resources, reason="importlib_resources not available"
+    )
     def test_bad_contexts(self):
         self.assertRaises(
             InvalidContext,
@@ -1626,3 +1649,161 @@ class BatchRenderTestCase(BaseTestCase):
 
     # def tearDown(self):
     #     pass
+
+
+class TestTabCompletion(BaseTestCase):
+    def test_tab_completion(self):
+        stdout = StringIO()
+        # see https://github.com/bckohan/django-typer/issues/19
+        with contextlib.redirect_stdout(stdout):
+            call_command("shellcompletion", "complete", "renderstatic ", stdout=stdout)
+        completions = stdout.getvalue()
+        self.assertTrue("app1/html/base.html" in completions)
+        self.assertTrue("app1/html/hello.html" in completions)
+        self.assertTrue("app1/html/nominal2.html" in completions)
+        self.assertTrue("examples/enums.js" in completions)
+
+        stdout = StringIO()
+        with contextlib.redirect_stdout(stdout):
+            call_command(
+                "shellcompletion", "complete", "renderstatic app1", stdout=stdout
+            )
+        completions = stdout.getvalue()
+        self.assertTrue("app1/html/base.html" in completions)
+        self.assertTrue("app1/html/hello.html" in completions)
+        self.assertTrue("app1/html/nominal2.html" in completions)
+        self.assertFalse("examples/enums.js" in completions)
+
+        stdout = StringIO()
+        with contextlib.redirect_stdout(stdout):
+            call_command(
+                "shellcompletion", "complete", "renderstatic adfa3", stdout=stdout
+            )
+        completions = stdout.getvalue()
+        self.assertFalse("app1/html/base.html" in completions)
+        self.assertFalse("app1/html/hello.html" in completions)
+        self.assertFalse("app1/html/nominal2.html" in completions)
+        self.assertFalse("examples/enums.js" in completions)
+
+        stdout = StringIO()
+        with contextlib.redirect_stdout(stdout):
+            call_command(
+                "shellcompletion",
+                "complete",
+                "renderstatic app1/html/base.html ",
+                stdout=stdout,
+            )
+        completions = stdout.getvalue()
+        self.assertFalse("app1/html/base.html" in completions)
+        self.assertTrue("app1/html/hello.html" in completions)
+        self.assertTrue("app1/html/nominal2.html" in completions)
+        self.assertTrue("examples/enums.js" in completions)
+
+    @override_settings(
+        STATIC_TEMPLATES={
+            "ENGINES": [
+                {
+                    "BACKEND": "render_static.backends.StaticDjangoTemplates",
+                    "OPTIONS": {
+                        "loaders": [
+                            (
+                                "render_static.loaders.StaticLocMemLoader",
+                                {
+                                    "app1/urls.js": "a",
+                                    "app1/enums.js": "b",
+                                    "app1/examples/readme_url_usage.js": "c",
+                                    "base.html": "d",
+                                },
+                            ),
+                            "render_static.loaders.StaticAppDirectoriesBatchLoader",
+                        ]
+                    },
+                }
+            ],
+            "templates": ["urls.js", "examples/readme_url_usage.js"],
+        },
+    )
+    def test_loc_mem_completion(self):
+        stdout = StringIO()
+        # see https://github.com/bckohan/django-typer/issues/19
+        with contextlib.redirect_stdout(stdout):
+            call_command("shellcompletion", "complete", "renderstatic ", stdout=stdout)
+        completions = stdout.getvalue()
+        self.assertTrue("app1/html/base.html" in completions)
+        self.assertTrue("app1/html/hello.html" in completions)
+        self.assertTrue("app1/html/nominal2.html" in completions)
+        self.assertTrue("app1/urls.js" in completions)
+        self.assertTrue("app1/enums.js" in completions)
+        self.assertTrue("app1/examples/readme_url_usage.js" in completions)
+        self.assertTrue("base.html" in completions)
+        self.assertTrue("examples/enums.js" in completions)
+
+
+@pytest.mark.skipif(bool(jinja2), reason="jinja2 installed")
+class TestJinja2MissingImportLoaders(TestCase):
+    def test_jinja2_loader_imports(self):
+        from render_static.loaders.jinja2 import (
+            StaticChoiceLoader,
+            StaticDictLoader,
+            StaticFileSystemBatchLoader,
+            StaticFileSystemLoader,
+            StaticFunctionLoader,
+            StaticModuleLoader,
+            StaticPackageLoader,
+            StaticPrefixLoader,
+        )
+
+        with self.assertRaises(ImportError):
+            StaticFileSystemLoader()
+
+        with self.assertRaises(ImportError):
+            StaticFileSystemBatchLoader()
+
+        with self.assertRaises(ImportError):
+            StaticPackageLoader()
+
+        with self.assertRaises(ImportError):
+            StaticPrefixLoader()
+
+        with self.assertRaises(ImportError):
+            StaticFunctionLoader()
+
+        with self.assertRaises(ImportError):
+            StaticDictLoader()
+
+        with self.assertRaises(ImportError):
+            StaticChoiceLoader()
+
+        with self.assertRaises(ImportError):
+            StaticModuleLoader()
+
+
+def test_batch_loader_mixin_not_impl():
+    from render_static.loaders.mixins import BatchLoaderMixin
+
+    try:
+        BatchLoaderMixin().get_dirs()
+        assert (  # pragma: no cover
+            False
+        ), 'BatchLoaderMixin.get_dirs() should raise "NotImplementedError"'
+    except NotImplementedError:
+        pass
+
+
+@pytest.mark.skipif(
+    sys.version_info >= (3, 9) or importlib_resources, reason="jinja2 installed"
+)
+def test_resources_38():
+    from render_static.resource import as_file, files
+
+    try:
+        files("dummy")
+        assert False, "file() should raise ImportError"  # pragma: no cover
+    except ImportError:
+        pass
+
+    try:
+        as_file("dummy")
+        assert False, "file() should raise ImportError"  # pragma: no cover
+    except ImportError:
+        pass

@@ -13,6 +13,7 @@ from django.template.exceptions import TemplateDoesNotExist
 from django.template.utils import InvalidTemplateEngineError
 from django.utils.functional import cached_property
 from django.utils.module_loading import import_string
+
 from render_static import Jinja2DependencyNeeded
 from render_static.backends import StaticDjangoTemplates, StaticJinja2Templates
 from render_static.context import resolve_context
@@ -505,10 +506,71 @@ class StaticTemplateEngine:
             )
         ]
 
+    def find(  # pylint: disable=R0914
+        self,
+        *selectors: str,
+        dest: Optional[Union[str, Path]] = None,
+        first_engine: bool = False,
+        first_loader: bool = False,
+        first_preference: bool = False,
+    ) -> Generator[Render, None, None]:
+        """
+        Search for all templates that match the given selectors and yield
+        Render objects for each one.
+
+        :param selectors: The name(s) of the template(s) to render to disk
+        :param dest: see render_each
+        :param first_engine: See render_each
+        :param first_loader: See render_each
+        :param first_preference: See render_each
+        :yield: Render objects for each template to disk
+        :raises TemplateDoesNotExist: if no template by the given name is found
+        """
+        # all jobs are considered part of a batch if dest is provided and more
+        # than one selector is provided
+        batch = bool(len(selectors) > 1 and dest)
+        for selector in selectors:
+            for config in (
+                self.get_templates(selector)
+                or
+                # use a default config if no template configuration was found
+                [StaticTemplateEngine.TemplateConfig(name=selector)]
+            ):
+                yield from self.resolve_renderings(
+                    selector,
+                    config,
+                    batch,
+                    dest=dest,
+                    first_engine=first_engine,
+                    first_loader=first_loader,
+                    first_preference=first_preference,
+                )
+
+    def search(  # pylint: disable=R0914
+        self,
+        prefix: str,
+        first_engine: bool = False,
+        first_loader: bool = False,
+    ) -> Generator[Union[Template, Jinja2Template], None, None]:
+        """
+        Search for all templates that match the given selectors and yield
+        Render objects for each one.
+
+        :param prefix: The name(s) of the template(s) to render to disk
+        :param dest: see render_each
+        :param first_engine: See render_each
+        :param first_loader: See render_each
+        :yield: Templates found that start with the given prefix.
+        """
+        # all jobs are considered part of a batch if dest is provided and more
+        # than one selector is provided
+        for engine in self.all()[0 : 1 if first_engine else None]:
+            yield from engine.search_templates(prefix, first_loader=first_loader)
+
     def render_each(  # pylint: disable=R0914
         self,
         *selectors: str,
-        context: Optional[Dict] = None,
+        context: Optional[Union[Dict, str, Path, Callable]] = None,
         dest: Optional[Union[str, Path]] = None,
         first_engine: bool = False,
         first_loader: bool = False,
@@ -552,29 +614,13 @@ class StaticTemplateEngine:
         if context:
             context = resolve_context(context)
 
-        renders: List[Render] = []
-
-        # all jobs are considered part of a batch if dest is provided and more
-        # than one selector is provided
-        batch = bool(len(selectors) > 1 and dest)
-        for selector in selectors:
-            for config in (
-                self.get_templates(selector)
-                or
-                # use a default config if no template configuration was found
-                [StaticTemplateEngine.TemplateConfig(name=selector)]
-            ):
-                renders += self.resolve_renderings(
-                    selector,
-                    config,
-                    batch,
-                    dest=dest,
-                    first_engine=first_engine,
-                    first_loader=first_loader,
-                    first_preference=first_preference,
-                )
-
-        for render in renders:
+        for render in self.find(
+            *selectors,
+            dest=dest,
+            first_engine=first_engine,
+            first_loader=first_loader,
+            first_preference=first_preference,
+        ):
             ctx = render.config.context.copy()
             if context is not None:
                 ctx.update(context)

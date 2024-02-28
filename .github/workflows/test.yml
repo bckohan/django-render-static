@@ -23,9 +23,9 @@ jobs:
             django-version: 'Django~=3.2.0'
 
     steps:
-      - uses: actions/checkout@v3
+      - uses: actions/checkout@v4
       - name: Set up Python ${{ matrix.python-version }}
-        uses: actions/setup-python@v4
+        uses: actions/setup-python@v5
         with:
           python-version: ${{ matrix.python-version }}
 
@@ -46,11 +46,12 @@ jobs:
           poetry run black render_static --check
           poetry run pylint render_static
           poetry run mypy render_static
-          poetry run doc8 -q doc
           poetry check
           poetry run pip check
           poetry export --without-hashes --format=requirements.txt | poetry run safety check --stdin
           poetry run python -m readme_renderer ./README.rst -o /tmp/README.html
+          cd ./doc
+          poetry run doc8 --ignore-path build --max-line-length 100
 
   test:
     runs-on: ubuntu-latest
@@ -72,12 +73,12 @@ jobs:
             django-version: '5.0.0'
 
     steps:
-    - uses: actions/checkout@v3
-    - uses: actions/setup-node@v3
+    - uses: actions/checkout@v4
+    - uses: actions/setup-node@v4
       with:
         node-version: 18
     - name: Set up Python ${{ matrix.python-version }}
-      uses: actions/setup-python@v4
+      uses: actions/setup-python@v5
       with:
         python-version: ${{ matrix.python-version }}
 
@@ -95,8 +96,14 @@ jobs:
     - name: Run Unit Tests
       run: |
         poetry run pytest
+        poetry run pip uninstall -y jinja2 pyyaml importlib-resources
+        poetry run pytest --cov-append
         mv .coverage py${{ matrix.python-version }}-dj${{ matrix.django-version }}.coverage
-
+    # - name: Setup tmate session
+    #   uses: mxschmitt/action-tmate@v3
+    #   with:
+    #     detached: true
+    #   timeout-minutes: 60
     - name: Store coverage files
       uses: actions/upload-artifact@v4
       with:
@@ -108,8 +115,8 @@ jobs:
     runs-on: ubuntu-latest
 
     steps:
-      - uses: actions/checkout@v3
-      - uses: actions/setup-python@v4
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
         with:
           python-version: '3.12'
 
@@ -137,7 +144,7 @@ jobs:
       - run: poetry run coverage xml
 
       - name: Upload coverage to Codecov
-        uses: codecov/codecov-action@v3
+        uses: codecov/codecov-action@v4
         with:
           token: ${{ secrets.CODECOV_TOKEN }}
           file: ./coverage.xml

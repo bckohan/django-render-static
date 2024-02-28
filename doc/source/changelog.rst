@@ -2,6 +2,12 @@
 Change Log
 ==========
 
+v2.2.0
+======
+
+* Implemented `Refactor renderstatic command using TyperCommand <https://github.com/bckohan/django-render-static/issues/137>`_
+* Implemented `Allow enum class writer to_string parameter to be the name of a property to return from toString() <https://github.com/bckohan/django-render-static/issues/132>`_
+
 v2.1.3
 ======
 
