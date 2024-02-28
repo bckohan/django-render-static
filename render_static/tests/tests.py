@@ -1783,7 +1783,9 @@ def test_batch_loader_mixin_not_impl():
 
     try:
         BatchLoaderMixin().get_dirs()
-        assert False, 'BatchLoaderMixin.get_dirs() should raise "NotImplementedError"'
+        assert (  # pragma: no cover
+            False
+        ), 'BatchLoaderMixin.get_dirs() should raise "NotImplementedError"'
     except NotImplementedError:
         pass
 
@@ -1796,12 +1798,12 @@ def test_resources_38():
 
     try:
         files("dummy")
-        assert False, "file() should raise ImportError"
+        assert False, "file() should raise ImportError"  # pragma: no cover
     except ImportError:
         pass
 
     try:
         as_file("dummy")
-        assert False, "file() should raise ImportError"
+        assert False, "file() should raise ImportError"  # pragma: no cover
     except ImportError:
         pass
