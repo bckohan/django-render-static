@@ -148,7 +148,8 @@ addopts = [
 
 [tool.coverage.run]
 omit = [
-  "render_static/tests/app1/static_jinja2/batch_test/**/*"
+  "render_static/tests/app1/static_jinja2/batch_test/**/*",
+  "render_static/tests/app1/static_jinja2/**/*"
 ]
 
 [tool.black]

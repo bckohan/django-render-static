@@ -717,3 +717,15 @@ class Jinja2BatchRenderTestCase(BatchRenderTestCase):
     def test_batch_render_not_found(self):
         with self.assertRaises(CommandError):
             call_command("renderstatic", "batch_test/{{ dne }}")
+
+
+def test_func_loader_does_not_support_search():
+    # the func loader interface is a black box and cannot support search
+    from render_static.loaders.jinja2 import (
+        FunctionLoader,
+        SearchableLoader,
+        StaticFileSystemBatchLoader,
+    )
+
+    assert issubclass(StaticFileSystemBatchLoader, SearchableLoader)
+    assert not issubclass(FunctionLoader, SearchableLoader)
