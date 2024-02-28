@@ -183,7 +183,7 @@ def _build_branch(  # pylint: disable=R0913
                     else None
                 ),
             )
-        else:
+        else:  # pragma: no cover
             raise NotImplementedError(f"Unknown pattern type: {type(pattern)}")
 
     return branch
