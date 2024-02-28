@@ -17,7 +17,6 @@ from pathlib import Path
 from click import Context, Parameter
 from click.shell_completion import CompletionItem
 from django.core.management.base import CommandError
-from django.template.exceptions import TemplateDoesNotExist
 from django.utils.translation import gettext_lazy as _
 from django_typer import TyperCommand
 from typer import Argument, Option
@@ -39,22 +38,19 @@ def complete_selector(
     engine = StaticTemplateEngine()
     present = ctx.params.get(param.name or "") or []
     completions = []
-    try:
-        for template in engine.search(
-            incomplete,
-            first_engine=bool(ctx.params.get("first_engine")),
-            first_loader=bool(ctx.params.get("first_loader")),
-        ):
-            if template.name not in present and template.name not in completions:
-                # the slicing is because we need to denormalize the prefix if the
-                # search process normalized the name somehow, because the prefixes
-                # must exactly match whats on the command line for most shell completion
-                # utilities
-                completions.append(
-                    CompletionItem(f"{incomplete}{template.name[len(incomplete):]}")
-                )
-    except TemplateDoesNotExist:
-        return []
+    for template in engine.search(
+        incomplete,
+        first_engine=bool(ctx.params.get("first_engine")),
+        first_loader=bool(ctx.params.get("first_loader")),
+    ):
+        if template.name not in present and template.name not in completions:
+            # the slicing is because we need to denormalize the prefix if the
+            # search process normalized the name somehow, because the prefixes
+            # must exactly match whats on the command line for most shell completion
+            # utilities
+            completions.append(
+                CompletionItem(f"{incomplete}{template.name[len(incomplete):]}")
+            )
     return completions
 
 

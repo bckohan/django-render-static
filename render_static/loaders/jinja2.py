@@ -25,6 +25,7 @@ from render_static.loaders.mixins import BatchLoaderMixin
 try:
     from jinja2.exceptions import TemplateNotFound
     from jinja2.loaders import (
+        BaseLoader,
         ChoiceLoader,
         DictLoader,
         FileSystemLoader,
@@ -45,6 +46,7 @@ except ImportError:
     ModuleLoader = Jinja2DependencyNeeded  # type: ignore
     PackageLoader = Jinja2DependencyNeeded  # type: ignore
     PrefixLoader = Jinja2DependencyNeeded  # type: ignore
+    BaseLoader = Jinja2DependencyNeeded  # type: ignore
 
 __all__ = [
     "StaticFileSystemLoader",
@@ -58,7 +60,7 @@ __all__ = [
 ]
 
 
-class SearchableLoader:
+class SearchableLoader(BaseLoader):
     """
     Loaders should implement this protocol to support shell tab-completion.
     """
@@ -73,9 +75,12 @@ class SearchableLoader:
         :yield: Yields templates matching the incomplete selector prefix
         """
         try:
-            for template in self.list_templates():  # type: ignore
+            for template in self.list_templates():
                 if template.startswith(prefix):
-                    yield self.load(environment, template)  # type: ignore
+                    try:
+                        yield self.load(environment, template)
+                    except TemplateNotFound:  # pragma: no cover
+                        continue
         except (TypeError, AttributeError):  # pragma: no cover
             pass
 
