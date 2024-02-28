@@ -108,7 +108,7 @@ class DirectorySupport(FilesystemLoader):
                     continue
                 try:
                     yield self.get_template(str(path))
-                except TemplateDoesNotExist:
+                except TemplateDoesNotExist:  # pragma: no cover
                     continue
 
 
