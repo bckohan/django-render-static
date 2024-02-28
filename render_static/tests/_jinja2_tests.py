@@ -1,7 +1,8 @@
+import contextlib
 import filecmp
 import os
+from io import StringIO
 
-import pytest
 from django.core.exceptions import ImproperlyConfigured
 from django.core.management import CommandError, call_command
 from django.template.exceptions import TemplateDoesNotExist
@@ -161,6 +162,35 @@ class Jinja2TestCase(BaseTestCase):
                 shallow=False,
             )
         )
+
+    def test_tab_completion(self):
+        stdout = StringIO()
+        # see https://github.com/bckohan/django-typer/issues/19
+        with contextlib.redirect_stdout(stdout):
+            call_command("shellcompletion", "complete", "renderstatic ", stdout=stdout)
+        completions = stdout.getvalue()
+        self.assertTrue("nominal.jinja2" in completions)
+        self.assertTrue("subdir/batch_fs_test2.html" in completions)
+        self.assertTrue("batch_fs_test0.html" in completions)
+        self.assertTrue("batch_fs_test1.html" in completions)
+        self.assertTrue("multi_test.jinja2" in completions)
+        self.assertTrue("app1/html/app_jinja2.html" in completions)
+        self.assertTrue("batch_test/{{ site_name }}/file1.py" in completions)
+
+        stdout = StringIO()
+        # see https://github.com/bckohan/django-typer/issues/19
+        with contextlib.redirect_stdout(stdout):
+            call_command(
+                "shellcompletion", "complete", "renderstatic batch", stdout=stdout
+            )
+        completions = stdout.getvalue()
+        self.assertFalse("nominal.jinja2" in completions)
+        self.assertFalse("subdir/batch_fs_test2.html" in completions)
+        self.assertTrue("batch_fs_test0.html" in completions)
+        self.assertTrue("batch_fs_test1.html" in completions)
+        self.assertFalse("multi_test.jinja2" in completions)
+        self.assertFalse("app1/html/app_jinja2.html" in completions)
+        self.assertTrue("batch_test/{{ site_name }}/file1.py" in completions)
 
     @override_settings(
         STATIC_TEMPLATES={

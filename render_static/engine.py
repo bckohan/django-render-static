@@ -506,7 +506,7 @@ class StaticTemplateEngine:
             )
         ]
 
-    def search(  # pylint: disable=R0914
+    def find(  # pylint: disable=R0914
         self,
         *selectors: str,
         dest: Optional[Union[str, Path]] = None,
@@ -545,6 +545,27 @@ class StaticTemplateEngine:
                     first_loader=first_loader,
                     first_preference=first_preference,
                 )
+
+    def search(  # pylint: disable=R0914
+        self,
+        prefix: str,
+        first_engine: bool = False,
+        first_loader: bool = False,
+    ) -> Generator[Union[Template, Jinja2Template], None, None]:
+        """
+        Search for all templates that match the given selectors and yield
+        Render objects for each one.
+
+        :param prefix: The name(s) of the template(s) to render to disk
+        :param dest: see render_each
+        :param first_engine: See render_each
+        :param first_loader: See render_each
+        :yield: Templates found that start with the given prefix.
+        """
+        # all jobs are considered part of a batch if dest is provided and more
+        # than one selector is provided
+        for engine in self.all()[0 : 1 if first_engine else None]:
+            yield from engine.search_templates(prefix, first_loader=first_loader)
 
     def render_each(  # pylint: disable=R0914
         self,
@@ -593,7 +614,7 @@ class StaticTemplateEngine:
         if context:
             context = resolve_context(context)
 
-        for render in self.search(
+        for render in self.find(
             *selectors,
             dest=dest,
             first_engine=first_engine,

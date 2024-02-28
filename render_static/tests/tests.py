@@ -1699,6 +1699,45 @@ class TestTabCompletion(BaseTestCase):
         self.assertTrue("app1/html/nominal2.html" in completions)
         self.assertTrue("examples/enums.js" in completions)
 
+    @override_settings(
+        STATIC_TEMPLATES={
+            "ENGINES": [
+                {
+                    "BACKEND": "render_static.backends.StaticDjangoTemplates",
+                    "OPTIONS": {
+                        "loaders": [
+                            (
+                                "render_static.loaders.StaticLocMemLoader",
+                                {
+                                    "app1/urls.js": "a",
+                                    "app1/enums.js": "b",
+                                    "app1/examples/readme_url_usage.js": "c",
+                                    "base.html": "d",
+                                },
+                            ),
+                            "render_static.loaders.StaticAppDirectoriesBatchLoader",
+                        ]
+                    },
+                }
+            ],
+            "templates": ["urls.js", "examples/readme_url_usage.js"],
+        },
+    )
+    def test_loc_mem_completion(self):
+        stdout = StringIO()
+        # see https://github.com/bckohan/django-typer/issues/19
+        with contextlib.redirect_stdout(stdout):
+            call_command("shellcompletion", "complete", "renderstatic ", stdout=stdout)
+        completions = stdout.getvalue()
+        self.assertTrue("app1/html/base.html" in completions)
+        self.assertTrue("app1/html/hello.html" in completions)
+        self.assertTrue("app1/html/nominal2.html" in completions)
+        self.assertTrue("app1/urls.js" in completions)
+        self.assertTrue("app1/enums.js" in completions)
+        self.assertTrue("app1/examples/readme_url_usage.js" in completions)
+        self.assertTrue("base.html" in completions)
+        self.assertTrue("examples/enums.js" in completions)
+
 
 @pytest.mark.skipif(bool(jinja2), reason="jinja2 installed")
 class TestJinja2MissingImportLoaders(TestCase):

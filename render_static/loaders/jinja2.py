@@ -9,10 +9,21 @@ https://jinja.palletsprojects.com/en/3.0.x/api/#loaders
 """
 from os.path import normpath
 from pathlib import Path
-from typing import TYPE_CHECKING, Any, Callable, MutableMapping, Optional, Tuple
+from typing import (
+    TYPE_CHECKING,
+    Any,
+    Callable,
+    Generator,
+    MutableMapping,
+    Optional,
+    Protocol,
+    Tuple,
+    runtime_checkable,
+)
 
 from render_static import Jinja2DependencyNeeded
 from render_static.loaders.mixins import BatchLoaderMixin
+from render_static.loaders.utils import walk
 
 try:
     from jinja2.exceptions import TemplateNotFound
@@ -48,6 +59,23 @@ __all__ = [
     "StaticChoiceLoader",
     "StaticModuleLoader",
 ]
+
+
+@runtime_checkable
+class SearchableLoader(Protocol):
+    """
+    Loaders should implement this protocol to support shell tab-completion.
+    """
+
+    def search(
+        self, environment: "Environment", prefix: str
+    ) -> Generator["Template", None, None]:
+        """
+        Search for templates matching the selector pattern.
+
+        :param selector: A glob pattern, or file name
+        :yield: Yields templates matching the incomplete selector prefix
+        """
 
 
 class StaticFileSystemLoader(FileSystemLoader):  # pylint: disable=R0903
@@ -92,6 +120,24 @@ class StaticFileSystemLoader(FileSystemLoader):  # pylint: disable=R0903
                     # code cov bug here, ignore it
                     return ("", normpath(pth), lambda: True)
             raise
+
+    def search(
+        self, environment: "Environment", prefix: str
+    ) -> Generator["Template", None, None]:
+        """
+        Return all Template objects at paths that start with the given path
+        prefix.
+
+        :param environment: The Jinja2 environment
+        :param prefix: A partial template name to search for.
+        :yield: All Template objects that have names that start with the prefix
+        """
+        prefix = str(Path(prefix)) if prefix else ""  # normalize!
+        for template_dir in self.searchpath:
+            template_dir = Path(template_dir)
+            for path in walk(template_dir):
+                if str(path).startswith(prefix):
+                    yield self.load(environment, str(path))
 
 
 class StaticFileSystemBatchLoader(StaticFileSystemLoader, BatchLoaderMixin):

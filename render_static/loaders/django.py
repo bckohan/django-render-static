@@ -6,22 +6,23 @@ transparently if these loaders need to be adapted to work with Django Static
 Templates in the future.
 """
 
+import os
 from collections.abc import Container
 from glob import glob
-from os.path import relpath
 from pathlib import Path
-from typing import Generator, List, Optional, Tuple, Union
+from typing import Generator, List, Optional, Protocol, Tuple, Union, runtime_checkable
 
 from django.apps import apps
 from django.apps.config import AppConfig
 from django.core.exceptions import SuspiciousFileOperation
-from django.template import Template
+from django.template import Template, TemplateDoesNotExist
 from django.template.loaders.app_directories import Loader as AppDirLoader
 from django.template.loaders.filesystem import Loader as FilesystemLoader
 from django.template.loaders.filesystem import safe_join
 from django.template.loaders.locmem import Loader as LocMemLoader
 
 from render_static.loaders.mixins import BatchLoaderMixin
+from render_static.loaders.utils import walk
 from render_static.origin import AppOrigin
 
 __all__ = [
@@ -31,6 +32,20 @@ __all__ = [
     "StaticAppDirectoriesBatchLoader",
     "StaticFilesystemBatchLoader",
 ]
+
+
+@runtime_checkable
+class SearchableLoader(Protocol):
+    """
+    Loaders should implement this protocol to support shell tab-completion.
+    """
+
+    def search(self, selector: str) -> Generator[Union[Template], None, None]:
+        """
+        Search for templates matching the selector pattern.
+
+        :param selector: A glob pattern, or file name
+        """
 
 
 class DirectorySupport(FilesystemLoader):
@@ -77,6 +92,25 @@ class DirectorySupport(FilesystemLoader):
             self.is_dir = True
             return ""
 
+    def search(self, prefix: str) -> Generator[Union[Template], None, None]:
+        """
+        Return all Template objects at paths that start with the given path
+        prefix.
+
+        :param prefix: A partial template name to search for.
+        :yield: All Template objects that have names that start with the prefix
+        """
+        prefix = str(Path(prefix)) if prefix else ""  # normalize!
+        for template_dir, _ in self.get_dirs():
+            template_dir = Path(template_dir)
+            for path in walk(template_dir):
+                if not str(path).startswith(prefix):
+                    continue
+                try:
+                    yield self.get_template(str(path))
+                except TemplateDoesNotExist:
+                    continue
+
 
 class StaticFilesystemLoader(DirectorySupport):
     """
@@ -98,6 +132,17 @@ class StaticLocMemLoader(LocMemLoader):
     """
     Simple extension of ``django.template.loaders.locmem.Loader``
     """
+
+    def search(self, prefix: str) -> Generator[Union[Template], None, None]:
+        """
+        Search for templates matching the selector pattern.
+
+        :param prefix: A partial template name to search for.
+        :yield: All Template objects that have names that start with the prefix
+        """
+        for name in self.templates_dict.keys():
+            if name.startswith(prefix):
+                yield self.get_template(name)
 
 
 class StaticAppDirectoriesLoader(DirectorySupport, AppDirLoader):
@@ -173,6 +218,6 @@ class StaticAppDirectoriesBatchLoader(StaticAppDirectoriesLoader):
                 continue
 
             yield [
-                relpath(str(file), str(template_dir))
+                os.path.relpath(str(file), str(template_dir))
                 for file in glob(pattern, recursive=True)
             ]

@@ -40,15 +40,19 @@ def complete_selector(
     present = ctx.params.get(param.name or "") or []
     completions = []
     try:
-        for render in engine.search(
-            f"{incomplete}*/**",
-            dest=ctx.params.get("destination") or None,
+        for template in engine.search(
+            incomplete,
             first_engine=bool(ctx.params.get("first_engine")),
             first_loader=bool(ctx.params.get("first_loader")),
-            first_preference=bool(ctx.params.get("first_preference")),
         ):
-            if render.template.template.name not in present:
-                completions.append(CompletionItem(render.template.template.name))
+            if template.name not in present and template.name not in completions:
+                # the slicing is because we need to denormalize the prefix if the
+                # search process normalized the name somehow, because the prefixes
+                # must exactly match whats on the command line for most shell completion
+                # utilities
+                completions.append(
+                    CompletionItem(f"{incomplete}{template.name[len(incomplete):]}")
+                )
     except TemplateDoesNotExist:
         return []
     return completions
