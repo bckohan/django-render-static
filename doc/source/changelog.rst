@@ -2,6 +2,11 @@
 Change Log
 ==========
 
+v2.2.1
+======
+
+* Fixed `Custom URL converts may expect reversal kwargs to be of a given type. <https://github.com/bckohan/django-render-static/issues/141>`_
+
 v2.2.0
 ======
 

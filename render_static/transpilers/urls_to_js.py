@@ -490,68 +490,66 @@ class URLTreeVisitor(BaseURLTranspiler):
                         placeholder_url = reverse(
                             qname, kwargs={**kwargs, **(endpoint.default_args or {})}
                         )
-
-                    replacements = []
-
-                    mtch = composite_regex.search(placeholder_url.lstrip("/"))
-
-                    if mtch:
-                        # there might be group matches that aren't part of
-                        # our kwargs, we go through this extra work to
-                        # make sure we aren't subbing spans that aren't
-                        # kwargs
-                        grp_mp = {
-                            idx: var for var, idx in composite_regex.groupindex.items()
-                        }
-
-                        for idx, value in enumerate(  # pylint: disable=W0612
-                            mtch.groups(), start=1
-                        ):
-                            if unnamed:
-                                replacements.append(
-                                    (mtch.span(idx), Substitute(idx - 1))
-                                )
-                            else:
-                                # if the regex has non-capturing groups we
-                                # need to filter those out
-                                if idx in grp_mp:
-                                    replacements.append(
-                                        (mtch.span(idx), Substitute(grp_mp[idx]))
-                                    )
-
-                        url_idx = 0
-                        path = []
-                        for rpl in replacements:
-                            while url_idx <= rpl[0][0]:
-                                path.append(placeholder_url[url_idx])
-                                url_idx += 1
-                            path.append(rpl[1])
-                            url_idx += rpl[0][1] - rpl[0][0]
-                        if url_idx < len(placeholder_url):
-                            path.append(placeholder_url[url_idx:])
-
-                        yield from self.visit_path(
-                            path,
-                            list(kwargs.keys()),
-                            endpoint.default_args if num_patterns > 1 else None,
-                        )
-
-                    else:
-                        # if we're here it means this path was overridden
-                        # further down the tree
-                        yield (
-                            f"/* Path {composite_regex.pattern} overruled "
-                            "with: "
-                            + (
-                                f"args={unnamed} */"
-                                if unnamed
-                                else f"kwargs={list(params.keys())} */"
-                            )
-                        )
-                    return
-
-                except NoReverseMatch:
+                except (NoReverseMatch, TypeError, AttributeError):
                     continue
+
+                replacements = []
+
+                mtch = composite_regex.search(placeholder_url.lstrip("/"))
+
+                if mtch:
+                    # there might be group matches that aren't part of
+                    # our kwargs, we go through this extra work to
+                    # make sure we aren't subbing spans that aren't
+                    # kwargs
+                    grp_mp = {
+                        idx: var for var, idx in composite_regex.groupindex.items()
+                    }
+
+                    for idx, value in enumerate(  # pylint: disable=W0612
+                        mtch.groups(), start=1
+                    ):
+                        if unnamed:
+                            replacements.append((mtch.span(idx), Substitute(idx - 1)))
+                        else:
+                            # if the regex has non-capturing groups we
+                            # need to filter those out
+                            if idx in grp_mp:
+                                replacements.append(
+                                    (mtch.span(idx), Substitute(grp_mp[idx]))
+                                )
+
+                    url_idx = 0
+                    path = []
+                    for rpl in replacements:
+                        while url_idx <= rpl[0][0]:
+                            path.append(placeholder_url[url_idx])
+                            url_idx += 1
+                        path.append(rpl[1])
+                        url_idx += rpl[0][1] - rpl[0][0]
+                    if url_idx < len(placeholder_url):
+                        path.append(placeholder_url[url_idx:])
+
+                    yield from self.visit_path(
+                        path,
+                        list(kwargs.keys()),
+                        endpoint.default_args if num_patterns > 1 else None,
+                    )
+
+                else:
+                    # if we're here it means this path was overridden
+                    # further down the tree
+                    yield (
+                        f"/* Path {composite_regex.pattern} overruled "
+                        "with: "
+                        + (
+                            f"args={unnamed} */"
+                            if unnamed
+                            else f"kwargs={list(params.keys())} */"
+                        )
+                    )
+                return
+
         else:
             # this is a simple url with no params
             if not composite_regex.search(reverse(qname).lstrip("/")):
