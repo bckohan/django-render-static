@@ -490,7 +490,7 @@ class URLTreeVisitor(BaseURLTranspiler):
                         placeholder_url = reverse(
                             qname, kwargs={**kwargs, **(endpoint.default_args or {})}
                         )
-                except (NoReverseMatch, TypeError, AttributeError):
+                except (NoReverseMatch, TypeError, AttributeError, ValueError):
                     continue
 
                 replacements = []
