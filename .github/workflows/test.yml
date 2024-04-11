@@ -49,7 +49,7 @@ jobs:
           poetry check
           poetry run pip check
           poetry export --without-hashes --format=requirements.txt | poetry run safety check --stdin
-          poetry run python -m readme_renderer ./README.rst -o /tmp/README.html
+          poetry run python -m readme_renderer ./README.md -o /tmp/README.html
           cd ./doc
           poetry run doc8 --ignore-path build --max-line-length 100
 
