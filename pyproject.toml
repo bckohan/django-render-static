@@ -68,7 +68,7 @@ pytest-cov = "^4.1.0"
 pylint = "^3.0.0"
 deepdiff = "^6.7.0"
 safety = "^2.3.0"
-readme-renderer = ">=42"
+readme-renderer = {extras = ["md"], version = "^43.0"}
 types-PyYAML = "^6.0"
 coverage = "^7.3.0"
 importlib-metadata = "^7.0.0"
