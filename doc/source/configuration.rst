@@ -53,7 +53,7 @@ dictionary (or None) then the default engine and loaders will be used which is e
 
 .. code-block:: python
 
-    STATIC_TEMPALTES = {
+    STATIC_TEMPLATES = {
         'ENGINES': [{
             'BACKEND': 'render_static.backends.StaticDjangoTemplates',
             'OPTIONS': {
