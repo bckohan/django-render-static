@@ -7,6 +7,7 @@ be transparent to users.
 
 https://jinja.palletsprojects.com/en/3.0.x/api/#loaders
 """
+
 from os.path import normpath
 from pathlib import Path
 from typing import (
@@ -85,9 +86,7 @@ class SearchableLoader(BaseLoader):
             pass
 
 
-class StaticFileSystemLoader(
-    SearchableLoader, FileSystemLoader
-):  # pylint: disable=R0903
+class StaticFileSystemLoader(SearchableLoader, FileSystemLoader):  # pylint: disable=R0903
     """
     https://jinja.palletsprojects.com/en/3.0.x/api/#jinja2.FileSystemLoader
 

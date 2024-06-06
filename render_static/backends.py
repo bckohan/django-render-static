@@ -3,6 +3,7 @@ Extensions of the standard Django template backends that add a few more
 configuration parameters and functionality necessary for the static engine.
 These backends should be used instead of the standard backends!
 """
+
 from os.path import normpath
 from pathlib import Path
 from typing import Dict, Generator, List, Tuple

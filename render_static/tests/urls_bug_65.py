@@ -1,6 +1,7 @@
 """
 Reproduce: https://github.com/bckohan/django-render-static/issues/65
 """
+
 from django.urls import path, re_path
 
 from .views import TestView

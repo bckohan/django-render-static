@@ -10,6 +10,7 @@ A template name supplied as an argument does not need to be specified in
 ``STATIC_TEMPLATES`` for it to be found and rendered. Such templates will be
 given the global context as specified in ``STATIC_TEMPLATES``.
 """
+
 import sys
 import typing as t
 from pathlib import Path
@@ -17,7 +18,7 @@ from pathlib import Path
 from click import Context, Parameter
 from click.shell_completion import CompletionItem
 from django.core.management.base import CommandError
-from django.utils.translation import gettext_lazy as _
+from django.utils.translation import gettext as _
 from django_typer.completers import complete_directory, complete_path
 from django_typer.management import TyperCommand
 from typer import Argument, Option
@@ -44,7 +45,11 @@ def complete_selector(
         first_engine=bool(ctx.params.get("first_engine")),
         first_loader=bool(ctx.params.get("first_loader")),
     ):
-        if template.name not in present and template.name not in completions:
+        if (
+            template.name
+            and template.name not in present
+            and template.name not in completions
+        ):
             # the slicing is because we need to denormalize the prefix if the
             # search process normalized the name somehow, because the prefixes
             # must exactly match whats on the command line for most shell completion
@@ -56,11 +61,9 @@ def complete_selector(
 
 
 class Command(TyperCommand):
-    # pylint: disable=C0115
-
     help = _("Generate static files from static templates.")
 
-    def handle(  # pylint: disable=W0221
+    def handle(
         self,
         selectors: Annotated[
             t.Optional[t.List[str]],
@@ -154,9 +157,7 @@ class Command(TyperCommand):
 
         if not selectors:
             self.stdout.write(
-                self.style.WARNING(  # pylint: disable=E1101
-                    "No templates selected for generation."
-                )
+                self.style.WARNING("No templates selected for generation.")
             )
             return
 
@@ -169,8 +170,6 @@ class Command(TyperCommand):
                 first_loader=first_loader,
                 first_preference=first_preference,
             ):
-                self.stdout.write(
-                    self.style.SUCCESS(f"Rendered {render}.")  # pylint: disable=E1101
-                )
+                self.stdout.write(self.style.SUCCESS(f"Rendered {render}."))
         except Exception as exp:
             raise CommandError(f"Error rendering template to disk: {exp}") from exp

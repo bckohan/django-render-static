@@ -602,11 +602,20 @@ class URLJavascriptMixin:
                     self.indent()
                     yield f'urls{accessor_str}({"" if self.legacy_args else "{"}'
                     self.indent()
-                yield f'{"" if self.legacy_args else "kwargs: "}' f'{json.dumps(kwargs, cls=BestEffortEncoder)}{"," if args or query else ""}'
+                yield (
+                    f'{"" if self.legacy_args else "kwargs: "}'
+                    f'{json.dumps(kwargs, cls=BestEffortEncoder)}{"," if args or query else ""}'
+                )
                 if args:
-                    yield f'{"" if self.legacy_args else "args: "}' f'{json.dumps(args, cls=BestEffortEncoder)}{"," if query else ""}'
+                    yield (
+                        f'{"" if self.legacy_args else "args: "}'
+                        f'{json.dumps(args, cls=BestEffortEncoder)}{"," if query else ""}'
+                    )
                 if query:
-                    yield f'{"" if self.legacy_args else "query: "}' f"{json.dumps(query, cls=BestEffortEncoder)}"
+                    yield (
+                        f'{"" if self.legacy_args else "query: "}'
+                        f"{json.dumps(query, cls=BestEffortEncoder)}"
+                    )
                 self.outdent(2)
                 yield f'{"" if self.legacy_args else "}"}));'
                 if self.catch:
@@ -759,7 +768,7 @@ class URLSToJavascriptTest(URLJavascriptMixin, BaseTestCase):
         placeholders.register_unnamed_placeholders(
             "re_path_unnamed_solo",
             ["adf", 143],
-            app_name="bogus_app"  # this should still work because all placeholders that match any
+            app_name="bogus_app",  # this should still work because all placeholders that match any
             # criteria are tried
         )
         # repeat for coverage

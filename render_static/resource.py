@@ -5,6 +5,7 @@ Convenience function for accessing packaged resource like so:
 
         resource('package.module', 'resource.file')
 """
+
 import contextlib
 import sys
 import types

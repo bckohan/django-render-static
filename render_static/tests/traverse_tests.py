@@ -1,6 +1,7 @@
 """
 Tests for base transpiler source tree traversal.
 """
+
 from copy import copy
 from enum import Enum, auto
 from types import ModuleType

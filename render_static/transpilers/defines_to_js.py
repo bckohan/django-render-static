@@ -2,6 +2,7 @@
 Built-in transpilers for python classes. Only one is provided that transpiles
 plain old data found on classes and their ancestors.
 """
+
 from types import ModuleType
 from typing import Any, Callable, Dict, Generator, Optional, Type, Union
 
@@ -74,9 +75,7 @@ class DefaultDefineTranspiler(Transpiler):
         `Transpiler` params
     """
 
-    include_member_: Callable[
-        [Any], bool
-    ] = lambda name, member: name.isupper()  # type: ignore
+    include_member_: Callable[[Any], bool] = lambda name, member: name.isupper()  # type: ignore
     const_name_ = "defines"
 
     members_: Dict[str, Any]

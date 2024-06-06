@@ -1,6 +1,7 @@
 """
 All examples from the documentation should be tested here!
 """
+
 import re
 import shutil
 import subprocess

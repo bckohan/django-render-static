@@ -190,7 +190,7 @@ def _build_branch(  # pylint: disable=R0913
 
 
 def _prune_tree(
-    tree: Tuple[Dict, Dict, Optional[str], Optional[Union[RegexPattern, RoutePattern]]]
+    tree: Tuple[Dict, Dict, Optional[str], Optional[Union[RegexPattern, RoutePattern]]],
 ) -> Tuple[
     Tuple[Dict, Dict, Optional[str], Optional[Union[RegexPattern, RoutePattern]]], int
 ]:
@@ -1018,9 +1018,7 @@ class ClassURLWriter(URLTreeVisitor):
          *      query parameters in the reversed url.
          *
          * @class
-         */""".split(
-            "\n"
-        ):
+         */""".split("\n"):
             yield comment_line[8:]
 
     def constructor_jdoc(self) -> Generator[Optional[str], None, None]:
@@ -1035,9 +1033,7 @@ class ClassURLWriter(URLTreeVisitor):
          * @param {Object} options - The options object.
          * @param {string} options.namespace - When provided, namespace will
          *     prefix all reversed paths with the given namespace.
-         */""".split(
-            "\n"
-        ):
+         */""".split("\n"):
             yield comment_line[8:]
 
     def match_jdoc(self) -> Generator[Optional[str], None, None]:
@@ -1057,9 +1053,7 @@ class ClassURLWriter(URLTreeVisitor):
          * @param {string[]} expected - An array of expected arguments.
          * @param {Object.<string, string>} defaults - An object mapping 
          *     default arguments to their values.
-         */""".split(
-            "\n"
-        ):
+         */""".split("\n"):
             yield comment_line[8:]
 
     def reverse_jdoc(self) -> Generator[Optional[str], None, None]:
@@ -1082,9 +1076,7 @@ class ClassURLWriter(URLTreeVisitor):
          *   positional arguments.
          * @param {Object.<string, string|string[]>} options.query - URL query
          *   parameters to add to the end of the reversed url.
-         */""".split(
-            "\n"
-        ):
+         */""".split("\n"):
             yield comment_line[8:]
 
     def constructor(self) -> Generator[Optional[str], None, None]:
@@ -1166,9 +1158,7 @@ class ClassURLWriter(URLTreeVisitor):
              *
              * @param {Object} object1 - The first object to compare.
              * @param {Object} object2 - The second object to compare.
-             */""".split(
-                "\n"
-            ):
+             */""".split("\n"):
                 yield comment_line[12:]
             yield "deepEqual(object1, object2) {"
             self.indent()
@@ -1190,9 +1180,7 @@ class ClassURLWriter(URLTreeVisitor):
              * Given a variable, return true if it is an object.
              *
              * @param {Object} object - The variable to check.
-             */""".split(
-                "\n"
-            ):
+             */""".split("\n"):
                 yield comment_line[12:]
             yield "isObject(object) {"
             self.indent()

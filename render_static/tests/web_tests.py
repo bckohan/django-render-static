@@ -4,6 +4,7 @@ allow apps using urls_to_js to be included more than once and under different
 namespaces. These patterns incur a dependency on renderstatic to any
 users of the SPA apps. See Runtimes in the documentation for more details.
 """
+
 import json
 import logging
 import os

@@ -22,7 +22,6 @@ from typing import (
     Type,
     Union,
 )
-from warnings import warn
 
 from django.apps import apps
 from django.apps.config import AppConfig

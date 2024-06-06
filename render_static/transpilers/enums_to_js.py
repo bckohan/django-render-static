@@ -1,6 +1,7 @@
 """
 Transpiler tools for PEP 435 style python enumeration classes.
 """
+
 import sys
 import warnings
 from abc import abstractmethod

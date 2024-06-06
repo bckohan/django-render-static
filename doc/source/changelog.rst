@@ -5,6 +5,7 @@ Change Log
 v2.3.0
 ======
 
+* Implemented `Switch to ruff for formatting and linting <https://github.com/bckohan/django-render-static/issues/145>`_
 * Fixed `Support django-typer version 2.1 <https://github.com/bckohan/django-render-static/issues/144>`_
 
 
