@@ -1,6 +1,6 @@
 [tool.poetry]
 name = "django-render-static"
-version = "2.2.1"
+version = "2.3.0"
 description = "Use Django's template engine to render static files at deployment or package time. Includes transpilers for extending Django's url reversal and enums to JavaScript."
 authors = ["Brian Kohan <bckohan@gmail.com>"]
 license = "MIT"
@@ -48,7 +48,7 @@ Django = ">=3.2,<6.0"
 importlib-resources = { version = ">=1.3.0", python = "<3.9" }
 Jinja2 = { version = ">=2.9,<4.0", optional = true }
 PyYAML = { version = ">=5.1,<7.0", optional = true }
-django-typer = "^1.0.0"
+django-typer = "^2.1.0"
 
 [tool.poetry.group.dev.dependencies]
 django-enum = "^1.1.0"

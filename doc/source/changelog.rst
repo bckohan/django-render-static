@@ -2,6 +2,12 @@
 Change Log
 ==========
 
+v2.3.0
+======
+
+* Fixed `Support django-typer version 2.1 <https://github.com/bckohan/django-render-static/issues/144>`_
+
+
 v2.2.1
 ======
 

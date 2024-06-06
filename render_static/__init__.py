@@ -12,7 +12,7 @@ from .transpilers.defines_to_js import DefaultDefineTranspiler
 from .transpilers.enums_to_js import EnumClassWriter
 from .transpilers.urls_to_js import ClassURLWriter, SimpleURLWriter
 
-VERSION = (2, 2, 1)
+VERSION = (2, 3, 0)
 
 __title__ = "Django Render Static"
 __version__ = ".".join(str(i) for i in VERSION)

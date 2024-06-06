@@ -18,7 +18,8 @@ from click import Context, Parameter
 from click.shell_completion import CompletionItem
 from django.core.management.base import CommandError
 from django.utils.translation import gettext_lazy as _
-from django_typer import TyperCommand
+from django_typer.completers import complete_directory, complete_path
+from django_typer.management import TyperCommand
 from typer import Argument, Option
 
 from render_static.engine import StaticTemplateEngine
@@ -88,6 +89,7 @@ class Command(TyperCommand):
                     "python files, json files, yaml files, or pickled python "
                     "dictionaries.",
                 ),
+                shell_complete=complete_path,
             ),
         ] = None,
         destination: Annotated[
@@ -101,6 +103,7 @@ class Command(TyperCommand):
                     "one exists. If no destination is specified in settings or "
                     "here, the default destination is settings.STATIC_ROOT."
                 ),
+                shell_complete=complete_directory,
             ),
         ] = None,
         first_engine: Annotated[
