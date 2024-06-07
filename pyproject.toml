@@ -106,10 +106,6 @@ warn_redundant_casts = true
 warn_unused_configs = true
 warn_unreachable = true
 warn_no_return = true
-plugins = ["mypy_django_plugin.main"]
-
-[tool.django-stubs]
-django_settings_module = "tests.settings"
 
 [tool.doc8]
 ignore-path = "doc/build"
