@@ -1325,6 +1325,26 @@ class TestContextResolution(BaseTestCase):
             {"context": "python"},
         )
 
+    def test_module_context(self):
+        from tests import context
+
+        self.assertEqual(
+            resolve_context(context),
+            {
+                "VARIABLE1": "value1",
+                "other_variable": "value2",
+            },
+        )
+
+    def test_module_import_context(self):
+        self.assertEqual(
+            resolve_context("tests.context"),
+            {
+                "VARIABLE1": "value1",
+                "other_variable": "value2",
+            },
+        )
+
     @pytest.mark.skipif(
         not importlib_resources, reason="importlib_resources not available"
     )

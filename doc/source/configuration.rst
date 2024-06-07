@@ -156,6 +156,8 @@ Context configuration parameters may be any of the following:
     - **dictionary**: Simply specify context dictionary inline
     - **callable**: That returns a dictionary. This allows lazy context initialization to take
       place after Django bootstrapping
+    - **module**: When a module is used as a context, the module's locals will be used as the
+      context.
     - **json**: A path to a JSON file
     - **yaml**: A path to a YAML file (yaml supports comments!)
     - **pickle**: A path to a python pickled dictionary
