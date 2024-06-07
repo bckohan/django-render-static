@@ -407,12 +407,9 @@ class URLTreeVisitor(BaseURLTranspiler):
                     var: {"converter": converter.__class__, "app_name": app_name}
                     for var, converter in pattern.converters.items()
                 }
-            if isinstance(pattern, RegexPattern):
-                return {
-                    var: {"app_name": app_name}
-                    for var in pattern.regex.groupindex.keys()
-                }
-            raise URLGenerationFailed(f"Unrecognized pattern type: {type(pattern)}")
+            return {
+                var: {"app_name": app_name} for var in pattern.regex.groupindex.keys()
+            }
 
         params = get_params(endpoint.pattern)
 

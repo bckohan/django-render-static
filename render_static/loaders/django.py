@@ -51,7 +51,7 @@ class SearchableLoader(Protocol):
 
         :param selector: A glob pattern, or file name
         """
-        ...
+        ...  # pragma: no cover
 
 
 class DirectorySupport(FilesystemLoader):
