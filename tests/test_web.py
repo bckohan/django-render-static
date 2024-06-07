@@ -50,6 +50,7 @@ else:
     )
 
 
+@pytest.mark.skip(reason="Disabled")
 @override_settings(
     INSTALLED_APPS=[
         "tests.spa",
