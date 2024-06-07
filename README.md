@@ -6,6 +6,7 @@
 [![Documentation Status](https://readthedocs.org/projects/django-render-static/badge/?version=latest)](http://django-render-static.readthedocs.io/?badge=latest/)
 [![Code Cov](https://codecov.io/gh/bckohan/django-render-static/branch/main/graph/badge.svg?token=0IZOKN2DYL)](https://codecov.io/gh/bckohan/django-render-static)
 [![Test Status](https://github.com/bckohan/django-render-static/workflows/test/badge.svg)](https://github.com/bckohan/django-render-static/actions/workflows/test.yml)
+[![Lint Status](https://github.com/bckohan/django-render-static/workflows/lint/badge.svg)](https://github.com/bckohan/django-render-static/actions/workflows/lint.yml)
 [![Code Style](https://img.shields.io/badge/code%20style-black-000000.svg)](https://github.com/psf/black)
 
 # django-render-static

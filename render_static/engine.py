@@ -1,9 +1,7 @@
-# pylint: disable=C0114
-
 import os
 from collections import Counter, namedtuple
 from pathlib import Path
-from typing import Callable, Dict, Generator, List, Optional, Tuple, Union
+from typing import Callable, Dict, Generator, List, Optional, Tuple, Union, cast
 
 from django.conf import settings
 from django.core.exceptions import ImproperlyConfigured
@@ -14,16 +12,9 @@ from django.template.utils import InvalidTemplateEngineError
 from django.utils.functional import cached_property
 from django.utils.module_loading import import_string
 
-from render_static import Jinja2DependencyNeeded
-from render_static.backends import StaticDjangoTemplates, StaticJinja2Templates
+from render_static.backends.base import StaticEngine
 from render_static.context import resolve_context
 from render_static.exceptions import InvalidContext
-
-try:
-    # pylint: disable=C0412
-    from django.template.backends.jinja2 import Template as Jinja2Template
-except ImportError:
-    Jinja2Template = Jinja2DependencyNeeded
 
 __all__ = ["StaticTemplateEngine", "Render"]
 
@@ -105,7 +96,7 @@ class StaticTemplateEngine:
         # This engine uses a custom configuration
         engine = StaticTemplateEngine({
             'ENGINES': [{
-                'BACKEND': 'render_static.backends.StaticJinja2Templates',
+                'BACKEND': 'render_static.backends.jinja2.StaticJinja2Templates',
                 'APP_DIRS': True
             }],
             'context': {
@@ -141,6 +132,8 @@ class StaticTemplateEngine:
     :raises ImproperlyConfigured: If there are any errors in the configuration
         passed in or specified in settings.
     """
+
+    app_dirname: str
 
     config_: Dict = {}
 
@@ -378,9 +371,7 @@ class StaticTemplateEngine:
 
         return engines
 
-    def __getitem__(
-        self, alias: str
-    ) -> Union[StaticDjangoTemplates, StaticJinja2Templates]:
+    def __getitem__(self, alias: str) -> StaticEngine:
         """
         Accessor for backend instances indexed by name.
 
@@ -402,7 +393,7 @@ class StaticTemplateEngine:
         """
         return iter(self.engines)
 
-    def all(self) -> List[Union[StaticDjangoTemplates, StaticJinja2Templates]]:
+    def all(self) -> List[StaticEngine]:
         """
         Get a list of all registered engines in order of precedence.
         :return: A list of engine instances in order of precedence
@@ -412,7 +403,7 @@ class StaticTemplateEngine:
     @staticmethod
     def resolve_destination(
         config: TemplateConfig,
-        template: Union[Jinja2Template, DjangoTemplate],
+        template: DjangoTemplate,
         batch: bool,
         dest: Optional[Union[str, Path]] = None,
     ) -> Path:
@@ -448,13 +439,13 @@ class StaticTemplateEngine:
                         f"an app!"
                     ) from err
 
-            dest /= template.template.name
+            dest /= template.template.name or ""
         elif batch or Path(dest).is_dir():
-            dest = Path(dest) / template.template.name
+            dest = Path(dest) / (template.template.name or "")
 
         return Path(dest if dest else "")
 
-    def render_to_disk(  # pylint: disable=R0913
+    def render_to_disk(
         self,
         selector: str,
         context: Optional[Dict] = None,
@@ -494,7 +485,7 @@ class StaticTemplateEngine:
         :raises ImproperlyConfigured: if not enough information was given to
             render and write the template
         """
-        return [  # pylint: disable=R1721
+        return [
             render
             for render in self.render_each(
                 selector,
@@ -506,7 +497,7 @@ class StaticTemplateEngine:
             )
         ]
 
-    def find(  # pylint: disable=R0914
+    def find(
         self,
         *selectors: str,
         dest: Optional[Union[str, Path]] = None,
@@ -546,12 +537,12 @@ class StaticTemplateEngine:
                     first_preference=first_preference,
                 )
 
-    def search(  # pylint: disable=R0914
+    def search(
         self,
         prefix: str,
         first_engine: bool = False,
         first_loader: bool = False,
-    ) -> Generator[Union[Template, Jinja2Template], None, None]:
+    ) -> Generator[Template, None, None]:
         """
         Search for all templates that match the given selectors and yield
         Render objects for each one.
@@ -567,7 +558,7 @@ class StaticTemplateEngine:
         for engine in self.all()[0 : 1 if first_engine else None]:
             yield from engine.search_templates(prefix, first_loader=first_loader)
 
-    def render_each(  # pylint: disable=R0914
+    def render_each(
         self,
         *selectors: str,
         context: Optional[Union[Dict, str, Path, Callable]] = None,
@@ -649,7 +640,7 @@ class StaticTemplateEngine:
         :param kwargs: Pass through parameters from render_each
         :yield: Render objects
         """
-        templates: Dict[str, Union[DjangoTemplate, Jinja2Template]] = {}
+        templates: Dict[str, DjangoTemplate] = {}
         chain = []
         for engine in self.all():
             try:
@@ -660,7 +651,11 @@ class StaticTemplateEngine:
                 ):
                     try:
                         templates.setdefault(
-                            template_name, engine.get_template(template_name)
+                            template_name,
+                            cast(
+                                DjangoTemplate,
+                                engine.get_template(template_name),
+                            ),
                         )
                     except TemplateDoesNotExist as tdne:  # pragma: no cover
                         # this should be impossible w/o a loader bug!

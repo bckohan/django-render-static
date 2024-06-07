@@ -79,7 +79,7 @@ here, instead use the two engines provided by `django-render-static`:
 
 - ``render_static.backends.StaticDjangoTemplates``
     - default app directory: ``static_templates``
-- ``render_static.backends.StaticJinja2Templates``
+- ``render_static.backends.jinja2.StaticJinja2Templates``
     - default app directory: ``static_jinja2``
 
 If ``APP_DIRS`` is true, or if an app directories loader is used such that templates are searched
@@ -111,7 +111,7 @@ template backend the loaders have been extended and static specific loaders shou
     - ``render_static.loaders.django.StaticFilesystemLoader``
     - ``render_static.loaders.django.StaticLocMemLoader``
 
-- ``render_static.backends.StaticJinja2Templates``
+- ``render_static.backends.jinja2.StaticJinja2Templates``
     - ``render_static.loaders.jinja2.StaticFileSystemBatchLoader`` **default**
     - ``render_static.loaders.jinja2.StaticFileSystemLoader``
     - ``render_static.loaders.jinja2.StaticPackageLoader``
@@ -156,6 +156,8 @@ Context configuration parameters may be any of the following:
     - **dictionary**: Simply specify context dictionary inline
     - **callable**: That returns a dictionary. This allows lazy context initialization to take
       place after Django bootstrapping
+    - **module**: When a module is used as a context, the module's locals will be used as the
+      context.
     - **json**: A path to a JSON file
     - **yaml**: A path to a YAML file (yaml supports comments!)
     - **pickle**: A path to a python pickled dictionary
@@ -278,7 +280,7 @@ And our settings file might look like:
 
     STATIC_TEMPLATES = {
         'ENGINES': [{
-            'BACKEND': 'render_static.backends.StaticJinja2Templates',
+            'BACKEND': 'render_static.backends.jinja2.StaticJinja2Templates',
             'OPTIONS': {
                 'loader': StaticFileSystemBatchLoader()
             },

@@ -45,12 +45,7 @@ static analysis tools should not produce any errors or warnings. Disabling certa
 warnings where justified is acceptable:
 
 ```shell
-poetry run isort render_static
-poetry run black render_static
-poetry run mypy render_static
-poetry run pylint render_static
-poetry check
-poetry run pip check
+./check.sh
 poetry run python -m readme_renderer ./README.md
 ```
 
@@ -59,7 +54,7 @@ poetry run python -m readme_renderer ./README.md
 `django-render-static` is setup to use
 [django-pytest](https://pytest-django.readthedocs.io/en/latest/) to allow
 [pytest](https://docs.pytest.org/en/stable/) to run Django unit tests. All the tests are housed in
-render_static/tests/tests.py. Before a PR is accepted, all tests must be passing and the code
+tests/tests.py. Before a PR is accepted, all tests must be passing and the code
 coverage must be at 100%.
 
 To run the full suite:
@@ -78,6 +73,6 @@ For instance to run all tests in DefinesToJavascriptTest, and then just the test
 you would do:
 
 ```shell
-poetry run pytest render_static/tests/tests.py::DefinesToJavascriptTest
-poetry run pytest render_static/tests/tests.py::DefinesToJavascriptTest::test_classes_to_js
+poetry run pytest tests/tests.py::DefinesToJavascriptTest
+poetry run pytest tests/tests.py::DefinesToJavascriptTest::test_classes_to_js
 ```

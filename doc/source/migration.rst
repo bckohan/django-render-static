@@ -8,6 +8,22 @@ Migration
 page documents how to migrate past the breaking changes introduced by major
 version updates.
 
+.. _migration_2_3:
+
+2.x -> 3.x
+----------
+
+There are some import path changes in 3.0:
+
+* ``render_static.ClassURLWriter`` -> ``render_static.transpilers.ClassURLWriter``
+* ``render_static.SimpleURLWriter`` -> ``render_static.transpilers.SimpleURLWriter``
+* ``render_static.EnumClassWriter`` -> ``render_static.transpilers.EnumClassWriter``
+* ``render_static.DefaultDefineTranspiler`` -> ``render_static.transpilers.DefaultDefineTranspiler``
+* ``render_static.backends.StaticJinja2Templates`` ->
+  ``render_static.backends.jinja2.StaticJinja2Templates``
+
+.. _migration_1_2:
+
 1.x -> 2.x
 ----------
 

@@ -7,6 +7,7 @@ be transparent to users.
 
 https://jinja.palletsprojects.com/en/3.0.x/api/#loaders
 """
+
 from os.path import normpath
 from pathlib import Path
 from typing import (
@@ -14,39 +15,30 @@ from typing import (
     Any,
     Callable,
     Generator,
+    List,
     MutableMapping,
     Optional,
     Tuple,
+    Union,
 )
 
-from render_static import Jinja2DependencyNeeded
+from jinja2.exceptions import TemplateNotFound
+from jinja2.loaders import (
+    BaseLoader,
+    ChoiceLoader,
+    DictLoader,
+    FileSystemLoader,
+    FunctionLoader,
+    ModuleLoader,
+    PackageLoader,
+    PrefixLoader,
+)
+
 from render_static.loaders.mixins import BatchLoaderMixin
 
-try:
-    from jinja2.exceptions import TemplateNotFound
-    from jinja2.loaders import (
-        BaseLoader,
-        ChoiceLoader,
-        DictLoader,
-        FileSystemLoader,
-        FunctionLoader,
-        ModuleLoader,
-        PackageLoader,
-        PrefixLoader,
-    )
+if TYPE_CHECKING:  # pragma: no cover
+    from jinja2 import Environment, Template
 
-    if TYPE_CHECKING:  # pragma: no cover
-        from jinja2 import Environment, Template
-
-except ImportError:
-    ChoiceLoader = Jinja2DependencyNeeded  # type: ignore
-    DictLoader = Jinja2DependencyNeeded  # type: ignore
-    FileSystemLoader = Jinja2DependencyNeeded  # type: ignore
-    FunctionLoader = Jinja2DependencyNeeded  # type: ignore
-    ModuleLoader = Jinja2DependencyNeeded  # type: ignore
-    PackageLoader = Jinja2DependencyNeeded  # type: ignore
-    PrefixLoader = Jinja2DependencyNeeded  # type: ignore
-    BaseLoader = Jinja2DependencyNeeded  # type: ignore
 
 __all__ = [
     "StaticFileSystemLoader",
@@ -85,9 +77,7 @@ class SearchableLoader(BaseLoader):
             pass
 
 
-class StaticFileSystemLoader(
-    SearchableLoader, FileSystemLoader
-):  # pylint: disable=R0903
+class StaticFileSystemLoader(SearchableLoader, FileSystemLoader):
     """
     https://jinja.palletsprojects.com/en/3.0.x/api/#jinja2.FileSystemLoader
 
@@ -100,9 +90,7 @@ class StaticFileSystemLoader(
         self,
         environment: "Environment",
         name: str,
-        globals: Optional[  # pylint: disable=redefined-builtin
-            MutableMapping[str, Any]
-        ] = None,
+        globals: Optional[MutableMapping[str, Any]] = None,
     ) -> "Template":
         """
         Wrap load so we can tag directory templates with is_dir.
@@ -126,8 +114,7 @@ class StaticFileSystemLoader(
                 pth = Path(search_path) / template
                 if pth.is_dir():
                     self.is_dir = True
-                    # code cov bug here, ignore it
-                    return ("", normpath(pth), lambda: True)
+                    return ("", normpath(pth), lambda: True)  # pragma: no cover
             raise
 
 
@@ -142,41 +129,41 @@ class StaticFileSystemBatchLoader(StaticFileSystemLoader, BatchLoaderMixin):
         specified.
     """
 
-    def get_dirs(self):
-        return self.searchpath
+    def get_dirs(self) -> List[Union[str, Path]]:
+        return self.searchpath  # type: ignore
 
 
-class StaticPackageLoader(SearchableLoader, PackageLoader):  # pylint: disable=R0903
+class StaticPackageLoader(SearchableLoader, PackageLoader):
     """
     https://jinja.palletsprojects.com/en/3.0.x/api/#jinja2.PackageLoader
     """
 
 
-class StaticPrefixLoader(SearchableLoader, PrefixLoader):  # pylint: disable=R0903
+class StaticPrefixLoader(SearchableLoader, PrefixLoader):
     """
     https://jinja.palletsprojects.com/en/3.0.x/api/#jinja2.PrefixLoader
     """
 
 
-class StaticFunctionLoader(FunctionLoader):  # pylint: disable=R0903
+class StaticFunctionLoader(FunctionLoader):
     """
     https://jinja.palletsprojects.com/en/3.0.x/api/#jinja2.FunctionLoader
     """
 
 
-class StaticDictLoader(SearchableLoader, DictLoader):  # pylint: disable=R0903
+class StaticDictLoader(SearchableLoader, DictLoader):
     """
     https://jinja.palletsprojects.com/en/3.0.x/api/#jinja2.DictLoader
     """
 
 
-class StaticChoiceLoader(SearchableLoader, ChoiceLoader):  # pylint: disable=R0903
+class StaticChoiceLoader(SearchableLoader, ChoiceLoader):
     """
     https://jinja.palletsprojects.com/en/3.0.x/api/#jinja2.ChoiceLoader
     """
 
 
-class StaticModuleLoader(ModuleLoader):  # pylint: disable=R0903
+class StaticModuleLoader(ModuleLoader):
     """
     https://jinja.palletsprojects.com/en/3.0.x/api/#jinja2.ModuleLoader
     """

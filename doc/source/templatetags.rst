@@ -299,7 +299,7 @@ specific url names. For instance:
 
 .. code-block:: js+django
 
-    {% urls_to_js transpiler='render_static.SimpleURLWriter' %}
+    {% urls_to_js transpiler='render_static.transpilers.SimpleURLWriter' %}
 
         {% override 'namespace:path_name' %}
             return "/an/overridden/path";
@@ -317,7 +317,7 @@ class writer:
 
 .. code-block:: htmldjango
 
-    {% urls_to_js transpiler='render_static.ClassURLWriter' class_name='URLResolver' %}
+    {% urls_to_js transpiler='render_static.transpilers.ClassURLWriter' class_name='URLResolver' %}
 
     <! the above is equivalent to the below -->
     {% urls_to_js %}

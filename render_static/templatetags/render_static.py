@@ -18,6 +18,7 @@ from typing import (
     Optional,
     Type,
     Union,
+    cast,
 )
 
 from django import template
@@ -28,7 +29,11 @@ from django.template.library import parse_bits
 from django.utils.module_loading import import_string
 from django.utils.safestring import SafeString
 
-from render_static.transpilers import Transpiler, TranspilerTarget, TranspilerTargets
+from render_static.transpilers.base import (
+    Transpiler,
+    TranspilerTarget,
+    TranspilerTargets,
+)
 from render_static.transpilers.defines_to_js import DefaultDefineTranspiler
 from render_static.transpilers.enums_to_js import EnumClassWriter
 from render_static.transpilers.urls_to_js import ClassURLWriter
@@ -56,10 +61,10 @@ def do_transpile(
     if isinstance(targets, (type, str)) or not isinstance(targets, Collection):
         targets = [targets]
 
-    transpiler = (
+    transpiler_cls = (
         import_string(transpiler) if isinstance(transpiler, str) else transpiler
     )
-    return SafeString(transpiler(**kwargs).transpile(targets))
+    return SafeString(transpiler_cls(**kwargs).transpile(targets))
 
 
 class OverrideNode(Node):
@@ -70,7 +75,11 @@ class OverrideNode(Node):
     :param nodelist: The child nodes for this node. Should be empty
     """
 
-    def __init__(self, override_name: Optional[str], nodelist: NodeList):
+    def __init__(
+        self,
+        override_name: Optional[Union[str, template.base.FilterExpression]],
+        nodelist: NodeList,
+    ):
         self.override_name = override_name or f"_{id(self)}"
         self.nodelist = nodelist
         self.context = Context()
@@ -147,7 +156,8 @@ class TranspilerNode(Node):
         overrides = self.get_nodes_by_type(OverrideNode)
         if overrides:
             resolved_kwargs["overrides"] = {
-                override.bind(context): override for override in overrides
+                cast(OverrideNode, override).bind(context): override
+                for override in overrides
             }
         return resolved_kwargs
 
@@ -168,7 +178,7 @@ def transpiler_tag(
     func: Optional[Callable] = None,
     targets: Union[int, str] = 0,
     name: Optional[str] = None,
-    node: Type[Node] = TranspilerNode,
+    node: Type[TranspilerNode] = TranspilerNode,
 ):
     """
     Register a callable as a transpiler tag. This decorator is similar
@@ -286,7 +296,7 @@ def transpile(targets: Targets, transpiler: TranspilerType, **kwargs) -> str:
 
 
 @transpiler_tag(targets="url_conf")
-def urls_to_js(  # pylint: disable=R0913,R0915
+def urls_to_js(
     transpiler: TranspilerType = ClassURLWriter,
     url_conf: Optional[Union[ModuleType, str]] = None,
     indent: str = "\t",
@@ -486,8 +496,8 @@ def override(parser, token):
         parser,
         token.split_contents()[1:],
         ["override"],
-        [],
-        [],
+        None,
+        None,
         [],
         [],
         {},

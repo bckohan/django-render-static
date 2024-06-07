@@ -2,6 +2,20 @@
 Change Log
 ==========
 
+v3.0.0
+======
+
+**This is a major version upgrade - please see migration guide for instructions
+on how to** :ref:`migrate from version 2.x to 3.x. <migration_2_3>`
+
+* Implemented `Move tests into top level directory. <https://github.com/bckohan/django-render-static/issues/149>`_
+* Implemented `Remove wrapped dependency required mishegoss and replace with jinja2 module level imports <https://github.com/bckohan/django-render-static/issues/148>`_
+* Implemented `Allow context import path to also point to a module. <https://github.com/bckohan/django-render-static/issues/147>`_
+* Implemented `Remove imports in __init__.py <https://github.com/bckohan/django-render-static/issues/146>`_
+* Implemented `Switch to ruff for formatting and linting <https://github.com/bckohan/django-render-static/issues/145>`_
+* Fixed `Support django-typer version 2.1 <https://github.com/bckohan/django-render-static/issues/144>`_
+
+
 v2.2.1
 ======
 
@@ -61,7 +75,7 @@ v2.0.0
 ======
 
 **This is a major version upgrade - please see migration guide for instructions
-on how to** :doc:`migration` **from version 1.x to 2.x.**
+on how to** :ref:`migrate from version 1.x to 2.x. <migration_1_2>`
 
 * Implemented `Add some default templates to ship for defines, urls and enums. <https://github.com/bckohan/django-render-static/issues/116>`_
 * Implemented `Generate JDoc comments in the generated URLResolver class. <https://github.com/bckohan/django-render-static/issues/115>`_

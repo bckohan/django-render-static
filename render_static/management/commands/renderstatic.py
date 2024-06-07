@@ -10,6 +10,7 @@ A template name supplied as an argument does not need to be specified in
 ``STATIC_TEMPLATES`` for it to be found and rendered. Such templates will be
 given the global context as specified in ``STATIC_TEMPLATES``.
 """
+
 import sys
 import typing as t
 from pathlib import Path
@@ -17,8 +18,14 @@ from pathlib import Path
 from click import Context, Parameter
 from click.shell_completion import CompletionItem
 from django.core.management.base import CommandError
-from django.utils.translation import gettext_lazy as _
-from django_typer import TyperCommand
+from django.utils.translation import gettext as _
+from django_typer.completers import (
+    chain,
+    complete_directory,
+    complete_import_path,
+    complete_path,
+)
+from django_typer.management import TyperCommand
 from typer import Argument, Option
 
 from render_static.engine import StaticTemplateEngine
@@ -43,23 +50,22 @@ def complete_selector(
         first_engine=bool(ctx.params.get("first_engine")),
         first_loader=bool(ctx.params.get("first_loader")),
     ):
-        if template.name not in present and template.name not in completions:
+        tmpl_name = str(template.origin.template_name or "")
+        if tmpl_name and tmpl_name not in present and tmpl_name not in completions:
             # the slicing is because we need to denormalize the prefix if the
             # search process normalized the name somehow, because the prefixes
             # must exactly match whats on the command line for most shell completion
             # utilities
             completions.append(
-                CompletionItem(f"{incomplete}{template.name[len(incomplete):]}")
+                CompletionItem(f"{incomplete}{tmpl_name[len(incomplete):]}")
             )
     return completions
 
 
 class Command(TyperCommand):
-    # pylint: disable=C0115
-
     help = _("Generate static files from static templates.")
 
-    def handle(  # pylint: disable=W0221
+    def handle(
         self,
         selectors: Annotated[
             t.Optional[t.List[str]],
@@ -76,7 +82,7 @@ class Command(TyperCommand):
             ),
         ] = None,
         context: Annotated[
-            t.Optional[Path],
+            t.Optional[str],
             Option(
                 "--context",
                 "-c",
@@ -88,6 +94,7 @@ class Command(TyperCommand):
                     "python files, json files, yaml files, or pickled python "
                     "dictionaries.",
                 ),
+                shell_complete=chain(complete_path, complete_import_path),
             ),
         ] = None,
         destination: Annotated[
@@ -101,6 +108,7 @@ class Command(TyperCommand):
                     "one exists. If no destination is specified in settings or "
                     "here, the default destination is settings.STATIC_ROOT."
                 ),
+                shell_complete=complete_directory,
             ),
         ] = None,
         first_engine: Annotated[
@@ -151,9 +159,7 @@ class Command(TyperCommand):
 
         if not selectors:
             self.stdout.write(
-                self.style.WARNING(  # pylint: disable=E1101
-                    "No templates selected for generation."
-                )
+                self.style.WARNING(_("No templates selected for generation."))
             )
             return
 
@@ -167,7 +173,9 @@ class Command(TyperCommand):
                 first_preference=first_preference,
             ):
                 self.stdout.write(
-                    self.style.SUCCESS(f"Rendered {render}.")  # pylint: disable=E1101
+                    self.style.SUCCESS(_("Rendered {render}.").format(render=render))
                 )
         except Exception as exp:
-            raise CommandError(f"Error rendering template to disk: {exp}") from exp
+            raise CommandError(
+                _("Error rendering template to disk: {exp}").format(exp=exp)
+            ) from exp

@@ -7,7 +7,9 @@ resources contained within installed python packages.
 import json
 import pickle
 import re
+from importlib import import_module
 from pathlib import Path
+from types import ModuleType
 from typing import Callable, Dict, Optional, Sequence, Tuple, Union
 
 from django.utils.module_loading import import_string
@@ -33,7 +35,9 @@ __all__ = ["resolve_context"]
 _import_regex = re.compile(r"^[\w]+([.][\w]+)*$")
 
 
-def resolve_context(context: Optional[Union[Dict, str, Path, Callable]]) -> Dict:
+def resolve_context(
+    context: Optional[Union[Dict, str, Path, Callable, ModuleType]],
+) -> Dict:
     """
     Resolve the context specifier into a context dictionary. Context specifier
     may be a packaged resource, a path-like object or a string path to a json
@@ -58,6 +62,8 @@ def resolve_context(context: Optional[Union[Dict, str, Path, Callable]]) -> Dict
         return context
     if getattr(context, "module_not_found", False):
         raise InvalidContext("Unable to locate resource context!")
+    if isinstance(context, ModuleType):
+        return {k: v for k, v in vars(context).items() if not k.startswith("_")}
     context = str(context)
     for try_load, can_load in _loader_try_order(context):
         try:
@@ -79,7 +85,7 @@ def _from_json(file_path: str, throw: bool = True) -> Optional[Dict]:
     try:
         with open(file_path, "rb") as ctx_f:
             return json.load(ctx_f)
-    except Exception as err:  # pylint: disable=W0703
+    except Exception as err:
         if throw:
             raise err
     return None
@@ -95,7 +101,7 @@ def _from_yaml(file_path: str, throw: bool = True) -> Optional[Dict]:
     try:
         with open(file_path, "rb") as ctx_f:
             return yaml_load(ctx_f, Loader=FullLoader)
-    except Exception as err:  # pylint: disable=W0703
+    except Exception as err:
         if throw:
             raise err
     return None
@@ -113,7 +119,7 @@ def _from_pickle(file_path: str, throw: bool = True) -> Optional[Dict]:
             ctx = pickle.load(ctx_f)
             if isinstance(ctx, dict):
                 return ctx
-    except Exception as err:  # pylint: disable=W0703
+    except Exception as err:
         if throw:
             raise err
     return None
@@ -131,9 +137,9 @@ def _from_python(file_path: str, throw: bool = True) -> Optional[Dict]:
     try:
         with open(file_path, "rb") as ctx_f:
             compiled_code = compile(ctx_f.read(), file_path, "exec")
-            exec(compiled_code, {}, ctx)  # pylint: disable=W0122
+            exec(compiled_code, {}, ctx)
             return ctx
-    except Exception as err:  # pylint: disable=W0703
+    except Exception as err:
         if throw:
             raise err
     return None
@@ -143,17 +149,23 @@ def _from_import(import_path: str, throw: bool = True) -> Optional[Dict]:
     """
     Attempt to load context as from an import string.
 
-    :param file_path: The path to the pickled file
+    :param import_path: The import path to load, may point to a callable that
+        returns a context, a dictionary or a module
     :param throw: If true, let any exceptions propagate out
     :return: A dictionary or None if the context was not a pickled dictionary.
     """
     try:
-        context = import_string(import_path)
+        try:
+            context = import_string(import_path)
+        except ImportError:
+            context = import_module(import_path)
         if callable(context):
             context = context()
         if isinstance(context, dict):
             return context
-    except Exception as err:  # pylint: disable=W0703
+        if isinstance(context, ModuleType):
+            return {k: v for k, v in vars(context).items() if not k.startswith("_")}
+    except Exception as err:
         if throw:
             raise err
     return None

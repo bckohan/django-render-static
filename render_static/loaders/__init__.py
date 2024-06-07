@@ -1,5 +1,3 @@
-# pylint: disable=C0114
-
 from render_static.loaders.django import (
     StaticAppDirectoriesBatchLoader,
     StaticAppDirectoriesLoader,

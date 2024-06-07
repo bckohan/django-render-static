@@ -30,7 +30,7 @@ and Jinja templates and allows contexts to be specified in python, json or YAML.
 You can report bugs and discuss features on the
 `issues page <https://github.com/bckohan/django-render-static/issues>`_.
 
-`Contributions <https://github.com/bckohan/django-render-static/blob/main/CONTRIBUTING.rst>`_ are
+`Contributions <https://github.com/bckohan/django-render-static/blob/main/CONTRIBUTING.md>`_ are
 encouraged! Especially additional template tags and filters!
 
 .. toctree::

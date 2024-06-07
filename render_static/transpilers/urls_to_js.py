@@ -14,16 +14,17 @@ from typing import Any, Dict, Generator, Iterable, List, Optional, Tuple, Union
 from django import VERSION as DJANGO_VERSION
 from django.conf import settings
 from django.core.serializers.json import DjangoJSONEncoder
+from django.template.context import Context
 from django.urls import URLPattern, URLResolver, reverse
 from django.urls.exceptions import NoReverseMatch
-from django.urls.resolvers import RegexPattern, RoutePattern
+from django.urls.resolvers import LocalePrefixPattern, RegexPattern, RoutePattern
 
 from render_static.exceptions import ReversalLimitHit, URLGenerationFailed
 from render_static.placeholders import (
     resolve_placeholders,
     resolve_unnamed_placeholders,
 )
-from render_static.transpilers import ResolvedTranspilerTarget, Transpiler
+from render_static.transpilers.base import ResolvedTranspilerTarget, Transpiler
 
 __all__ = [
     "normalize_ns",
@@ -105,8 +106,8 @@ def build_tree(
     )
 
 
-def _build_branch(  # pylint: disable=R0913
-    nodes: Iterable[URLPattern],
+def _build_branch(
+    nodes: Iterable[Union[URLPattern, URLResolver]],
     included: bool,
     branch: Tuple[
         Dict, Dict, Optional[str], Optional[Union[RegexPattern, RoutePattern]]
@@ -190,7 +191,7 @@ def _build_branch(  # pylint: disable=R0913
 
 
 def _prune_tree(
-    tree: Tuple[Dict, Dict, Optional[str], Optional[Union[RegexPattern, RoutePattern]]]
+    tree: Tuple[Dict, Dict, Optional[str], Optional[Union[RegexPattern, RoutePattern]]],
 ) -> Tuple[
     Tuple[Dict, Dict, Optional[str], Optional[Union[RegexPattern, RoutePattern]]], int
 ]:
@@ -257,7 +258,7 @@ class BaseURLTranspiler(Transpiler):
     attributes that contain a list of URLPattern and URLResolver objects.
     """
 
-    def include_target(self, target: ResolvedTranspilerTarget):
+    def include_target(self, target: ResolvedTranspilerTarget) -> bool:
         """
         Only transpile artifacts that have url pattern/resolver lists in them.
 
@@ -319,7 +320,7 @@ class URLTreeVisitor(BaseURLTranspiler):
     exclude_: Optional[Iterable[str]] = None
 
     @property
-    def context(self):
+    def context(self) -> Dict[str, Any]:
         """
         The template render context passed to overrides. In addition to
         :attr:`render_static.transpilers.Transpiler.context`.
@@ -366,7 +367,7 @@ class URLTreeVisitor(BaseURLTranspiler):
             visitation exit
         """
 
-    def visit_pattern(  # pylint: disable=R0914, R0915, R0912
+    def visit_pattern(
         self,
         endpoint: URLPattern,
         qname: str,
@@ -398,18 +399,17 @@ class URLTreeVisitor(BaseURLTranspiler):
 
         # first, pull out any named or unnamed parameters that comprise this
         # pattern
-        def get_params(pattern: Union[RoutePattern, RegexPattern]) -> Dict[str, Any]:
-            if isinstance(pattern, RoutePattern):
+        def get_params(
+            pattern: Union[RoutePattern, RegexPattern, LocalePrefixPattern],
+        ) -> Dict[str, Any]:
+            if isinstance(pattern, (RoutePattern, LocalePrefixPattern)):
                 return {
                     var: {"converter": converter.__class__, "app_name": app_name}
                     for var, converter in pattern.converters.items()
                 }
-            if isinstance(pattern, RegexPattern):
-                return {
-                    var: {"app_name": app_name}
-                    for var in pattern.regex.groupindex.keys()
-                }
-            raise URLGenerationFailed(f"Unrecognized pattern type: {type(pattern)}")
+            return {
+                var: {"app_name": app_name} for var in pattern.regex.groupindex.keys()
+            }
 
         params = get_params(endpoint.pattern)
 
@@ -417,7 +417,7 @@ class URLTreeVisitor(BaseURLTranspiler):
             params = {**params, **get_params(rt_pattern)}
 
         # does this url have unnamed or named params?
-        unnamed = False
+        unnamed = 0
         if not params and endpoint.pattern.regex.groups > 0:
             unnamed = endpoint.pattern.regex.groups
 
@@ -431,11 +431,11 @@ class URLTreeVisitor(BaseURLTranspiler):
         )
 
         # if we have parameters, resolve the placeholders for them
-        if params or unnamed or endpoint.default_args:  # pylint: disable=R1702
+        if params or unnamed or endpoint.default_args:
             if unnamed:
                 resolved_placeholders = itertools.product(
                     *resolve_unnamed_placeholders(
-                        url_name=endpoint.name, nargs=unnamed, app_name=app_name
+                        url_name=endpoint.name or "", nargs=unnamed, app_name=app_name
                     ),
                 )
                 non_capturing = str(endpoint.pattern.regex).count("(?:")
@@ -446,7 +446,7 @@ class URLTreeVisitor(BaseURLTranspiler):
                     resolved_placeholders = itertools.chain(  # type: ignore
                         resolved_placeholders,
                         *resolve_unnamed_placeholders(
-                            url_name=endpoint.name,
+                            url_name=endpoint.name or "",
                             nargs=unnamed - non_capturing,
                             app_name=app_name,
                         ),
@@ -506,9 +506,7 @@ class URLTreeVisitor(BaseURLTranspiler):
                         idx: var for var, idx in composite_regex.groupindex.items()
                     }
 
-                    for idx, value in enumerate(  # pylint: disable=W0612
-                        mtch.groups(), start=1
-                    ):
+                    for idx, value in enumerate(mtch.groups(), start=1):
                         if unnamed:
                             replacements.append((mtch.span(idx), Substitute(idx - 1)))
                         else:
@@ -520,7 +518,7 @@ class URLTreeVisitor(BaseURLTranspiler):
                                 )
 
                     url_idx = 0
-                    path = []
+                    path: List[Union[str, Substitute]] = []
                     for rpl in replacements:
                         while url_idx <= rpl[0][0]:
                             path.append(placeholder_url[url_idx])
@@ -797,7 +795,7 @@ class SimpleURLWriter(URLTreeVisitor):
     raise_on_not_found_ = True
 
     @property
-    def context(self):
+    def context(self) -> Dict[str, Any]:
         """
         The template render context passed to overrides. In addition to
         :attr:`render_static.transpilers.urls_to_js.URLTreeVisitor.context`.
@@ -832,7 +830,7 @@ class SimpleURLWriter(URLTreeVisitor):
         :yield: nothing
         """
         for _, override in self.overrides_.items():
-            yield from override.transpile(self.context)
+            yield from override.transpile(Context(self.context))
 
     def enter_namespace(self, namespace: str) -> Generator[Optional[str], None, None]:
         """
@@ -940,7 +938,7 @@ class ClassURLWriter(URLTreeVisitor):
     .. code-block:: js+django
 
         {% urls_to_js
-            visitor="render_static.ClassURLWriter"
+            visitor="render_static.transpilers.ClassURLWriter"
             class_name='URLResolver'
             indent=' '
         %}
@@ -1018,9 +1016,7 @@ class ClassURLWriter(URLTreeVisitor):
          *      query parameters in the reversed url.
          *
          * @class
-         */""".split(
-            "\n"
-        ):
+         */""".split("\n"):
             yield comment_line[8:]
 
     def constructor_jdoc(self) -> Generator[Optional[str], None, None]:
@@ -1035,9 +1031,7 @@ class ClassURLWriter(URLTreeVisitor):
          * @param {Object} options - The options object.
          * @param {string} options.namespace - When provided, namespace will
          *     prefix all reversed paths with the given namespace.
-         */""".split(
-            "\n"
-        ):
+         */""".split("\n"):
             yield comment_line[8:]
 
     def match_jdoc(self) -> Generator[Optional[str], None, None]:
@@ -1057,9 +1051,7 @@ class ClassURLWriter(URLTreeVisitor):
          * @param {string[]} expected - An array of expected arguments.
          * @param {Object.<string, string>} defaults - An object mapping 
          *     default arguments to their values.
-         */""".split(
-            "\n"
-        ):
+         */""".split("\n"):
             yield comment_line[8:]
 
     def reverse_jdoc(self) -> Generator[Optional[str], None, None]:
@@ -1082,9 +1074,7 @@ class ClassURLWriter(URLTreeVisitor):
          *   positional arguments.
          * @param {Object.<string, string|string[]>} options.query - URL query
          *   parameters to add to the end of the reversed url.
-         */""".split(
-            "\n"
-        ):
+         */""".split("\n"):
             yield comment_line[8:]
 
     def constructor(self) -> Generator[Optional[str], None, None]:
@@ -1166,9 +1156,7 @@ class ClassURLWriter(URLTreeVisitor):
              *
              * @param {Object} object1 - The first object to compare.
              * @param {Object} object2 - The second object to compare.
-             */""".split(
-                "\n"
-            ):
+             */""".split("\n"):
                 yield comment_line[12:]
             yield "deepEqual(object1, object2) {"
             self.indent()
@@ -1190,9 +1178,7 @@ class ClassURLWriter(URLTreeVisitor):
              * Given a variable, return true if it is an object.
              *
              * @param {Object} object - The variable to check.
-             */""".split(
-                "\n"
-            ):
+             */""".split("\n"):
                 yield comment_line[12:]
             yield "isObject(object) {"
             self.indent()
@@ -1335,7 +1321,7 @@ class ClassURLWriter(URLTreeVisitor):
             self.outdent()
             yield "}"
 
-    def init_visit(  # pylint: disable=R0915
+    def init_visit(
         self,
     ) -> Generator[Optional[str], None, None]:
         """
@@ -1369,7 +1355,7 @@ class ClassURLWriter(URLTreeVisitor):
         """
         yield "}"
         for _, override in self.overrides_.items():
-            yield from override.transpile(self.context)
+            yield from override.transpile(Context(self.context))
         self.outdent()
         yield "};"
 
