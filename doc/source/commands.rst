@@ -17,6 +17,7 @@ Usage
 .. typer:: render_static.management.commands.renderstatic.Command:typer_app
     :prog: manage.py renderstatic
     :width: 90
+    :theme: dark
 
 Example
 ~~~~~~~
