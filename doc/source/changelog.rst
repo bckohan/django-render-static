@@ -5,6 +5,7 @@ Change Log
 v3.0.0
 ======
 
+* Implemented `Remove wrapped dependency required mishegoss and replace with jinja2 module level imports <https://github.com/bckohan/django-render-static/issues/148>`_
 * Implemented `Switch to ruff for formatting and linting <https://github.com/bckohan/django-render-static/issues/145>`_
 * Fixed `Support django-typer version 2.1 <https://github.com/bckohan/django-render-static/issues/144>`_
 

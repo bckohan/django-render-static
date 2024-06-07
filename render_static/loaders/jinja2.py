@@ -15,39 +15,30 @@ from typing import (
     Any,
     Callable,
     Generator,
+    List,
     MutableMapping,
     Optional,
     Tuple,
+    Union,
 )
 
-from render_static import Jinja2DependencyNeeded
+from jinja2.exceptions import TemplateNotFound
+from jinja2.loaders import (
+    BaseLoader,
+    ChoiceLoader,
+    DictLoader,
+    FileSystemLoader,
+    FunctionLoader,
+    ModuleLoader,
+    PackageLoader,
+    PrefixLoader,
+)
+
 from render_static.loaders.mixins import BatchLoaderMixin
 
-try:
-    from jinja2.exceptions import TemplateNotFound
-    from jinja2.loaders import (
-        BaseLoader,
-        ChoiceLoader,
-        DictLoader,
-        FileSystemLoader,
-        FunctionLoader,
-        ModuleLoader,
-        PackageLoader,
-        PrefixLoader,
-    )
+if TYPE_CHECKING:  # pragma: no cover
+    from jinja2 import Environment, Template
 
-    if TYPE_CHECKING:  # pragma: no cover
-        from jinja2 import Environment, Template
-
-except ImportError:
-    ChoiceLoader = Jinja2DependencyNeeded
-    DictLoader = Jinja2DependencyNeeded
-    FileSystemLoader = Jinja2DependencyNeeded
-    FunctionLoader = Jinja2DependencyNeeded
-    ModuleLoader = Jinja2DependencyNeeded
-    PackageLoader = Jinja2DependencyNeeded
-    PrefixLoader = Jinja2DependencyNeeded
-    BaseLoader = Jinja2DependencyNeeded
 
 __all__ = [
     "StaticFileSystemLoader",
@@ -141,8 +132,8 @@ class StaticFileSystemBatchLoader(StaticFileSystemLoader, BatchLoaderMixin):
         specified.
     """
 
-    def get_dirs(self):
-        return self.searchpath
+    def get_dirs(self) -> List[Union[str, Path]]:
+        return self.searchpath  # type: ignore
 
 
 class StaticPackageLoader(SearchableLoader, PackageLoader):  # pylint: disable=R0903

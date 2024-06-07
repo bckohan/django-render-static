@@ -14,15 +14,9 @@ from django.template.utils import InvalidTemplateEngineError
 from django.utils.functional import cached_property
 from django.utils.module_loading import import_string
 
-from render_static import Jinja2DependencyNeeded
-from render_static.backends import StaticDjangoTemplates, StaticJinja2Templates
+from render_static.backends.base import StaticEngine
 from render_static.context import resolve_context
 from render_static.exceptions import InvalidContext
-
-try:
-    from django.template.backends.jinja2 import Template as Jinja2Template
-except ImportError:
-    Jinja2Template = Jinja2DependencyNeeded  # type: ignore
 
 __all__ = ["StaticTemplateEngine", "Render"]
 
@@ -104,7 +98,7 @@ class StaticTemplateEngine:
         # This engine uses a custom configuration
         engine = StaticTemplateEngine({
             'ENGINES': [{
-                'BACKEND': 'render_static.backends.StaticJinja2Templates',
+                'BACKEND': 'render_static.backends.jinja2.StaticJinja2Templates',
                 'APP_DIRS': True
             }],
             'context': {
@@ -379,9 +373,7 @@ class StaticTemplateEngine:
 
         return engines
 
-    def __getitem__(
-        self, alias: str
-    ) -> Union[StaticDjangoTemplates, StaticJinja2Templates]:
+    def __getitem__(self, alias: str) -> StaticEngine:
         """
         Accessor for backend instances indexed by name.
 
@@ -403,7 +395,7 @@ class StaticTemplateEngine:
         """
         return iter(self.engines)
 
-    def all(self) -> List[Union[StaticDjangoTemplates, StaticJinja2Templates]]:
+    def all(self) -> List[StaticEngine]:
         """
         Get a list of all registered engines in order of precedence.
         :return: A list of engine instances in order of precedence
@@ -413,7 +405,7 @@ class StaticTemplateEngine:
     @staticmethod
     def resolve_destination(
         config: TemplateConfig,
-        template: Union[Jinja2Template, DjangoTemplate],
+        template: DjangoTemplate,
         batch: bool,
         dest: Optional[Union[str, Path]] = None,
     ) -> Path:
@@ -552,7 +544,7 @@ class StaticTemplateEngine:
         prefix: str,
         first_engine: bool = False,
         first_loader: bool = False,
-    ) -> Generator[Union[Template, Jinja2Template], None, None]:
+    ) -> Generator[Template, None, None]:
         """
         Search for all templates that match the given selectors and yield
         Render objects for each one.
@@ -650,7 +642,7 @@ class StaticTemplateEngine:
         :param kwargs: Pass through parameters from render_each
         :yield: Render objects
         """
-        templates: Dict[str, Union[DjangoTemplate, Jinja2Template]] = {}
+        templates: Dict[str, DjangoTemplate] = {}
         chain = []
         for engine in self.all():
             try:
@@ -663,7 +655,7 @@ class StaticTemplateEngine:
                         templates.setdefault(
                             template_name,
                             cast(
-                                Union[DjangoTemplate, Jinja2Template],
+                                DjangoTemplate,
                                 engine.get_template(template_name),
                             ),
                         )

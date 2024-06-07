@@ -30,15 +30,3 @@ __all__ = [
     "ClassURLWriter",
     "SimpleURLWriter",
 ]
-
-
-class Jinja2DependencyNeeded:
-    """
-    Jinja2 is an optional dependency - lazy fail if its use is attempted
-    without it being present on the python path.
-    """
-
-    def __init__(self, *args, **kwargs):
-        raise ImportError(
-            "To use the Jinja2 backend you must install the Jinja2 python package."
-        )
