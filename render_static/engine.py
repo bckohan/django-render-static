@@ -3,7 +3,7 @@
 import os
 from collections import Counter, namedtuple
 from pathlib import Path
-from typing import Callable, Dict, Generator, List, Optional, Tuple, Union
+from typing import Callable, Dict, Generator, List, Optional, Tuple, Union, cast
 
 from django.conf import settings
 from django.core.exceptions import ImproperlyConfigured
@@ -20,10 +20,9 @@ from render_static.context import resolve_context
 from render_static.exceptions import InvalidContext
 
 try:
-    # pylint: disable=C0412
     from django.template.backends.jinja2 import Template as Jinja2Template
 except ImportError:
-    Jinja2Template = Jinja2DependencyNeeded
+    Jinja2Template = Jinja2DependencyNeeded  # type: ignore
 
 __all__ = ["StaticTemplateEngine", "Render"]
 
@@ -141,6 +140,8 @@ class StaticTemplateEngine:
     :raises ImproperlyConfigured: If there are any errors in the configuration
         passed in or specified in settings.
     """
+
+    app_dirname: str
 
     config_: Dict = {}
 
@@ -448,9 +449,9 @@ class StaticTemplateEngine:
                         f"an app!"
                     ) from err
 
-            dest /= template.template.name
+            dest /= template.template.name or ""
         elif batch or Path(dest).is_dir():
-            dest = Path(dest) / template.template.name
+            dest = Path(dest) / (template.template.name or "")
 
         return Path(dest if dest else "")
 
@@ -494,7 +495,7 @@ class StaticTemplateEngine:
         :raises ImproperlyConfigured: if not enough information was given to
             render and write the template
         """
-        return [  # pylint: disable=R1721
+        return [
             render
             for render in self.render_each(
                 selector,
@@ -506,7 +507,7 @@ class StaticTemplateEngine:
             )
         ]
 
-    def find(  # pylint: disable=R0914
+    def find(
         self,
         *selectors: str,
         dest: Optional[Union[str, Path]] = None,
@@ -660,7 +661,11 @@ class StaticTemplateEngine:
                 ):
                     try:
                         templates.setdefault(
-                            template_name, engine.get_template(template_name)
+                            template_name,
+                            cast(
+                                Union[DjangoTemplate, Jinja2Template],
+                                engine.get_template(template_name),
+                            ),
                         )
                     except TemplateDoesNotExist as tdne:  # pragma: no cover
                         # this should be impossible w/o a loader bug!

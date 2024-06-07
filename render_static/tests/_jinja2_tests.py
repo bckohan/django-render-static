@@ -14,12 +14,12 @@ from render_static.backends import StaticDjangoTemplates, StaticJinja2Templates
 from render_static.engine import StaticTemplateEngine
 from render_static.loaders.jinja2 import StaticDictLoader, StaticFileSystemLoader
 from render_static.tests import defines
-from render_static.tests.js_tests import (
+from render_static.tests.test_js import (
     ClassURLWriter,
     DefinesToJavascriptTest,
     URLJavascriptMixin,
 )
-from render_static.tests.tests import (
+from render_static.tests.test_core import (
     APP1_STATIC_DIR,
     APP2_STATIC_DIR,
     BATCH_RENDER_TEMPLATES,

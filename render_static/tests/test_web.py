@@ -19,14 +19,14 @@ from selenium.webdriver.chrome.options import Options
 from selenium.webdriver.chrome.service import Service
 from selenium.webdriver.common.by import By
 
-from render_static.tests.tests import LOCAL_STATIC_DIR, BaseTestCase
+from render_static.tests.test_core import LOCAL_STATIC_DIR, BaseTestCase
 
 logger = logging.getLogger(__name__)
 
 
 if not shutil.which("chromedriver"):  # pragma: no cover
     pytest.skip(
-        "JavaScript tests require node.js to be installed.", allow_module_level=True
+        "Web tests require chromedriver to be installed.", allow_module_level=True
     )
 else:
     logger.info("Using chromedriver: %s", shutil.which("chromedriver"))

@@ -8,6 +8,7 @@ from abc import ABCMeta, abstractmethod
 from collections.abc import Hashable
 from datetime import date, datetime
 from enum import Enum
+from importlib import import_module
 from types import ModuleType
 from typing import (
     TYPE_CHECKING,
@@ -21,11 +22,13 @@ from typing import (
     Set,
     Type,
     Union,
+    cast,
 )
 
 from django.apps import apps
 from django.apps.config import AppConfig
-from django.utils.module_loading import import_module, import_string
+from django.template.context import Context
+from django.utils.module_loading import import_string
 from django.utils.safestring import SafeString
 
 if TYPE_CHECKING:  # pragma: no cover
@@ -42,7 +45,7 @@ __all__ = [
     "ResolvedTranspilerTarget",
 ]
 
-ResolvedTranspilerTarget = Union[Type[Any], ModuleType, AppConfig]
+ResolvedTranspilerTarget = Union[Type, ModuleType, AppConfig]
 TranspilerTarget = Union[ResolvedTranspilerTarget, str]
 TranspilerTargets = Collection[TranspilerTarget]
 
@@ -94,12 +97,12 @@ class _TargetTreeNode:
     :param target: The target at this node
     """
 
-    target: Optional[TranspilerTarget]
+    target: Optional[ResolvedTranspilerTarget]
     children: List["_TargetTreeNode"]
     transpile = False
 
     def __init__(
-        self, target: Optional[TranspilerTarget] = None, transpile: bool = False
+        self, target: Optional[ResolvedTranspilerTarget] = None, transpile: bool = False
     ):
         self.target = target
         self.children = []
@@ -201,7 +204,7 @@ class Transpiler(CodeWriter, metaclass=ABCMeta):
 
     to_javascript_: Callable = to_js  # pylint: disable=used-before-assignment
 
-    parents_: List[Union[ModuleType, Type[Any]]]
+    parents_: List[Union[ModuleType, Type]]
     target_: ResolvedTranspilerTarget
 
     overrides_: Dict[str, "OverrideNode"]
@@ -271,11 +274,13 @@ class Transpiler(CodeWriter, metaclass=ABCMeta):
             d_impl.rstrip(self.nl_)
 
         yield from self.overrides_.pop(override).transpile(
-            {**self.context, "default_impl": SafeString(d_impl), **(context or {})}
+            Context(
+                {**self.context, "default_impl": SafeString(d_impl), **(context or {})}
+            )
         )
 
     @abstractmethod
-    def include_target(self, target: TranspilerTarget):
+    def include_target(self, target: ResolvedTranspilerTarget) -> bool:
         """
         Deriving transpilers must implement this method to filter targets
         (modules or classes) in and out of transpilation. Transpilers are
@@ -286,9 +291,7 @@ class Transpiler(CodeWriter, metaclass=ABCMeta):
         """
         return True
 
-    def transpile(  # pylint: disable=too-many-branches, disable=too-many-statements
-        self, targets: TranspilerTargets
-    ) -> str:
+    def transpile(self, targets: TranspilerTargets) -> str:
         """
         Generate and return javascript as a string given the targets. This
         method iterates over the list of given targets, imports any strings
@@ -321,14 +324,18 @@ class Transpiler(CodeWriter, metaclass=ABCMeta):
             # may be targets
             if isinstance(target, str):
                 if apps.is_installed(target):
-                    target = {
-                        app_config.name: app_config
-                        for app_config in apps.get_app_configs()
-                    }.get(target)
+                    target = cast(
+                        AppConfig,
+                        {
+                            app_config.name: app_config
+                            for app_config in apps.get_app_configs()
+                        }.get(target),
+                    )
                 else:
                     try:
                         target = apps.get_app_config(target)
                     except LookupError:
+                        assert isinstance(target, str)
                         parts = target.split(".")
                         tries = 0
                         while True:
@@ -353,6 +360,7 @@ class Transpiler(CodeWriter, metaclass=ABCMeta):
                                 elif tries == len(parts):
                                     raise
 
+            target = cast(ResolvedTranspilerTarget, target)
             node = _TargetTreeNode(target, self.include_target(target))
 
             if node.target in deduplicate_set:
@@ -382,11 +390,11 @@ class Transpiler(CodeWriter, metaclass=ABCMeta):
             branch: _TargetTreeNode, is_last: bool = False, final: bool = True
         ):
             is_final = final and not branch.children
-            if branch.target:
+            if branch.target and not isinstance(branch.target, AppConfig):
                 for stm in self.enter_parent(branch.target, is_last, is_final):
                     self.write_line(stm)
 
-            if branch.transpile:
+            if branch.transpile and branch.target:
                 self.target_ = branch.target
                 for stm in self.visit(branch.target, is_last, is_final):
                     self.write_line(stm)
@@ -399,7 +407,7 @@ class Transpiler(CodeWriter, metaclass=ABCMeta):
                         (idx == len(branch.children) - 1) and final,
                     )
 
-            if branch.target:
+            if branch.target and not isinstance(branch.target, AppConfig):
                 for stm in self.exit_parent(branch.target, is_last, is_final):
                     self.write_line(stm)
 
@@ -414,7 +422,7 @@ class Transpiler(CodeWriter, metaclass=ABCMeta):
         return self.rendered_
 
     def enter_parent(
-        self, parent: ResolvedTranspilerTarget, is_last: bool, is_final: bool
+        self, parent: Union[ModuleType, Type], is_last: bool, is_final: bool
     ) -> Generator[Optional[str], None, None]:
         """
         Enter and visit a target, pushing it onto the parent stack.

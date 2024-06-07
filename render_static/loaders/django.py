@@ -6,19 +6,24 @@ transparently if these loaders need to be adapted to work with Django Static
 Templates in the future.
 """
 
-import os
-from collections.abc import Container
-from glob import glob
 from pathlib import Path
-from typing import Generator, List, Optional, Protocol, Tuple, Union, runtime_checkable
+from typing import (
+    Generator,
+    List,
+    Optional,
+    Protocol,
+    Tuple,
+    Union,
+    runtime_checkable,
+)
 
 from django.apps import apps
 from django.apps.config import AppConfig
 from django.core.exceptions import SuspiciousFileOperation
-from django.template import Template, TemplateDoesNotExist
+from django.template import Origin, Template, TemplateDoesNotExist
 from django.template.loaders.app_directories import Loader as AppDirLoader
 from django.template.loaders.filesystem import Loader as FilesystemLoader
-from django.template.loaders.filesystem import safe_join
+from django.template.loaders.filesystem import safe_join  # type: ignore[attr-defined]
 from django.template.loaders.locmem import Loader as LocMemLoader
 
 from render_static.loaders.mixins import BatchLoaderMixin
@@ -40,12 +45,13 @@ class SearchableLoader(Protocol):
     Loaders should implement this protocol to support shell tab-completion.
     """
 
-    def search(self, selector: str) -> Generator[Union[Template], None, None]:
+    def search(self, selector: str) -> Generator[Template, None, None]:
         """
         Search for templates matching the selector pattern.
 
         :param selector: A glob pattern, or file name
         """
+        ...
 
 
 class DirectorySupport(FilesystemLoader):
@@ -58,7 +64,7 @@ class DirectorySupport(FilesystemLoader):
     is_dir = False
 
     def get_template(
-        self, template_name: str, skip: Optional[Container] = None
+        self, template_name: str, skip: Optional[List[Origin]] = None
     ) -> Template:
         """
         Wrap the super class's get_template method and set our is_dir
@@ -71,10 +77,10 @@ class DirectorySupport(FilesystemLoader):
         """
         self.is_dir = False
         template = super().get_template(template_name, skip=skip)
-        template.is_dir = self.is_dir
+        setattr(template, "is_dir", self.is_dir)
         return template
 
-    def get_contents(self, origin: AppOrigin) -> str:
+    def get_contents(self, origin: Origin) -> str:
         """
         We wrap the super class's get_contents implementation and
         set the is_dir flag if the origin is a directory. This is
@@ -92,7 +98,7 @@ class DirectorySupport(FilesystemLoader):
             self.is_dir = True
             return ""
 
-    def search(self, prefix: str) -> Generator[Union[Template], None, None]:
+    def search(self, prefix: str) -> Generator[Template, None, None]:
         """
         Return all Template objects at paths that start with the given path
         prefix.
@@ -101,9 +107,8 @@ class DirectorySupport(FilesystemLoader):
         :yield: All Template objects that have names that start with the prefix
         """
         prefix = str(Path(prefix)) if prefix else ""  # normalize!
-        for template_dir, _ in self.get_dirs():
-            template_dir = Path(template_dir)
-            for path in walk(template_dir):
+        for template_dir in self.get_dirs():
+            for path in walk(Path(template_dir)):
                 if not str(path).startswith(prefix):
                     continue
                 try:
@@ -133,7 +138,7 @@ class StaticLocMemLoader(LocMemLoader):
     Simple extension of ``django.template.loaders.locmem.Loader``
     """
 
-    def search(self, prefix: str) -> Generator[Union[Template], None, None]:
+    def search(self, prefix: str) -> Generator[Template, None, None]:
         """
         Search for templates matching the selector pattern.
 
@@ -156,24 +161,27 @@ class StaticAppDirectoriesLoader(DirectorySupport, AppDirLoader):
     the template should be rendered to disk.
     """
 
-    def get_dirs(self) -> Tuple[Tuple[Path, AppConfig], ...]:
+    def get_dirs(self) -> List[Union[str, Path]]:
+        return [pth for pth, _ in self.get_app_dirs()]
+
+    def get_app_dirs(self) -> List[Tuple[Union[str, Path], AppConfig]]:
         """
         Fetch the directories
         :return:
         """
         template_dirs = [
-            (Path(app_config.path) / self.engine.app_dirname, app_config)
+            (Path(app_config.path) / getattr(self.engine, "app_dirname"), app_config)
             for app_config in apps.get_app_configs()
             if (
                 app_config.path
-                and (Path(app_config.path) / self.engine.app_dirname).is_dir()
+                and (
+                    Path(app_config.path) / getattr(self.engine, "app_dirname")
+                ).is_dir()
             )
         ]
-        return tuple(template_dirs)
+        return template_dirs
 
-    def get_template_sources(
-        self, template_name: str
-    ) -> Generator[Union[AppOrigin, List[AppOrigin]], None, None]:
+    def get_template_sources(self, template_name: str) -> Generator[Origin, None, None]:
         """
         Yield the origins of all the templates from apps that match the given
         template name.
@@ -181,7 +189,7 @@ class StaticAppDirectoriesLoader(DirectorySupport, AppDirLoader):
         :param template_name: The name of the template to resolve
         :return: Yielded AppOrigins for the found templates.
         """
-        for template_dir, app_config in self.get_dirs():
+        for template_dir, app_config in self.get_app_dirs():
             try:
                 name = safe_join(template_dir, template_name)
             except SuspiciousFileOperation:
@@ -194,7 +202,7 @@ class StaticAppDirectoriesLoader(DirectorySupport, AppDirLoader):
             )
 
 
-class StaticAppDirectoriesBatchLoader(StaticAppDirectoriesLoader):
+class StaticAppDirectoriesBatchLoader(StaticAppDirectoriesLoader, BatchLoaderMixin):
     """
     A loader that enables glob pattern selectors to load batches of templates
     from app directories.
@@ -202,22 +210,3 @@ class StaticAppDirectoriesBatchLoader(StaticAppDirectoriesLoader):
     Yields batches of template names in order of preference, where preference
     is defined by the precedence of Django apps.
     """
-
-    def select_templates(self, selector: str) -> Generator[List[str], None, None]:
-        """
-        Yields template names matching the selector pattern.
-
-        :param selector: A glob pattern, or file name
-        """
-        for template_dir, app_config in self.get_dirs():  # pylint: disable=W0612
-            try:
-                pattern = safe_join(template_dir, selector)
-            except SuspiciousFileOperation:
-                # The joined path was located outside of this template_dir
-                # (it might be inside another one, so this isn't fatal).
-                continue
-
-            yield [
-                os.path.relpath(str(file), str(template_dir))
-                for file in glob(pattern, recursive=True)
-            ]

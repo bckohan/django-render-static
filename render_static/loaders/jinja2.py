@@ -40,14 +40,14 @@ try:
         from jinja2 import Environment, Template
 
 except ImportError:
-    ChoiceLoader = Jinja2DependencyNeeded  # type: ignore
-    DictLoader = Jinja2DependencyNeeded  # type: ignore
-    FileSystemLoader = Jinja2DependencyNeeded  # type: ignore
-    FunctionLoader = Jinja2DependencyNeeded  # type: ignore
-    ModuleLoader = Jinja2DependencyNeeded  # type: ignore
-    PackageLoader = Jinja2DependencyNeeded  # type: ignore
-    PrefixLoader = Jinja2DependencyNeeded  # type: ignore
-    BaseLoader = Jinja2DependencyNeeded  # type: ignore
+    ChoiceLoader = Jinja2DependencyNeeded
+    DictLoader = Jinja2DependencyNeeded
+    FileSystemLoader = Jinja2DependencyNeeded
+    FunctionLoader = Jinja2DependencyNeeded
+    ModuleLoader = Jinja2DependencyNeeded
+    PackageLoader = Jinja2DependencyNeeded
+    PrefixLoader = Jinja2DependencyNeeded
+    BaseLoader = Jinja2DependencyNeeded
 
 __all__ = [
     "StaticFileSystemLoader",

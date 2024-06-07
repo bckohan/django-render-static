@@ -2,7 +2,7 @@
 Change Log
 ==========
 
-v2.3.0
+v3.0.0
 ======
 
 * Implemented `Switch to ruff for formatting and linting <https://github.com/bckohan/django-render-static/issues/145>`_

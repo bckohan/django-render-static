@@ -4,10 +4,11 @@ Helper classes for augmenting loader behavior.
 
 from glob import glob
 from os.path import relpath
-from typing import Generator, List
+from pathlib import Path
+from typing import Generator, List, Union
 
 from django.core.exceptions import SuspiciousFileOperation
-from django.template.loaders.filesystem import safe_join
+from django.template.loaders.filesystem import safe_join  # type: ignore[attr-defined]
 
 __all__ = ["BatchLoaderMixin"]
 
@@ -21,7 +22,7 @@ class BatchLoaderMixin:
     is defined by the order directories are listed in.
     """
 
-    def get_dirs(self) -> List[str]:
+    def get_dirs(self) -> List[Union[str, Path]]:
         """
         Return a priority ordered list of directories on the search path of
         this loader.

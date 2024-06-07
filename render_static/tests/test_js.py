@@ -26,7 +26,11 @@ from render_static import placeholders
 from render_static.tests import bad_pattern, defines
 from render_static.tests.enum_app.enums import DependentEnum, IndependentEnum
 from render_static.tests.enum_app.models import EnumTester
-from render_static.tests.tests import ENUM_STATIC_DIR, GLOBAL_STATIC_DIR, BaseTestCase
+from render_static.tests.test_core import (
+    ENUM_STATIC_DIR,
+    GLOBAL_STATIC_DIR,
+    BaseTestCase,
+)
 from render_static.transpilers import CodeWriter
 from render_static.transpilers.enums_to_js import IGNORED_ENUMS
 from render_static.transpilers.urls_to_js import ClassURLWriter

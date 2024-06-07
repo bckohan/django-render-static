@@ -13,14 +13,14 @@ from django.core.management import call_command
 from django.test import override_settings
 from django.urls import reverse
 
-from render_static.tests.js_tests import (
+from render_static.tests.test_js import (
     GLOBAL_STATIC_DIR,
     EnumComparator,
     StructureDiff,
     URLJavascriptMixin,
     run_js_file,
 )
-from render_static.tests.tests import BaseTestCase
+from render_static.tests.test_core import BaseTestCase
 from render_static.transpilers.urls_to_js import ClassURLWriter
 
 try:

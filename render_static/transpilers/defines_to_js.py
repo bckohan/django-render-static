@@ -6,6 +6,9 @@ plain old data found on classes and their ancestors.
 from types import ModuleType
 from typing import Any, Callable, Dict, Generator, Optional, Type, Union
 
+from django.apps import AppConfig
+from django.template.context import Context
+
 from render_static.transpilers import ResolvedTranspilerTarget, Transpiler
 
 
@@ -91,7 +94,7 @@ class DefaultDefineTranspiler(Transpiler):
         return self.members_
 
     @members.setter
-    def members(self, target: Union[ModuleType, Type[Any]]):
+    def members(self, target: Union[ModuleType, Type]):
         self.members_ = {}
         for ancestor in list(reversed(getattr(target, "__mro__", []))) + [target]:
             self.members_.update(
@@ -133,7 +136,7 @@ class DefaultDefineTranspiler(Transpiler):
         super().__init__(**kwargs)
 
     def visit(
-        self, target: Union[ModuleType, Type[Any]], is_last: bool, is_final: bool
+        self, target: ResolvedTranspilerTarget, is_last: bool, is_final: bool
     ) -> Generator[Optional[str], None, None]:
         """
         Visit a target (module or class) and yield its defines as transpiled
@@ -144,6 +147,9 @@ class DefaultDefineTranspiler(Transpiler):
         :param is_final:
         :return:
         """
+        assert not isinstance(
+            target, AppConfig
+        ), "Unsupported transpiler target: AppConfig"
         self.members = target  # type: ignore
         yield from self.visit_members(self.members, is_last=is_last, is_final=is_final)
 
@@ -159,7 +165,7 @@ class DefaultDefineTranspiler(Transpiler):
         Lay down the closing brace for the const variable declaration.
         """
         for _, override in self.overrides_.items():
-            yield from override.transpile(self.context)
+            yield from override.transpile(Context(self.context))
         self.outdent()
         yield "};"
 
@@ -222,8 +228,8 @@ class DefaultDefineTranspiler(Transpiler):
         self,
         name: str,
         member: Any,
-        is_last: bool = False,  # pylint: disable=unused-argument
-        is_final: bool = False,  # pylint: disable=unused-argument
+        is_last: bool = False,
+        is_final: bool = False,
     ) -> Generator[Optional[str], None, None]:
         """
         Visit a member of a class and yield its rendered javascript.

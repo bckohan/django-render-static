@@ -1,10 +1,7 @@
-# pylint: disable=C0114
+from typing import Optional
 
-from typing import Union
-
-from django.apps.config import AppConfig
+from django.apps import AppConfig
 from django.template import Origin
-from django.template.loaders.base import Loader
 
 __all__ = ["AppOrigin"]
 
@@ -19,11 +16,15 @@ class AppOrigin(Origin):
     :param kwargs:
     """
 
-    def __init__(self, *args: str, **kwargs: Union[str, Loader, AppConfig]) -> None:
-        self.app = kwargs.pop("app", None)
-        super().__init__(*args, **kwargs)
+    app: Optional[AppConfig] = None
 
-    def __eq__(self, other: Union[Origin, "AppOrigin"]) -> bool:
+    def __init__(
+        self, name, app: Optional[AppConfig] = None, template_name=None, loader=None
+    ) -> None:
+        self.app = app
+        super().__init__(name, template_name=template_name, loader=loader)
+
+    def __eq__(self, other) -> bool:
         """
         Determine origin equality as defined by template name and application
         origin. AppOrigins will compare as equal to Origins if neither have an

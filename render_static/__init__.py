@@ -13,7 +13,7 @@ from .transpilers.defines_to_js import DefaultDefineTranspiler
 from .transpilers.enums_to_js import EnumClassWriter
 from .transpilers.urls_to_js import ClassURLWriter, SimpleURLWriter
 
-VERSION = (2, 3, 0)
+VERSION = (3, 0, 0)
 
 __title__ = "Django Render Static"
 __version__ = ".".join(str(i) for i in VERSION)
@@ -32,7 +32,7 @@ __all__ = [
 ]
 
 
-class Jinja2DependencyNeeded:  # pylint: disable=R0903
+class Jinja2DependencyNeeded:
     """
     Jinja2 is an optional dependency - lazy fail if its use is attempted
     without it being present on the python path.

@@ -9,11 +9,12 @@ from enum import Enum, Flag, IntEnum, IntFlag, auto
 from typing import Any, Collection, Dict, Generator, List, Optional, Set, Type, Union
 
 from django.db.models import IntegerChoices, TextChoices
+from django.template.context import Context
 
 from render_static.transpilers import Transpiler, TranspilerTarget
 
 try:
-    from django.utils.decorators import classproperty  # pylint: disable=C0412
+    from django.utils.decorators import classproperty  # type: ignore[attr-defined]
 except ImportError:
     from django.utils.functional import classproperty
 
@@ -45,7 +46,7 @@ class EnumTranspiler(Transpiler):
     base class to write custom transpilers.
     """
 
-    def include_target(self, target: TranspilerTarget):
+    def include_target(self, target: TranspilerTarget) -> bool:
         """
         Deriving transpilers must implement this method to filter targets in
         and out of transpilation. Transpilers are expected to walk module trees
@@ -55,7 +56,7 @@ class EnumTranspiler(Transpiler):
         :return: True if the target can be transpiled
         """
         if isinstance(target, type) and issubclass(target, Enum):
-            return (
+            return bool(
                 target not in IGNORED_ENUMS
                 and target.__module__ != "enum"
                 and
@@ -65,10 +66,9 @@ class EnumTranspiler(Transpiler):
         return False
 
     @abstractmethod
-    def visit(
+    def visit(  # pyright: ignore[reportIncompatibleMethodOverride]
         self,
         enum: Type[Enum],  # type: ignore
-        # pylint: disable=arguments-renamed
         is_last: bool,
         is_final: bool,
     ) -> Generator[Optional[str], None, None]:
@@ -515,7 +515,7 @@ class EnumClassWriter(EnumTranspiler):  # pylint: disable=R0902
         yield ""
         yield from self.iterator(enum)
         for _, override in self.overrides_.items():
-            yield from override.transpile(self.context)
+            yield from override.transpile(Context(self.context))
         self.outdent()
         yield "}"
 

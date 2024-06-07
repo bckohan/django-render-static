@@ -14,9 +14,10 @@ from typing import Any, Dict, Generator, Iterable, List, Optional, Tuple, Union
 from django import VERSION as DJANGO_VERSION
 from django.conf import settings
 from django.core.serializers.json import DjangoJSONEncoder
+from django.template.context import Context
 from django.urls import URLPattern, URLResolver, reverse
 from django.urls.exceptions import NoReverseMatch
-from django.urls.resolvers import RegexPattern, RoutePattern
+from django.urls.resolvers import LocalePrefixPattern, RegexPattern, RoutePattern
 
 from render_static.exceptions import ReversalLimitHit, URLGenerationFailed
 from render_static.placeholders import (
@@ -106,7 +107,7 @@ def build_tree(
 
 
 def _build_branch(  # pylint: disable=R0913
-    nodes: Iterable[URLPattern],
+    nodes: Iterable[Union[URLPattern, URLResolver]],
     included: bool,
     branch: Tuple[
         Dict, Dict, Optional[str], Optional[Union[RegexPattern, RoutePattern]]
@@ -257,7 +258,7 @@ class BaseURLTranspiler(Transpiler):
     attributes that contain a list of URLPattern and URLResolver objects.
     """
 
-    def include_target(self, target: ResolvedTranspilerTarget):
+    def include_target(self, target: ResolvedTranspilerTarget) -> bool:
         """
         Only transpile artifacts that have url pattern/resolver lists in them.
 
@@ -319,7 +320,7 @@ class URLTreeVisitor(BaseURLTranspiler):
     exclude_: Optional[Iterable[str]] = None
 
     @property
-    def context(self):
+    def context(self) -> Dict[str, Any]:
         """
         The template render context passed to overrides. In addition to
         :attr:`render_static.transpilers.Transpiler.context`.
@@ -398,8 +399,10 @@ class URLTreeVisitor(BaseURLTranspiler):
 
         # first, pull out any named or unnamed parameters that comprise this
         # pattern
-        def get_params(pattern: Union[RoutePattern, RegexPattern]) -> Dict[str, Any]:
-            if isinstance(pattern, RoutePattern):
+        def get_params(
+            pattern: Union[RoutePattern, RegexPattern, LocalePrefixPattern],
+        ) -> Dict[str, Any]:
+            if isinstance(pattern, (RoutePattern, LocalePrefixPattern)):
                 return {
                     var: {"converter": converter.__class__, "app_name": app_name}
                     for var, converter in pattern.converters.items()
@@ -417,7 +420,7 @@ class URLTreeVisitor(BaseURLTranspiler):
             params = {**params, **get_params(rt_pattern)}
 
         # does this url have unnamed or named params?
-        unnamed = False
+        unnamed = 0
         if not params and endpoint.pattern.regex.groups > 0:
             unnamed = endpoint.pattern.regex.groups
 
@@ -435,7 +438,7 @@ class URLTreeVisitor(BaseURLTranspiler):
             if unnamed:
                 resolved_placeholders = itertools.product(
                     *resolve_unnamed_placeholders(
-                        url_name=endpoint.name, nargs=unnamed, app_name=app_name
+                        url_name=endpoint.name or "", nargs=unnamed, app_name=app_name
                     ),
                 )
                 non_capturing = str(endpoint.pattern.regex).count("(?:")
@@ -446,7 +449,7 @@ class URLTreeVisitor(BaseURLTranspiler):
                     resolved_placeholders = itertools.chain(  # type: ignore
                         resolved_placeholders,
                         *resolve_unnamed_placeholders(
-                            url_name=endpoint.name,
+                            url_name=endpoint.name or "",
                             nargs=unnamed - non_capturing,
                             app_name=app_name,
                         ),
@@ -520,7 +523,7 @@ class URLTreeVisitor(BaseURLTranspiler):
                                 )
 
                     url_idx = 0
-                    path = []
+                    path: List[Union[str, Substitute]] = []
                     for rpl in replacements:
                         while url_idx <= rpl[0][0]:
                             path.append(placeholder_url[url_idx])
@@ -797,7 +800,7 @@ class SimpleURLWriter(URLTreeVisitor):
     raise_on_not_found_ = True
 
     @property
-    def context(self):
+    def context(self) -> Dict[str, Any]:
         """
         The template render context passed to overrides. In addition to
         :attr:`render_static.transpilers.urls_to_js.URLTreeVisitor.context`.
@@ -832,7 +835,7 @@ class SimpleURLWriter(URLTreeVisitor):
         :yield: nothing
         """
         for _, override in self.overrides_.items():
-            yield from override.transpile(self.context)
+            yield from override.transpile(Context(self.context))
 
     def enter_namespace(self, namespace: str) -> Generator[Optional[str], None, None]:
         """
@@ -1357,7 +1360,7 @@ class ClassURLWriter(URLTreeVisitor):
         """
         yield "}"
         for _, override in self.overrides_.items():
-            yield from override.transpile(self.context)
+            yield from override.transpile(Context(self.context))
         self.outdent()
         yield "};"
 
