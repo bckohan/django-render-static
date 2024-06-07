@@ -1,6 +1,7 @@
 import contextlib
 import filecmp
 import os
+import pytest
 from io import StringIO
 
 from django.core.exceptions import ImproperlyConfigured
@@ -10,10 +11,14 @@ from django.template.utils import InvalidTemplateEngineError
 from django.test import TestCase, override_settings
 from django.urls import reverse
 
-from render_static.backends import StaticDjangoTemplates
-from render_static.backends.jinja2 import StaticJinja2Templates
-from render_static.engine import StaticTemplateEngine
-from render_static.loaders.jinja2 import StaticDictLoader, StaticFileSystemLoader
+try:
+    from render_static.backends import StaticDjangoTemplates
+    from render_static.backends.jinja2 import StaticJinja2Templates
+    from render_static.engine import StaticTemplateEngine
+    from render_static.loaders.jinja2 import StaticDictLoader, StaticFileSystemLoader
+except ImportError:
+    pytest.skip(allow_module_level=True, reason="Jinja2 is not installed")
+
 from tests import defines
 from tests.test_js import (
     ClassURLWriter,
