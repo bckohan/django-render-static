@@ -106,9 +106,7 @@ warn_redundant_casts = true
 warn_unused_configs = true
 warn_unreachable = true
 warn_no_return = true
-exclude = "tests"
 plugins = ["mypy_django_plugin.main"]
-mypy_path = ["tests"]
 
 [tool.django-stubs]
 django_settings_module = "tests.settings"
