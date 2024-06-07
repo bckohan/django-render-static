@@ -440,11 +440,11 @@ class Transpiler(CodeWriter, metaclass=ABCMeta):
         self.parents_.append(parent)
         if isinstance(parent, ModuleType):
             yield from self.enter_module(parent, is_last, is_final)
-        elif isinstance(parent, type):
+        else:
             yield from self.enter_class(parent, is_last, is_final)
 
     def exit_parent(
-        self, parent: ResolvedTranspilerTarget, is_last: bool, is_final: bool
+        self, parent: Union[ModuleType, Type], is_last: bool, is_final: bool
     ) -> Generator[Optional[str], None, None]:
         """
         Exit a target, removing it from the parent stack.
@@ -459,7 +459,7 @@ class Transpiler(CodeWriter, metaclass=ABCMeta):
         del self.parents_[-1]
         if isinstance(parent, ModuleType):
             yield from self.exit_module(parent, is_last, is_final)
-        elif isinstance(parent, type):
+        else:
             yield from self.exit_class(parent, is_last, is_final)
 
     def enter_module(
