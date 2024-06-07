@@ -411,7 +411,7 @@ class ConfigTestCase(TestCase):
 
 @override_settings(
     STATIC_TEMPLATES={
-        "context": "test_core.generate_context1",
+        "context": "tests.test_core.generate_context1",
         "templates": {
             "app1/html/hello.html": {
                 "context": generate_context2,
