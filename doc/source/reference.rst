@@ -18,9 +18,12 @@ engine
 backends
 ----------------------------------
 
-.. automodule:: render_static.backends
+.. automodule:: render_static.backends.django
 
    .. autoclass:: StaticDjangoTemplates
+
+.. automodule:: render_static.backends.jinja2
+
    .. autoclass:: StaticJinja2Templates
 
 
@@ -114,7 +117,7 @@ placeholders
 transpilers
 ----------------------------------------------------------------
 
-.. automodule:: render_static.transpilers
+.. automodule:: render_static.transpilers.base
 
    .. autofunction:: to_js
    .. autofunction:: to_js_datetime

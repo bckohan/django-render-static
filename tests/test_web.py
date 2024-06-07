@@ -5,9 +5,12 @@ namespaces. These patterns incur a dependency on renderstatic to any
 users of the SPA apps. See Runtimes in the documentation for more details.
 """
 
+import sys
 import json
 import logging
 import os
+
+import pytest
 
 import time
 from django.core.management import call_command
@@ -82,7 +85,7 @@ def web_driver(width=1920, height=1200):
     services = [
         chrome,
         edge if platform.system().lower() == "windows" else chromium,
-        firefox
+        firefox,
     ]
 
     driver = None
@@ -100,6 +103,7 @@ def web_driver(width=1920, height=1200):
         raise RuntimeError("Unable to initialize any webdriver.")
 
 
+@pytest.mark.skipif(sys.version_info < (3, 9), reason="Requires Python 3.9 or higher")
 @override_settings(
     INSTALLED_APPS=[
         "tests.spa",

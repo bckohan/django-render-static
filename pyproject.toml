@@ -55,10 +55,6 @@ enum-properties = "^1.1.1"
 pytest = "^8.0"
 pytest-django = "^4.8.0"
 Sphinx = "^7.0.0"
-sphinx-js = [
-    { version = "<3.0", markers = "python_version < '3.8'" },
-    { version = "^3.0", markers = "python_version >= '3.8'" },
-]
 sphinx-rtd-theme = "^2.0.0"
 mypy = "^1.8"
 doc8 = "^1.1.0"
@@ -106,6 +102,7 @@ warn_redundant_casts = true
 warn_unused_configs = true
 warn_unreachable = true
 warn_no_return = true
+
 
 [tool.doc8]
 ignore-path = "doc/build"
