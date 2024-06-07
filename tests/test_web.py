@@ -135,9 +135,9 @@ class TestMultipleURLTreeSPAExample(BaseTestCase, LiveServerTestCase):
     def test_example_pattern(self):
         with web_driver() as driver:
             driver.get(f'{self.live_server_url}{reverse("spa1:index")}')
-            from pprint import pprint
+            # from pprint import pprint
 
-            pprint(driver.get_log("browser"))
+            # pprint(driver.get_log("browser"))
             elem = driver.find_element(By.ID, "qry-result")
             self.assertEqual(json.loads(elem.text)["request"], "/spa1/qry/")
             elem = driver.find_element(By.ID, "qry-result-arg")
