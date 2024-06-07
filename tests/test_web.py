@@ -8,9 +8,8 @@ users of the SPA apps. See Runtimes in the documentation for more details.
 import json
 import logging
 import os
-import shutil
 
-import pytest
+import time
 from django.core.management import call_command
 from django.test import LiveServerTestCase, override_settings
 from django.urls import reverse
@@ -81,9 +80,9 @@ def web_driver(width=1920, height=1200):
         )
 
     services = [
-        firefox,
         chrome,
         edge if platform.system().lower() == "windows" else chromium,
+        firefox
     ]
 
     driver = None
@@ -135,19 +134,26 @@ class TestMultipleURLTreeSPAExample(BaseTestCase, LiveServerTestCase):
     def test_example_pattern(self):
         with web_driver() as driver:
             driver.get(f'{self.live_server_url}{reverse("spa1:index")}')
-            # from pprint import pprint
-
-            # pprint(driver.get_log("browser"))
+            time.sleep(2)
             elem = driver.find_element(By.ID, "qry-result")
-            self.assertEqual(json.loads(elem.text)["request"], "/spa1/qry/")
+            text = str(elem.text)
+            js = json.loads(text)
+            self.assertEqual(js["request"], "/spa1/qry/")
             elem = driver.find_element(By.ID, "qry-result-arg")
-            self.assertEqual(json.loads(elem.text)["request"], "/spa1/qry/5")
+            text = str(elem.text)
+            js = json.loads(text)
+            self.assertEqual(js["request"], "/spa1/qry/5")
 
             driver.get(f'{self.live_server_url}{reverse("spa2:index")}')
+            time.sleep(2)
             elem = driver.find_element(By.ID, "qry-result")
-            self.assertEqual(json.loads(elem.text)["request"], "/spa2/qry/")
+            text = str(elem.text)
+            js = json.loads(text)
+            self.assertEqual(js["request"], "/spa2/qry/")
             elem = driver.find_element(By.ID, "qry-result-arg")
-            self.assertEqual(json.loads(elem.text)["request"], "/spa2/qry/5")
+            text = str(elem.text)
+            js = json.loads(text)
+            self.assertEqual(js["request"], "/spa2/qry/5")
 
     # def tearDown(self):
     #     pass

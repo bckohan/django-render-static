@@ -12,7 +12,7 @@ on:
 
   schedule:
     - cron: '0 13 * * *'  # Runs at 6 am pacific every day
-    
+
 jobs:
 
   test:
