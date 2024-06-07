@@ -105,7 +105,7 @@ class StaticJinja2Templates(StaticEngine, Jinja2):
     def select_templates(
         self,
         selector: str,
-        first_loader: bool = False,  # pylint: disable=unused-argument
+        first_loader: bool = False,
         first_preference: bool = False,
     ) -> List[str]:
         """

@@ -84,7 +84,7 @@ class EnumTranspiler(Transpiler):
         """
 
 
-class EnumClassWriter(EnumTranspiler):  # pylint: disable=R0902
+class EnumClassWriter(EnumTranspiler):
     """
     A PEP 435 transpiler that generates ES6 style classes in the style of
     https://github.com/rauschma/enumify
@@ -420,7 +420,7 @@ class EnumClassWriter(EnumTranspiler):  # pylint: disable=R0902
             "to_string": self.to_string_,
         }
 
-    def __init__(  # pylint: disable=R0913
+    def __init__(
         self,
         class_name: str = class_name_pattern_,
         on_unrecognized: Union[str, UnrecognizedBehavior] = on_unrecognized_,
@@ -478,9 +478,8 @@ class EnumClassWriter(EnumTranspiler):  # pylint: disable=R0902
     def visit(
         self,
         enum: Type[Enum],  # type: ignore
-        # pylint: disable=arguments-renamed
         is_last: bool,
-        is_final: bool,  # pylint: disable=unused-argument
+        is_final: bool,
     ) -> Generator[Optional[str], None, None]:
         """
         Transpile the enum in sections.
@@ -519,9 +518,7 @@ class EnumClassWriter(EnumTranspiler):  # pylint: disable=R0902
         self.outdent()
         yield "}"
 
-    def declaration(  # pylint: disable=W0613
-        self, enum: Type[Enum]
-    ) -> Generator[Optional[str], None, None]:
+    def declaration(self, enum: Type[Enum]) -> Generator[Optional[str], None, None]:
         """
         Transpile the class declaration.
 
@@ -557,9 +554,7 @@ class EnumClassWriter(EnumTranspiler):  # pylint: disable=R0902
         for prop in self.class_properties:
             yield f"static {prop} = {self.to_js(getattr(enum, prop))};"
 
-    def constructor(  # pylint: disable=W0613
-        self, enum: Type[Enum]
-    ) -> Generator[Optional[str], None, None]:
+    def constructor(self, enum: Type[Enum]) -> Generator[Optional[str], None, None]:
         """
         Transpile the constructor for the enum instances.
 
@@ -604,9 +599,7 @@ class EnumClassWriter(EnumTranspiler):  # pylint: disable=R0902
             self.outdent()
             yield "}"
 
-    def to_string(  # pylint: disable=W0613
-        self, enum: Type[Enum]
-    ) -> Generator[Optional[str], None, None]:
+    def to_string(self, enum: Type[Enum]) -> Generator[Optional[str], None, None]:
         """
         Transpile the toString() method that converts enum instances to
         strings.

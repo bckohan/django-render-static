@@ -1,5 +1,3 @@
-# pylint: disable=C0114
-
 import os
 from collections import Counter, namedtuple
 from pathlib import Path
@@ -447,7 +445,7 @@ class StaticTemplateEngine:
 
         return Path(dest if dest else "")
 
-    def render_to_disk(  # pylint: disable=R0913
+    def render_to_disk(
         self,
         selector: str,
         context: Optional[Dict] = None,
@@ -539,7 +537,7 @@ class StaticTemplateEngine:
                     first_preference=first_preference,
                 )
 
-    def search(  # pylint: disable=R0914
+    def search(
         self,
         prefix: str,
         first_engine: bool = False,
@@ -560,7 +558,7 @@ class StaticTemplateEngine:
         for engine in self.all()[0 : 1 if first_engine else None]:
             yield from engine.search_templates(prefix, first_loader=first_loader)
 
-    def render_each(  # pylint: disable=R0914
+    def render_each(
         self,
         *selectors: str,
         context: Optional[Union[Dict, str, Path, Callable]] = None,

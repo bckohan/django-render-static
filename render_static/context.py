@@ -79,7 +79,7 @@ def _from_json(file_path: str, throw: bool = True) -> Optional[Dict]:
     try:
         with open(file_path, "rb") as ctx_f:
             return json.load(ctx_f)
-    except Exception as err:  # pylint: disable=W0703
+    except Exception as err:
         if throw:
             raise err
     return None
@@ -95,7 +95,7 @@ def _from_yaml(file_path: str, throw: bool = True) -> Optional[Dict]:
     try:
         with open(file_path, "rb") as ctx_f:
             return yaml_load(ctx_f, Loader=FullLoader)
-    except Exception as err:  # pylint: disable=W0703
+    except Exception as err:
         if throw:
             raise err
     return None
@@ -113,7 +113,7 @@ def _from_pickle(file_path: str, throw: bool = True) -> Optional[Dict]:
             ctx = pickle.load(ctx_f)
             if isinstance(ctx, dict):
                 return ctx
-    except Exception as err:  # pylint: disable=W0703
+    except Exception as err:
         if throw:
             raise err
     return None
@@ -131,9 +131,9 @@ def _from_python(file_path: str, throw: bool = True) -> Optional[Dict]:
     try:
         with open(file_path, "rb") as ctx_f:
             compiled_code = compile(ctx_f.read(), file_path, "exec")
-            exec(compiled_code, {}, ctx)  # pylint: disable=W0122
+            exec(compiled_code, {}, ctx)
             return ctx
-    except Exception as err:  # pylint: disable=W0703
+    except Exception as err:
         if throw:
             raise err
     return None
@@ -153,7 +153,7 @@ def _from_import(import_path: str, throw: bool = True) -> Optional[Dict]:
             context = context()
         if isinstance(context, dict):
             return context
-    except Exception as err:  # pylint: disable=W0703
+    except Exception as err:
         if throw:
             raise err
     return None

@@ -16,14 +16,14 @@ __all__ = ["resource"]
 
 # Distinguishing between different versions of Python:
 if sys.version_info >= (3, 9):
-    from importlib.resources import as_file, files  # pylint: disable=E0611
+    from importlib.resources import as_file, files
 else:
     try:
         from importlib_resources import as_file, files
     except ImportError:
 
         @singledispatch
-        def need_install(*args, **kwargs):
+        def need_install(*args, **kwargs):  # pragma: no cover
             """
             On platforms <3.9, the importlib_resources backport needs to be
             available to use resources.

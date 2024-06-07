@@ -296,7 +296,7 @@ def transpile(targets: Targets, transpiler: TranspilerType, **kwargs) -> str:
 
 
 @transpiler_tag(targets="url_conf")
-def urls_to_js(  # pylint: disable=R0913,R0915
+def urls_to_js(
     transpiler: TranspilerType = ClassURLWriter,
     url_conf: Optional[Union[ModuleType, str]] = None,
     indent: str = "\t",

@@ -139,13 +139,13 @@ class CodeWriter:
         level: int = level_,
         indent: Optional[str] = indent_,
         prefix: str = prefix_,
-        **kwargs,  # pylint: disable=unused-argument
+        **kwargs,
     ) -> None:
         self.rendered_ = ""
         self.level_ = level
         self.indent_ = indent or ""
         self.prefix_ = prefix or ""
-        self.nl_ = self.nl_ if self.indent_ else ""  # pylint: disable=C0103
+        self.nl_ = self.nl_ if self.indent_ else ""
 
     def get_line(self, line: Optional[str]) -> str:
         """
@@ -200,7 +200,7 @@ class Transpiler(CodeWriter, metaclass=ABCMeta):
         above.
     """
 
-    to_javascript_: Callable = to_js  # pylint: disable=used-before-assignment
+    to_javascript_: Callable = to_js
 
     parents_: List[Union[ModuleType, Type]]
     target_: ResolvedTranspilerTarget
@@ -464,9 +464,9 @@ class Transpiler(CodeWriter, metaclass=ABCMeta):
 
     def enter_module(
         self,
-        module: ModuleType,  # pylint: disable=unused-argument
-        is_last: bool,  # pylint: disable=unused-argument
-        is_final: bool,  # pylint: disable=unused-argument
+        module: ModuleType,
+        is_last: bool,
+        is_final: bool,
     ) -> Generator[Optional[str], None, None]:
         """
         Transpile a module.
@@ -481,9 +481,9 @@ class Transpiler(CodeWriter, metaclass=ABCMeta):
 
     def exit_module(
         self,
-        module: ModuleType,  # pylint: disable=unused-argument
-        is_last: bool,  # pylint: disable=unused-argument
-        is_final: bool,  # pylint: disable=unused-argument
+        module: ModuleType,
+        is_last: bool,
+        is_final: bool,
     ) -> Generator[Optional[str], None, None]:
         """
         Close transpilation of a module.
@@ -498,9 +498,9 @@ class Transpiler(CodeWriter, metaclass=ABCMeta):
 
     def enter_class(
         self,
-        cls: Type[Any],  # pylint: disable=unused-argument
-        is_last: bool,  # pylint: disable=unused-argument
-        is_final: bool,  # pylint: disable=unused-argument
+        cls: Type[Any],
+        is_last: bool,
+        is_final: bool,
     ) -> Generator[Optional[str], None, None]:
         """
         Transpile a class.
@@ -515,9 +515,9 @@ class Transpiler(CodeWriter, metaclass=ABCMeta):
 
     def exit_class(
         self,
-        cls: Type[Any],  # pylint: disable=unused-argument
-        is_last: bool,  # pylint: disable=unused-argument
-        is_final: bool,  # pylint: disable=unused-argument
+        cls: Type[Any],
+        is_last: bool,
+        is_final: bool,
     ) -> Generator[Optional[str], None, None]:
         """
         Close transpilation of a class.

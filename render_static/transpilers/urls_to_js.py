@@ -106,7 +106,7 @@ def build_tree(
     )
 
 
-def _build_branch(  # pylint: disable=R0913
+def _build_branch(
     nodes: Iterable[Union[URLPattern, URLResolver]],
     included: bool,
     branch: Tuple[
@@ -367,7 +367,7 @@ class URLTreeVisitor(BaseURLTranspiler):
             visitation exit
         """
 
-    def visit_pattern(  # pylint: disable=R0914, R0915, R0912
+    def visit_pattern(
         self,
         endpoint: URLPattern,
         qname: str,
@@ -431,7 +431,7 @@ class URLTreeVisitor(BaseURLTranspiler):
         )
 
         # if we have parameters, resolve the placeholders for them
-        if params or unnamed or endpoint.default_args:  # pylint: disable=R1702
+        if params or unnamed or endpoint.default_args:
             if unnamed:
                 resolved_placeholders = itertools.product(
                     *resolve_unnamed_placeholders(
@@ -506,9 +506,7 @@ class URLTreeVisitor(BaseURLTranspiler):
                         idx: var for var, idx in composite_regex.groupindex.items()
                     }
 
-                    for idx, value in enumerate(  # pylint: disable=W0612
-                        mtch.groups(), start=1
-                    ):
+                    for idx, value in enumerate(mtch.groups(), start=1):
                         if unnamed:
                             replacements.append((mtch.span(idx), Substitute(idx - 1)))
                         else:
@@ -1323,7 +1321,7 @@ class ClassURLWriter(URLTreeVisitor):
             self.outdent()
             yield "}"
 
-    def init_visit(  # pylint: disable=R0915
+    def init_visit(
         self,
     ) -> Generator[Optional[str], None, None]:
         """
