@@ -8,7 +8,7 @@ from types import ModuleType
 
 from django.test import TestCase
 
-from render_static.transpilers import Transpiler
+from render_static.transpilers.base import Transpiler
 from render_static.transpilers.enums_to_js import IGNORED_ENUMS
 
 

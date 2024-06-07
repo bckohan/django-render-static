@@ -29,7 +29,11 @@ from django.template.library import parse_bits
 from django.utils.module_loading import import_string
 from django.utils.safestring import SafeString
 
-from render_static.transpilers import Transpiler, TranspilerTarget, TranspilerTargets
+from render_static.transpilers.base import (
+    Transpiler,
+    TranspilerTarget,
+    TranspilerTargets,
+)
 from render_static.transpilers.defines_to_js import DefaultDefineTranspiler
 from render_static.transpilers.enums_to_js import EnumClassWriter
 from render_static.transpilers.urls_to_js import ClassURLWriter

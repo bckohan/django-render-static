@@ -9,7 +9,7 @@ from typing import Any, Callable, Dict, Generator, Optional, Type, Union
 from django.apps import AppConfig
 from django.template.context import Context
 
-from render_static.transpilers import ResolvedTranspilerTarget, Transpiler
+from render_static.transpilers.base import ResolvedTranspilerTarget, Transpiler
 
 
 class DefaultDefineTranspiler(Transpiler):

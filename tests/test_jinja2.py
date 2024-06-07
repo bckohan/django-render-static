@@ -504,7 +504,7 @@ class MultipleDestinationsTestCase(BaseTestCase):
                     "app_dir": "custom_templates",
                     "loader": StaticDictLoader(
                         {
-                            "defines1.js": '{{ defines_to_js(classes, transpiler="render_static.DefaultDefineTranspiler", indent="  ") }}'
+                            "defines1.js": '{{ defines_to_js(classes, transpiler="render_static.transpilers.DefaultDefineTranspiler", indent="  ") }}'
                             "\nconsole.log(JSON.stringify(defines));",
                             "defines2.js": "{{ defines_to_js(modules) }}"
                             "\nconsole.log(JSON.stringify(defines));",

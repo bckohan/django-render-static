@@ -15,7 +15,8 @@ from django.core.management import CommandError, call_command
 from django.template.exceptions import TemplateDoesNotExist
 from django.test import TestCase, override_settings
 
-from render_static import resolve_context, resource
+from render_static.context import resolve_context
+from render_static.resource import resource
 from render_static.engine import StaticTemplateEngine
 from render_static.exceptions import InvalidContext
 from render_static.origin import AppOrigin, Origin

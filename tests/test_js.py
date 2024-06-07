@@ -31,7 +31,7 @@ from tests.test_core import (
     GLOBAL_STATIC_DIR,
     BaseTestCase,
 )
-from render_static.transpilers import CodeWriter
+from render_static.transpilers.base import CodeWriter
 from render_static.transpilers.enums_to_js import IGNORED_ENUMS
 from render_static.transpilers.urls_to_js import ClassURLWriter
 
@@ -742,7 +742,7 @@ class URLJavascriptMixin:
                         (
                             "render_static.loaders.StaticLocMemLoader",
                             {
-                                "urls.js": 'var urls = {\n{% urls_to_js transpiler="render_static.SimpleURLWriter" %}};'
+                                "urls.js": 'var urls = {\n{% urls_to_js transpiler="render_static.transpilers.SimpleURLWriter" %}};'
                             },
                         )
                     ],
@@ -790,7 +790,7 @@ class URLSToJavascriptTest(URLJavascriptMixin, BaseTestCase):
                             (
                                 "render_static.loaders.StaticLocMemLoader",
                                 {
-                                    "urls.js": '{% urls_to_js transpiler="render_static.ClassURLWriter" %}'
+                                    "urls.js": '{% urls_to_js transpiler="render_static.transpilers.ClassURLWriter" %}'
                                 },
                             )
                         ],
@@ -818,7 +818,7 @@ class URLSToJavascriptTest(URLJavascriptMixin, BaseTestCase):
                             (
                                 "render_static.loaders.StaticLocMemLoader",
                                 {
-                                    "urls.js": '{% urls_to_js transpiler="render_static.ClassURLWriter" %}'
+                                    "urls.js": '{% urls_to_js transpiler="render_static.transpilers.ClassURLWriter" %}'
                                 },
                             )
                         ],
@@ -849,7 +849,7 @@ class URLSToJavascriptTest(URLJavascriptMixin, BaseTestCase):
                                 "render_static.loaders.StaticLocMemLoader",
                                 {
                                     "urls.js": "var urls = {\n"
-                                    '{% urls_to_js transpiler="render_static.SimpleURLWriter" include=include %}'
+                                    '{% urls_to_js transpiler="render_static.transpilers.SimpleURLWriter" include=include %}'
                                     "\n};"
                                 },
                             )
@@ -878,7 +878,7 @@ class URLSToJavascriptTest(URLJavascriptMixin, BaseTestCase):
                             (
                                 "render_static.loaders.StaticLocMemLoader",
                                 {
-                                    "urls.js": '{% urls_to_js transpiler="render_static.ClassURLWriter" %}'
+                                    "urls.js": '{% urls_to_js transpiler="render_static.transpilers.ClassURLWriter" %}'
                                 },
                             )
                         ],
@@ -906,7 +906,7 @@ class URLSToJavascriptTest(URLJavascriptMixin, BaseTestCase):
                             (
                                 "render_static.loaders.StaticLocMemLoader",
                                 {
-                                    "urls.js": '{% urls_to_js transpiler="render_static.ClassURLWriter" %}'
+                                    "urls.js": '{% urls_to_js transpiler="render_static.transpilers.ClassURLWriter" %}'
                                 },
                             )
                         ],
@@ -936,7 +936,7 @@ class URLSToJavascriptTest(URLJavascriptMixin, BaseTestCase):
                             (
                                 "render_static.loaders.StaticLocMemLoader",
                                 {
-                                    "urls.js": 'const urls = {\n{% urls_to_js transpiler="render_static.SimpleURLWriter" %}};'
+                                    "urls.js": 'const urls = {\n{% urls_to_js transpiler="render_static.transpilers.SimpleURLWriter" %}};'
                                 },
                             )
                         ],
@@ -964,7 +964,7 @@ class URLSToJavascriptTest(URLJavascriptMixin, BaseTestCase):
                                 {
                                     "urls.js": """
 const urls = {
-{% urls_to_js transpiler="render_static.SimpleURLWriter"  include="path_tst,re_path_mixed,app2:app1"|split:"," exclude="admin"|split raise_on_not_found=False%}
+{% urls_to_js transpiler="render_static.transpilers.SimpleURLWriter"  include="path_tst,re_path_mixed,app2:app1"|split:"," exclude="admin"|split raise_on_not_found=False%}
     {% override "re_path_mixed" %}
 return {
     'qname': '{{qname}}',
@@ -1038,7 +1038,7 @@ console.log(urls.extra());
                                 "render_static.loaders.StaticLocMemLoader",
                                 {
                                     "urls.js": """
-{% urls_to_js transpiler="render_static.ClassURLWriter"  include="path_tst,re_path_mixed,app2:app1"|split:"," exclude="admin"|split raise_on_not_found=False%}
+{% urls_to_js transpiler="render_static.transpilers.ClassURLWriter"  include="path_tst,re_path_mixed,app2:app1"|split:"," exclude="admin"|split raise_on_not_found=False%}
 
     {% override "constructor" %}
 
@@ -1196,7 +1196,7 @@ console.log(urls.extra());
                             (
                                 "render_static.loaders.StaticLocMemLoader",
                                 {
-                                    "urls.js": 'var urls = {\n{% urls_to_js transpiler="render_static.SimpleURLWriter" %}};'
+                                    "urls.js": 'var urls = {\n{% urls_to_js transpiler="render_static.transpilers.SimpleURLWriter" %}};'
                                 },
                             )
                         ],
@@ -1384,7 +1384,7 @@ console.log(urls.extra());
                                 {
                                     "urls.js": "var urls = {\n"
                                     "{% urls_to_js "
-                                    'transpiler="render_static.SimpleURLWriter" '
+                                    'transpiler="render_static.transpilers.SimpleURLWriter" '
                                     "include=include "
                                     "exclude=exclude "
                                     "%}};"
@@ -1482,7 +1482,7 @@ console.log(urls.extra());
                                 {
                                     "urls.js": "var urls = {\n"
                                     "{% urls_to_js "
-                                    'transpiler="render_static.SimpleURLWriter" '
+                                    'transpiler="render_static.transpilers.SimpleURLWriter" '
                                     "include=include "
                                     "exclude=exclude "
                                     "%}};"
@@ -1576,7 +1576,7 @@ console.log(urls.extra());
                                     "urls.js": "var urls = {\n"
                                     "{% urls_to_js "
                                     "url_conf=url_mod "
-                                    'transpiler="render_static.SimpleURLWriter" '
+                                    'transpiler="render_static.transpilers.SimpleURLWriter" '
                                     "include=include "
                                     "exclude=exclude "
                                     "%}};"
@@ -1668,7 +1668,7 @@ console.log(urls.extra());
                                     "urls.js": "var urls = {\n"
                                     "{% urls_to_js "
                                     'url_conf="tests.urls" '
-                                    'transpiler="render_static.SimpleURLWriter" '
+                                    'transpiler="render_static.transpilers.SimpleURLWriter" '
                                     "include=include "
                                     "exclude=exclude "
                                     "%}};"
@@ -1757,7 +1757,7 @@ console.log(urls.extra());
                             {
                                 "urls.js": (
                                     "{% urls_to_js "
-                                    'transpiler="render_static.ClassURLWriter" '
+                                    'transpiler="render_static.transpilers.ClassURLWriter" '
                                     "include=include "
                                     "%}"
                                 )
@@ -1800,7 +1800,7 @@ class CornerCaseTest(URLJavascriptMixin, BaseTestCase):
                                 {
                                     "urls.js": (
                                         "{% urls_to_js "
-                                        'transpiler="render_static.ClassURLWriter" '
+                                        'transpiler="render_static.transpilers.ClassURLWriter" '
                                         "include=include "
                                         "%}"
                                     )
@@ -1841,7 +1841,7 @@ class CornerCaseTest(URLJavascriptMixin, BaseTestCase):
                                 {
                                     "urls.js": (
                                         "{% urls_to_js "
-                                        'transpiler="render_static.ClassURLWriter" '
+                                        'transpiler="render_static.transpilers.ClassURLWriter" '
                                         "include=include "
                                         "%}"
                                     )
@@ -1889,7 +1889,7 @@ class CornerCaseTest(URLJavascriptMixin, BaseTestCase):
                                 {
                                     "urls.js": (
                                         "{% urls_to_js "
-                                        'transpiler="render_static.ClassURLWriter" '
+                                        'transpiler="render_static.transpilers.ClassURLWriter" '
                                         "include=include "
                                         "%}"
                                     )
@@ -1935,7 +1935,7 @@ class CornerCaseTest(URLJavascriptMixin, BaseTestCase):
                             (
                                 "render_static.loaders.StaticLocMemLoader",
                                 {
-                                    "urls.js": '{% urls_to_js transpiler="render_static.ClassURLWriter" %}'
+                                    "urls.js": '{% urls_to_js transpiler="render_static.transpilers.ClassURLWriter" %}'
                                 },
                             )
                         ],
@@ -1980,7 +1980,7 @@ class CornerCaseTest(URLJavascriptMixin, BaseTestCase):
                             (
                                 "render_static.loaders.StaticLocMemLoader",
                                 {
-                                    "urls.js": '{% urls_to_js transpiler="render_static.ClassURLWriter" %}'
+                                    "urls.js": '{% urls_to_js transpiler="render_static.transpilers.ClassURLWriter" %}'
                                 },
                             )
                         ],
@@ -2022,7 +2022,7 @@ class CornerCaseTest(URLJavascriptMixin, BaseTestCase):
                                 "render_static.loaders.StaticLocMemLoader",
                                 {
                                     "urls.js": "{% urls_to_js "
-                                    'transpiler="render_static.ClassURLWriter" '
+                                    'transpiler="render_static.transpilers.ClassURLWriter" '
                                     "include=include %}"
                                 },
                             )
@@ -2068,7 +2068,7 @@ class CornerCaseTest(URLJavascriptMixin, BaseTestCase):
                                 "render_static.loaders.StaticLocMemLoader",
                                 {
                                     "urls.js": "{% urls_to_js "
-                                    'transpiler="render_static.ClassURLWriter" '
+                                    'transpiler="render_static.transpilers.ClassURLWriter" '
                                     "include=include %}"
                                 },
                             )
@@ -2103,7 +2103,7 @@ class CornerCaseTest(URLJavascriptMixin, BaseTestCase):
                                 {
                                     "urls.js": (
                                         "{% urls_to_js "
-                                        'transpiler="render_static.ClassURLWriter" '
+                                        'transpiler="render_static.transpilers.ClassURLWriter" '
                                         "include=include "
                                         "%}"
                                     )
@@ -2187,7 +2187,7 @@ class URLSToJavascriptOffNominalTest(URLJavascriptMixin, BaseTestCase):
                             (
                                 "render_static.loaders.StaticLocMemLoader",
                                 {
-                                    "urls.js": 'var urls = {\n{% urls_to_js transpiler="render_static.SimpleURLWriter" include=include %}};'
+                                    "urls.js": 'var urls = {\n{% urls_to_js transpiler="render_static.transpilers.SimpleURLWriter" include=include %}};'
                                 },
                             )
                         ],
@@ -2230,7 +2230,7 @@ class URLSToJavascriptOffNominalTest(URLJavascriptMixin, BaseTestCase):
                             (
                                 "render_static.loaders.StaticLocMemLoader",
                                 {
-                                    "urls.js": 'var urls = {\n{% urls_to_js transpiler="render_static.SimpleURLWriter" include=include %}};'
+                                    "urls.js": 'var urls = {\n{% urls_to_js transpiler="render_static.transpilers.SimpleURLWriter" include=include %}};'
                                 },
                             )
                         ],
@@ -2272,7 +2272,7 @@ class URLSToJavascriptOffNominalTest(URLJavascriptMixin, BaseTestCase):
                             (
                                 "render_static.loaders.StaticLocMemLoader",
                                 {
-                                    "urls.js": 'var urls = {\n{% urls_to_js transpiler="render_static.SimpleURLWriter" include=include %}};'
+                                    "urls.js": 'var urls = {\n{% urls_to_js transpiler="render_static.transpilers.SimpleURLWriter" include=include %}};'
                                 },
                             )
                         ],
@@ -2328,7 +2328,7 @@ class URLSToJavascriptOffNominalTest(URLJavascriptMixin, BaseTestCase):
                             (
                                 "render_static.loaders.StaticLocMemLoader",
                                 {
-                                    "urls.js": 'var urls = {\n{% urls_to_js transpiler="render_static.SimpleURLWriter" url_conf=url_mod %}};'
+                                    "urls.js": 'var urls = {\n{% urls_to_js transpiler="render_static.transpilers.SimpleURLWriter" url_conf=url_mod %}};'
                                 },
                             )
                         ],
@@ -2358,7 +2358,7 @@ class URLSToJavascriptOffNominalTest(URLJavascriptMixin, BaseTestCase):
                             (
                                 "render_static.loaders.StaticLocMemLoader",
                                 {
-                                    "urls.js": 'var urls = {\n{% urls_to_js transpiler="render_static.SimpleURLWriter" url_conf=url_mod %}};'
+                                    "urls.js": 'var urls = {\n{% urls_to_js transpiler="render_static.transpilers.SimpleURLWriter" url_conf=url_mod %}};'
                                 },
                             )
                         ],
@@ -2417,13 +2417,13 @@ class URLSToJavascriptParametersTest(URLJavascriptMixin, BaseTestCase):
                                     "include=include "
                                     "%}",
                                     "urls3.js": "var urls = {\n{% urls_to_js "
-                                    'transpiler="render_static.SimpleURLWriter" '
+                                    'transpiler="render_static.transpilers.SimpleURLWriter" '
                                     "raise_on_not_found=False "
                                     "indent=None "
                                     "include=include "
                                     "%}}\n",
                                     "urls4.js": "var urls = {\n{% urls_to_js "
-                                    'transpiler="render_static.SimpleURLWriter" '
+                                    'transpiler="render_static.transpilers.SimpleURLWriter" '
                                     "raise_on_not_found=True "
                                     'indent="" '
                                     "include=include "
@@ -2558,7 +2558,7 @@ class URLSToJavascriptParametersTest(URLJavascriptMixin, BaseTestCase):
                             "render_static.loaders.StaticLocMemLoader",
                             {
                                 "urls.js": "{% urls_to_js "
-                                'transpiler="render_static.ClassURLWriter" '
+                                'transpiler="render_static.transpilers.ClassURLWriter" '
                                 'exclude="exclude_namespace"|split '
                                 "%};"
                             },
@@ -2602,7 +2602,7 @@ class DjangoJSReverseTest(URLJavascriptMixin, BaseTestCase):
                             "render_static.loaders.StaticLocMemLoader",
                             {
                                 "urls.js": "{% urls_to_js "
-                                'transpiler="render_static.ClassURLWriter" '
+                                'transpiler="render_static.transpilers.ClassURLWriter" '
                                 'exclude="exclude_namespace"|split '
                                 "%};"
                             },
@@ -2652,7 +2652,7 @@ class DjangoJSReversePrecedenceTest(URLJavascriptMixin, BaseTestCase):
                             {
                                 "urls.js": (
                                     "{% urls_to_js "
-                                    'transpiler="render_static.ClassURLWriter" %}'
+                                    'transpiler="render_static.transpilers.ClassURLWriter" %}'
                                 )
                             },
                         )
@@ -2761,7 +2761,7 @@ class URLBugsTestCases(URLJavascriptMixin, BaseTestCase):
                                 {
                                     "urls.js": (
                                         "{% urls_to_js "
-                                        'transpiler="render_static.ClassURLWriter" %}'
+                                        'transpiler="render_static.transpilers.ClassURLWriter" %}'
                                     )
                                 },
                             )
@@ -3754,7 +3754,7 @@ class EnumGeneratorTest(EnumComparator, BaseTestCase):
                             (
                                 "render_static.loaders.StaticLocMemLoader",
                                 {
-                                    "enum_app/test.js": '{% enums_to_js enums=enums symmetric_properties=True transpiler="render_static.EnumClassWriter" %}\n'
+                                    "enum_app/test.js": '{% enums_to_js enums=enums symmetric_properties=True transpiler="render_static.transpilers.EnumClassWriter" %}\n'
                                     'try { AddressRoute.get("Aly") } catch (e) {console.log(JSON.stringify({not_found: e instanceof TypeError ? "TypeError" : "Unknown"}));}'
                                 },
                             )
@@ -4165,7 +4165,7 @@ static testContext() {
 }
 {% endoverride %}
 {% endenums_to_js %}
-{% transpile "tests.enum_app.models.EnumTester.Color" "render_static.EnumClassWriter" %}
+{% transpile "tests.enum_app.models.EnumTester.Color" "render_static.transpilers.EnumClassWriter" %}
 console.log(JSON.stringify(
     {
         testContext: AddressRoute.testContext(),

@@ -11,7 +11,7 @@ from typing import Any, Collection, Dict, Generator, List, Optional, Set, Type, 
 from django.db.models import IntegerChoices, TextChoices
 from django.template.context import Context
 
-from render_static.transpilers import Transpiler, TranspilerTarget
+from render_static.transpilers.base import Transpiler, TranspilerTarget
 
 try:
     from django.utils.decorators import classproperty  # type: ignore[attr-defined]

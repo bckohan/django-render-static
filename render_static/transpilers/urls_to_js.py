@@ -24,7 +24,7 @@ from render_static.placeholders import (
     resolve_placeholders,
     resolve_unnamed_placeholders,
 )
-from render_static.transpilers import ResolvedTranspilerTarget, Transpiler
+from render_static.transpilers.base import ResolvedTranspilerTarget, Transpiler
 
 __all__ = [
     "normalize_ns",
@@ -943,7 +943,7 @@ class ClassURLWriter(URLTreeVisitor):
     .. code-block:: js+django
 
         {% urls_to_js
-            visitor="render_static.ClassURLWriter"
+            visitor="render_static.transpilers.ClassURLWriter"
             class_name='URLResolver'
             indent=' '
         %}

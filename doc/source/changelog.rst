@@ -7,6 +7,7 @@ v3.0.0
 
 * Implemented `Move tests into top level directory. <https://github.com/bckohan/django-render-static/issues/149>`_
 * Implemented `Remove wrapped dependency required mishegoss and replace with jinja2 module level imports <https://github.com/bckohan/django-render-static/issues/148>`_
+* Implemented `Remove imports in __init__.py <https://github.com/bckohan/django-render-static/issues/146>`_
 * Implemented `Switch to ruff for formatting and linting <https://github.com/bckohan/django-render-static/issues/145>`_
 * Fixed `Support django-typer version 2.1 <https://github.com/bckohan/django-render-static/issues/144>`_
 
