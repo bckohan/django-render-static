@@ -37,7 +37,6 @@ classifiers = [
 packages = [
     { include = "render_static" }
 ]
-exclude = ["render_static/tests"]
 
 # [tool.poetry.scripts]
 # django-renderstatic = 'render_static.console:main'
@@ -65,7 +64,6 @@ mypy = "^1.8"
 doc8 = "^1.1.0"
 pytest-cov = "^4.1.0"
 deepdiff = "^6.7.0"
-safety = "^2.3.0"
 readme-renderer = {extras = ["md"], version = "^43.0"}
 types-PyYAML = "^6.0"
 coverage = "^7.5.0"
@@ -112,7 +110,7 @@ exclude = "tests"
 plugins = ["mypy_django_plugin.main"]
 
 [tool.django-stubs]
-django_settings_module = "render_static.tests.settings"
+django_settings_module = "tests.settings"
 
 [tool.doc8]
 ignore-path = "doc/build"
@@ -122,7 +120,7 @@ sphinx = true
 
 
 [tool.pytest.ini_options]
-DJANGO_SETTINGS_MODULE = "render_static.tests.settings"
+DJANGO_SETTINGS_MODULE = "tests.settings"
 norecursedirs = "*.egg .eggs dist build docs .tox .git __pycache__"
 addopts = [
     "--strict-markers",
@@ -133,9 +131,9 @@ addopts = [
 
 [tool.coverage.run]
 omit = [
-  "render_static/tests/app1/static_jinja2/batch_test/**/*",
-  "render_static/tests/app1/static_jinja2/**/*",
-  "render_static/tests/app2/static_jinja2/**/*"
+  "tests/app1/static_jinja2/batch_test/**/*",
+  "tests/app1/static_jinja2/**/*",
+  "tests/app2/static_jinja2/**/*"
 ]
 
 [tool.ruff]
@@ -144,16 +142,16 @@ exclude = [
     "doc",
     "dist",
     "examples",
-    "render_static/tests/resources/bad_code.py"
+    "tests/resources/bad_code.py"
 ]
 
 [tool.ruff.lint]
 exclude = [
-    "render_static/tests/**/*",
+    "tests/**/*",
 ]
 
 [tool.pyright]
-exclude = ["render_static/tests/**/*"]
+exclude = ["tests/**/*"]
 include = [
     "render_static"
 ]

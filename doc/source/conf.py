@@ -6,7 +6,7 @@ sys.path.append(str(Path(__file__).parent.parent.parent))
 import render_static
 import django
 
-os.environ.setdefault('DJANGO_SETTINGS_MODULE', 'render_static.tests.settings')
+os.environ.setdefault('DJANGO_SETTINGS_MODULE', 'tests.settings')
 django.setup()
 
 # Configuration file for the Sphinx documentation builder.

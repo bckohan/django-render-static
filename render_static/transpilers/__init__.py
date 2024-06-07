@@ -350,15 +350,20 @@ class Transpiler(CodeWriter, metaclass=ABCMeta):
                                     for attr in parts[-(tries - 1) :]:
                                         target = getattr(target, attr)
                                 break
-                            except (ImportError, AttributeError):
+                            except (ImportError, AttributeError, ValueError) as err:
                                 if tries == 1:
                                     try:
                                         target = import_module(".".join(parts))
+                                        break
                                     except (ImportError, ModuleNotFoundError):
                                         if len(parts) == 1:
-                                            raise
+                                            raise ImportError(
+                                                f"Unable to import {target}"
+                                            ) from err
                                 elif tries == len(parts):
-                                    raise
+                                    raise ImportError(
+                                        f"Unable to import {target}"
+                                    ) from err
 
             target = cast(ResolvedTranspilerTarget, target)
             node = _TargetTreeNode(target, self.include_target(target))
