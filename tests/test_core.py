@@ -1727,6 +1727,22 @@ class TestTabCompletion(BaseTestCase):
         self.assertTrue("base.html" in completions)
         self.assertTrue("examples/enums.js" in completions)
 
+        stdout.truncate(0)
+        stdout.seek(0)
+
+        with contextlib.redirect_stdout(stdout):
+            call_command(
+                "shellcompletion", "complete", "renderstatic app1/h", stdout=stdout
+            )
+        completions = stdout.getvalue()
+        self.assertTrue("app1/html/base.html" in completions)
+        self.assertTrue("app1/html/hello.html" in completions)
+        self.assertTrue("app1/html/nominal2.html" in completions)
+        self.assertFalse("app1/urls.js" in completions)
+        self.assertFalse("app1/enums.js" in completions)
+        self.assertFalse("app1/examples/readme_url_usage.js" in completions)
+        self.assertFalse("examples/enums.js" in completions)
+
 
 def test_batch_loader_mixin_not_impl():
     from render_static.loaders.mixins import BatchLoaderMixin

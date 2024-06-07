@@ -81,9 +81,9 @@ def web_driver(width=1920, height=1200):
         )
 
     services = [
+        firefox,
         chrome,
         edge if platform.system().lower() == "windows" else chromium,
-        firefox,
     ]
 
     driver = None
