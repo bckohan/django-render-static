@@ -10,7 +10,7 @@ settings:
 .. code-block:: python
 
       STATIC_TEMPLATES = {
-        'ENGINES': [
+        'ENGINES': [{
             'BACKEND': 'render_static.backends.StaticDjangoTemplates',
             'DIRS': [BASE_DIR / 'tmpls' ], # look here for templates
             'OPTIONS': {
@@ -23,11 +23,11 @@ settings:
                  ],
                 'builtins': ['render_static.templatetags.render_static']
             },
-        ],
+        }],
         'context': {
             # define a global context dictionary that will be used to render all templates
         },
-        'templates' [
+        'templates': [
             ('app/js/defines.js', {
                 'context': {
                     'defines': 'app.defines.DefinesClass'
