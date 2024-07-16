@@ -2,7 +2,7 @@
 Change Log
 ==========
 
-v3.0.0 (15-JUL-2024)
+v3.0.1 (15-JUL-2024)
 ====================
 
 * Implemented `Support Django 5.1 <https://github.com/bckohan/django-render-static/issues/153>`_
