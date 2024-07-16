@@ -2,8 +2,13 @@
 Change Log
 ==========
 
-v3.0.0
-======
+v3.0.0 (15-JUL-2024)
+====================
+
+* Implemented `Support Django 5.1 <https://github.com/bckohan/django-render-static/issues/153>`_
+
+v3.0.0 (07-JUN-2024)
+====================
 
 **This is a major version upgrade - please see migration guide for instructions
 on how to** :ref:`migrate from version 2.x to 3.x. <migration_2_3>`
@@ -16,37 +21,37 @@ on how to** :ref:`migrate from version 2.x to 3.x. <migration_2_3>`
 * Fixed `Support django-typer version 2.1 <https://github.com/bckohan/django-render-static/issues/144>`_
 
 
-v2.2.1
-======
+v2.2.1 (11-APR-2024)
+====================
 
 * Fixed `Custom URL converts may expect reversal kwargs to be of a given type. <https://github.com/bckohan/django-render-static/issues/141>`_
 * Fixed `Switch README and CONTRIBUTING to markdown. <https://github.com/bckohan/django-render-static/issues/140>`_
 
-v2.2.0
-======
+v2.2.0 (27-FEB-2024)
+====================
 
 * Implemented `Refactor renderstatic command using TyperCommand <https://github.com/bckohan/django-render-static/issues/137>`_
 * Implemented `Allow enum class writer to_string parameter to be the name of a property to return from toString() <https://github.com/bckohan/django-render-static/issues/132>`_
 
-v2.1.3
-======
+v2.1.3 (12-DEC-2023)
+====================
 
 * Fixed `Support Django 5.0 <https://github.com/bckohan/django-render-static/issues/136>`_
 
 
-v2.1.2
-======
+v2.1.2 (21-NOV-2023)
+====================
 
 * Fixed `deepEqual should only be included by ClassURLWriter when Django version is less than 4.1 <https://github.com/bckohan/django-render-static/issues/134>`_
 * Fixed `deepEqual generated code in ClassURLWriter has an error <https://github.com/bckohan/django-render-static/issues/133>`_
 
-v2.1.1
-======
+v2.1.1 (20-NOV-2023)
+====================
 
 * Fixed `include_properties can result in non-deterministic ordering of constructor parameters that changes render to render <https://github.com/bckohan/django-render-static/issues/131>`_
 
-v2.1.0
-======
+v2.1.0 (20-NOV-2023)
+====================
 * Implemented `Support templating of destination paths. <https://github.com/bckohan/django-render-static/issues/129>`_
 * Implemented `Support configurable case insensitive property mapping on enum transpilation. <https://github.com/bckohan/django-render-static/issues/128>`_
 * Implemented `Add a pass through getter for enums_to_js transpilation. <https://github.com/bckohan/django-render-static/issues/126>`_
@@ -56,23 +61,23 @@ v2.1.0
 * Implemented `Allow include_properties to be a list of properties on enums_to_js <https://github.com/bckohan/django-render-static/issues/119>`_
 * Implemented `Extension points for transpiled code. <https://github.com/bckohan/django-render-static/issues/104>`_
 
-v2.0.3
-======
+v2.0.3 (09-NOV-2023)
+====================
 * Fixed `Invalid URL generation for urls with default arguments. <https://github.com/bckohan/django-render-static/issues/124>`_
 
 
-v2.0.2
-======
+v2.0.2 (26-OCT-2023)
+====================
 * Fixed `Dependency bug, for python < 3.9 importlib_resource req should simply be >=1.3 <https://github.com/bckohan/django-render-static/issues/123>`_
 
 
-v2.0.1
-======
+v2.0.1 (24-OCT-2023)
+====================
 * Fixed `enums_to_js allows 'name' property through even if it is excluded. <https://github.com/bckohan/django-render-static/issues/120>`_
 
 
-v2.0.0
-======
+v2.0.0 (21-OCT-2023)
+====================
 
 **This is a major version upgrade - please see migration guide for instructions
 on how to** :ref:`migrate from version 1.x to 2.x. <migration_1_2>`
@@ -105,40 +110,40 @@ on how to** :ref:`migrate from version 1.x to 2.x. <migration_1_2>`
 * Fixed `Multilevel url arguments not working <https://github.com/bckohan/django-render-static/issues/13>`_
 * Implemented `Enum support <https://github.com/bckohan/django-render-static/issues/4>`_
 
-v1.1.6
+v1.1.6 (15-FEB-2023)
 ====================
 
 * Fixed `LICENSE is packaged as source. <https://github.com/bckohan/django-render-static/issues/95>`_
 
-v1.1.5
+v1.1.5 (16-JAN-2023)
 ====================
 
 * Fixed `Support python 3.11 <https://github.com/bckohan/django-render-static/issues/77>`_
 * Fixed `Drop support for python 3.6 <https://github.com/bckohan/django-render-static/issues/70>`_
 * Fixed `Upgrade build tooling to poetry 1.2 <https://github.com/bckohan/django-render-static/issues/69>`_
 
-v1.1.4
+v1.1.4 (20-AUG-2022)
 ====================
 
 * Fixed `urls_to_js output is incorrect when default kwargs specified in path() <https://github.com/bckohan/django-render-static/issues/65>`_
 
-v1.1.3
+v1.1.3 (18-JAN-2022)
 ====================
 
 * Fixed `Django4.0 Support <https://github.com/bckohan/django-render-static/issues/45>`_
 
-v1.1.2
+v1.1.2 (08-OCT-2021)
 ====================
 
 * Fixed `Jinja2 include breaks Jinja2 as optional dependency <https://github.com/bckohan/django-render-static/issues/34>`_
 
-v1.1.1
+v1.1.1 (12-JUL-2021)
 ====================
 
 * Support for Jinja2 3.0
 * Improved importlib.resources inclusion logic
 
-v1.1.0
+v1.1.0 (12-JUN-2021)
 ====================
 
 * Added `Support batch rendering & glob patterns in template selectors <https://github.com/bckohan/django-render-static/issues/15>`_
@@ -148,14 +153,14 @@ v1.1.0
 * Added `Add GET query parameters to ClassURLWriter's reverse function <https://github.com/bckohan/django-render-static/issues/12>`_
 
 
-v1.0.1
+v1.0.1 (24-APR-2021)
 ====================
 
 * Fixed `Bound complexity of URL Generation <https://github.com/bckohan/django-render-static/issues/10>`_
 * Fixed `Unnamed/named urls of the same name sometimes fail <https://github.com/bckohan/django-render-static/issues/9>`_
 * Fixed `Default placeholders not activated <https://github.com/bckohan/django-render-static/issues/8>`_
 
-v1.0.0
+v1.0.0 (21-APR-2021)
 ====================
 
 * New abstract visitor pattern allows customization of generated URL resolution javascript
@@ -168,13 +173,13 @@ v1.0.0
 * API is now considered production/stable.
 
 
-v0.1.1
+v0.1.1 (02-MAR-2021)
 ====================
 
 * Added common placeholders, and placeholders for allauth and DRF
 
 
-v0.1.0
+v0.1.0 (24-FEB-2021)
 ====================
 
 * Initial Release
