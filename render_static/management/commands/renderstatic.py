@@ -151,6 +151,28 @@ class Command(TyperCommand):
                 ),
             ),
         ] = False,
+        exclude: Annotated[
+            t.List[Path],
+            Option(
+                "--exclude",
+                "-e",
+                help=_(
+                    "Exclude these files from rendering, or any files at or below "
+                    "this directory."
+                ),
+                shell_complete=complete_path,
+            ),
+        ] = [],
+        no_render_contents: Annotated[
+            bool,
+            Option(
+                "--no-render-contents",
+                help=_(
+                    "Do not render the contents of the files. If paths are "
+                    "templates, destinations will still be rendered."
+                ),
+            ),
+        ] = False,
     ):
         engine = StaticTemplateEngine()
 
@@ -171,6 +193,8 @@ class Command(TyperCommand):
                 first_engine=first_engine,
                 first_loader=first_loader,
                 first_preference=first_preference,
+                exclude=exclude,
+                render_contents=not no_render_contents,
             ):
                 self.stdout.write(
                     self.style.SUCCESS(_("Rendered {render}.").format(render=render))

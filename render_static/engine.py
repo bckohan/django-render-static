@@ -1,6 +1,7 @@
 import os
 from collections import Counter, namedtuple
 from pathlib import Path
+from shutil import copy2
 from typing import Callable, Dict, Generator, List, Optional, Tuple, Union, cast
 
 from django.conf import settings
@@ -453,6 +454,8 @@ class StaticTemplateEngine:
         first_engine: bool = False,
         first_loader: bool = False,
         first_preference: bool = False,
+        exclude: Optional[List[Path]] = None,
+        render_contents: bool = True,
     ) -> List[Render]:
         """
         Wrap render_each generator function and return the whole list of
@@ -480,6 +483,12 @@ class StaticTemplateEngine:
             first_loader will render only the first preference(s) of the first
             loader. Preferences are loader specific and documented on the
             loader.
+        :param exclude: A list of template paths to exclude. If the path is a
+            directory, any template below that directory will be excluded. This
+            parameter only makes sense to use if your selector is a glob pattern.
+        :param render_contents: If False, do not render the contents of the template.
+            If the destination path is a template it will still be rendered against
+            the context to produce the final path.
         :return: Render object for all the template(s) rendered to disk
         :raises TemplateDoesNotExist: if no template by the given name is found
         :raises ImproperlyConfigured: if not enough information was given to
@@ -494,6 +503,8 @@ class StaticTemplateEngine:
                 first_engine=first_engine,
                 first_loader=first_loader,
                 first_preference=first_preference,
+                exclude=exclude,
+                render_contents=render_contents,
             )
         ]
 
@@ -504,6 +515,7 @@ class StaticTemplateEngine:
         first_engine: bool = False,
         first_loader: bool = False,
         first_preference: bool = False,
+        exclude: Optional[List[Path]] = None,
     ) -> Generator[Render, None, None]:
         """
         Search for all templates that match the given selectors and yield
@@ -514,6 +526,9 @@ class StaticTemplateEngine:
         :param first_engine: See render_each
         :param first_loader: See render_each
         :param first_preference: See render_each
+        :param exclude: A list of template paths to exclude. If the path is a
+            directory, any template below that directory will be excluded. This
+            parameter only makes sense to use if your selector is a glob pattern.
         :yield: Render objects for each template to disk
         :raises TemplateDoesNotExist: if no template by the given name is found
         """
@@ -535,6 +550,7 @@ class StaticTemplateEngine:
                     first_engine=first_engine,
                     first_loader=first_loader,
                     first_preference=first_preference,
+                    exclude=exclude,
                 )
 
     def search(
@@ -566,6 +582,8 @@ class StaticTemplateEngine:
         first_engine: bool = False,
         first_loader: bool = False,
         first_preference: bool = False,
+        exclude: Optional[List[Path]] = None,
+        render_contents: bool = True,
     ) -> Generator[Render, None, None]:
         """
         A generator function that renders all selected templates of the highest
@@ -597,6 +615,12 @@ class StaticTemplateEngine:
             first_loader will render only the first preference(s) of the first
             loader. Preferences are loader specific and documented on the
             loader.
+        :param exclude: A list of template paths to exclude. If the path is a
+            directory, any template below that directory will be excluded. This
+            parameter only makes sense to use if your selector is a glob pattern.
+        :param render_contents: If False, do not render the contents of the template.
+            If the destination path is a template it will still be rendered against
+            the context to produce the final path.
         :yield: Render objects for each template to disk
         :raises TemplateDoesNotExist: if no template by the given name is found
         :raises ImproperlyConfigured: if not enough information was given to
@@ -611,6 +635,7 @@ class StaticTemplateEngine:
             first_engine=first_engine,
             first_loader=first_loader,
             first_preference=first_preference,
+            exclude=exclude,
         ):
             ctx = render.config.context.copy()
             if context is not None:
@@ -623,12 +648,20 @@ class StaticTemplateEngine:
                 os.makedirs(str(dest), exist_ok=True)
             else:
                 os.makedirs(Path(dest or "").parent, exist_ok=True)
-                with open(str(dest), "w", encoding="UTF-8") as out:
-                    out.write(render.template.render(r_ctx))
+                if render_contents:
+                    with open(str(dest), "w", encoding="UTF-8") as out:
+                        out.write(render.template.render(r_ctx))
+                else:
+                    copy2(Path(render.template.origin.name), Path(dest))
             yield render
 
     def resolve_renderings(
-        self, selector: str, config: TemplateConfig, batch: bool, **kwargs
+        self,
+        selector: str,
+        config: TemplateConfig,
+        batch: bool,
+        exclude: Optional[List[Path]] = None,
+        **kwargs,
     ) -> Generator[Render, None, None]:
         """
         Resolve the given parameters to a or a set of Render objects containing
@@ -637,11 +670,23 @@ class StaticTemplateEngine:
         :param selector: The template selector (name string)
         :param config: The TemplateConfig to apply to the selector.
         :param batch: True if this is a batch rendering, false otherwise.
+        :param exclude: A list of template paths to exclude. If the path is a
+            directory, any template below that directory will be excluded. This
+            parameter only makes sense to use if your selector is a glob pattern.
         :param kwargs: Pass through parameters from render_each
         :yield: Render objects
         """
         templates: Dict[str, DjangoTemplate] = {}
         chain = []
+
+        excluded_dirs = []
+        excluded_files = []
+        for xcl in exclude or []:
+            if xcl.is_dir():
+                excluded_dirs.append(xcl.absolute())
+            else:
+                excluded_files.append(xcl.absolute())
+
         for engine in self.all():
             try:
                 for template_name in engine.select_templates(
@@ -675,6 +720,16 @@ class StaticTemplateEngine:
             raise TemplateDoesNotExist(selector, chain=chain)
 
         for _, template in templates.items():
+            tmpl_abs_path = Path(template.origin.name).absolute()
+            if any(
+                (
+                    excl == tmpl_abs_path or excl in tmpl_abs_path.parents
+                    for excl in excluded_dirs
+                )
+            ):
+                continue
+            if any((tmpl_abs_path == excl for excl in excluded_files)):
+                continue
             yield Render(
                 selector=selector,
                 config=config,

@@ -2,6 +2,11 @@
 Change Log
 ==========
 
+v3.1.0 (16-JUL-2024)
+====================
+
+* Implemented `Support a no-render copy operation where the path may be a template. <https://github.com/bckohan/django-render-static/issues/156>`_
+
 v3.0.1 (15-JUL-2024)
 ====================
 
