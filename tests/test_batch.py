@@ -31,7 +31,7 @@ class TestBatch(BaseTestCase):
             if rendered:
                 self.assertEqual(
                     filename.read_text().strip(),
-                    f"{filename.name}: {context["variable"]}",
+                    f"{filename.name}: {context['variable']}",
                 )
             else:
                 self.assertEqual(
