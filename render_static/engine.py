@@ -720,19 +720,15 @@ class StaticTemplateEngine:
             raise TemplateDoesNotExist(selector, chain=chain)
 
         for _, template in templates.items():
+            tmpl_abs_path = Path(template.origin.name).absolute()
             if any(
                 (
-                    Path(template.origin.name).absolute().is_relative_to(excl)
+                    excl == tmpl_abs_path or excl in tmpl_abs_path.parents
                     for excl in excluded_dirs
                 )
             ):
                 continue
-            if any(
-                (
-                    Path(template.origin.name).absolute() == excl
-                    for excl in excluded_files
-                )
-            ):
+            if any((tmpl_abs_path == excl for excl in excluded_files)):
                 continue
             yield Render(
                 selector=selector,
