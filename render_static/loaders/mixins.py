@@ -43,6 +43,10 @@ class BatchLoaderMixin:
                 # (it might be inside another one, so this isn't fatal).
                 continue
 
-            yield [
-                relpath(file, template_dir) for file in glob(pattern, recursive=True)
-            ]
+            templates = []
+            for file in glob(pattern, recursive=True):
+                pth = relpath(file, template_dir)
+                if "__pycache__" in Path(pth).parts:
+                    continue
+                templates.append(pth)
+            yield templates

@@ -2,6 +2,11 @@
 Change Log
 ==========
 
+v3.1.2 (18-JUL-2024)
+====================
+
+* Fixed `BatchLoaders should not try to load pycache files. <https://github.com/bckohan/django-render-static/issues/160>`_
+
 v3.1.1 (18-JUL-2024)
 ====================
 
