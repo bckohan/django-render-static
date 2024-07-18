@@ -2,6 +2,11 @@
 Change Log
 ==========
 
+v3.1.1 (18-JUL-2024)
+====================
+
+* Fixed `__pycache__ dirs should be ignored during batch rendering. <https://github.com/bckohan/django-render-static/issues/158>`_
+
 v3.1.0 (16-JUL-2024)
 ====================
 

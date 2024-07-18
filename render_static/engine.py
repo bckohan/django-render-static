@@ -730,6 +730,8 @@ class StaticTemplateEngine:
                 continue
             if any((tmpl_abs_path == excl for excl in excluded_files)):
                 continue
+            if "__pycache__" in tmpl_abs_path.parts:
+                continue
             yield Render(
                 selector=selector,
                 config=config,
