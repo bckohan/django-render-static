@@ -52,28 +52,28 @@ PyYAML = { version = ">=5.1,<7.0", optional = true }
 django-typer = "^2.1.1"
 
 [tool.poetry.group.dev.dependencies]
-django-enum = "^1.1.0"
-enum-properties = "^1.1.1"
+django-enum = ">=1.1.0"
+enum-properties = ">=1.1.1"
 pytest = "^8.0"
-pytest-django = "^4.8.0"
-Sphinx = "^7.0.0"
-sphinx-rtd-theme = "^2.0.0"
-mypy = "^1.8"
-doc8 = "^1.1.0"
-pytest-cov = "^4.1.0"
-deepdiff = "^6.7.0"
-readme-renderer = {extras = ["md"], version = "^43.0"}
-types-PyYAML = "^6.0"
-coverage = "^7.5.0"
-importlib-metadata = "^7.0.0"
-selenium = "^4.16.0"
-python-dateutil = "^2.8.2"
-ipdb = "^0.13.13"
-aiohttp = "^3.9.1"
-sphinxcontrib-typer = {extras = ["html", "pdf", "png"], version = "^0.3.0", markers="python_version >= '3.9'"}
-pyright = "^1.1.366"
-ruff = "^0.4.8"
-django-stubs = {extras = ["compatible-mypy"], version = "^5.0.2"}
+pytest-django = ">=4.8.0"
+Sphinx = ">=7.0.0"
+mypy = ">=1.8"
+doc8 = ">=1.1.0"
+pytest-cov = ">=4.1.0"
+deepdiff = ">=6.7.0"
+readme-renderer = {extras = ["md"], version = ">=43.0"}
+types-PyYAML = ">=6.0"
+coverage = ">=7.5.0"
+importlib-metadata = ">=7.0.0"
+selenium = ">=4.16.0"
+python-dateutil = ">=2.8.2"
+ipdb = ">=0.13.13"
+aiohttp = ">=3.9.1"
+sphinxcontrib-typer = {extras = ["html", "pdf", "png"], version = ">=0.3.0", markers="python_version >= '3.9'"}
+pyright = ">=1.1.366"
+ruff = ">=0.4.8"
+django-stubs = {extras = ["compatible-mypy"], version = ">=5.0.2"}
+furo = ">=2024.8.6"
 
 [build-system]
 requires = ["poetry-core>=1.0.0"]
