@@ -7,7 +7,7 @@
 [![Code Cov](https://codecov.io/gh/bckohan/django-render-static/branch/main/graph/badge.svg?token=0IZOKN2DYL)](https://codecov.io/gh/bckohan/django-render-static)
 [![Test Status](https://github.com/bckohan/django-render-static/workflows/test/badge.svg)](https://github.com/bckohan/django-render-static/actions/workflows/test.yml)
 [![Lint Status](https://github.com/bckohan/django-render-static/workflows/lint/badge.svg)](https://github.com/bckohan/django-render-static/actions/workflows/lint.yml)
-[![Code Style](https://img.shields.io/badge/code%20style-black-000000.svg)](https://github.com/psf/black)
+[![Ruff](https://img.shields.io/endpoint?url=https://raw.githubusercontent.com/astral-sh/ruff/main/assets/badge/v2.json)](https://github.com/astral-sh/ruff)
 
 # django-render-static
 
