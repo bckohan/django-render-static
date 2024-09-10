@@ -1,6 +1,6 @@
 from enum import Enum
-
-from enum_properties import EnumProperties, s
+from typing_extensions import Annotated
+from enum_properties import EnumProperties, Symmetric
 
 
 class IndependentEnum(Enum):
@@ -9,7 +9,9 @@ class IndependentEnum(Enum):
     VALUE2 = 22
 
 
-class DependentEnum(EnumProperties, s("indep")):
+class DependentEnum(EnumProperties):
+    indep: Annotated[IndependentEnum, Symmetric()]
+
     VALUE0 = 0, IndependentEnum.VALUE2
     VALUE1 = 1, IndependentEnum.VALUE1
     VALUE2 = 2, IndependentEnum.VALUE0
