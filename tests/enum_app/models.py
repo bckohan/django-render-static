@@ -1,6 +1,9 @@
+import typing as t
+from typing_extensions import Annotated
 from django.db import models
-from django_enum import EnumField, IntegerChoices, TextChoices
-from enum_properties import p, s
+from django_enum import EnumField
+from django_enum.choices import IntegerChoices, TextChoices
+from enum_properties import Symmetric, s
 
 try:
     from django.utils.decorators import classproperty
@@ -12,7 +15,10 @@ class EnumTester(models.Model):
     class NotAnEnum:
         pass
 
-    class Color(TextChoices, s("rgb"), s("hex", case_fold=True)):
+    class Color(TextChoices):
+        rgb: Annotated[t.Tuple[int, int, int], Symmetric()]
+        hex: Annotated[str, Symmetric(case_fold=True)]
+
         # name   value   label       rgb       hex
         RED = "R", "Red", (1, 0, 0), "ff0000"
         GREEN = "G", "Green", (0, 1, 0), "00ff00"
@@ -22,12 +28,15 @@ class EnumTester(models.Model):
         def class_name(cls):
             return cls.__name__
 
-    class MapBoxStyle(IntegerChoices, s("slug", case_fold=True), p("version")):
+    class MapBoxStyle(IntegerChoices):
         """
         https://docs.mapbox.com/api/maps/styles/
         """
 
         _symmetric_builtins_ = ["name", "uri", "label"]
+
+        slug: Annotated[str, Symmetric(case_fold=True)]
+        version: int
 
         # name            value  label                slug            version
         STREETS = 1, "Streets", "streets", 11
@@ -54,8 +63,11 @@ class EnumTester(models.Model):
         # def __str__(self):
         #    return self.uri
 
-    class AddressRoute(TextChoices, s("alt", case_fold=True), p("str")):
+    class AddressRoute(TextChoices):
         _symmetric_builtins_ = [s("name", case_fold=True)]
+
+        alt: Annotated[t.List[str], Symmetric(case_fold=True)]
+        str: str
 
         # name    value          alt
         ALLEY = (

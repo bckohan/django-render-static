@@ -527,13 +527,18 @@ we might define a simple color enumeration like so:
 
 .. code:: python
 
+    import typing as t
     from django.db import models
-    from django_enum import EnumField, TextChoices
-    from enum_properties import p, s
+    from django_enum import EnumField
+    from django_enum.choices import TextChoices
+    from enum_properties import Symmetric, s
 
     class ExampleModel(models.Model):
 
-        class Color(TextChoices, s('rgb'), s('hex', case_fold=True)):
+        class Color(TextChoices):
+
+            rgb: t.Annotated[t.Tuple[int, int, int], Symmetric()]
+            hex: t.Annotated[str, Symmetric(case_fold=True)]
 
             # name   value   label       rgb       hex
             RED   =   'R',   'Red',   (1, 0, 0), 'ff0000'

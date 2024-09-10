@@ -1,4 +1,4 @@
-from django_enum import IntegerChoices, TextChoices
+from django_enum.choices import IntegerChoices, TextChoices
 from enum_properties import p, s
 
 
