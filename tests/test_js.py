@@ -604,24 +604,24 @@ class URLJavascriptMixin:
                     accessor_str = "".join([f'["{comp}"]' for comp in qname.split(":")])
                     yield "console.log("
                     self.indent()
-                    yield f'urls{accessor_str}({"" if self.legacy_args else "{"}'
+                    yield f"urls{accessor_str}({'' if self.legacy_args else '{'}"
                     self.indent()
                 yield (
-                    f'{"" if self.legacy_args else "kwargs: "}'
-                    f'{json.dumps(kwargs, cls=BestEffortEncoder)}{"," if args or query else ""}'
+                    f"{'' if self.legacy_args else 'kwargs: '}"
+                    f"{json.dumps(kwargs, cls=BestEffortEncoder)}{',' if args or query else ''}"
                 )
                 if args:
                     yield (
-                        f'{"" if self.legacy_args else "args: "}'
-                        f'{json.dumps(args, cls=BestEffortEncoder)}{"," if query else ""}'
+                        f"{'' if self.legacy_args else 'args: '}"
+                        f"{json.dumps(args, cls=BestEffortEncoder)}{',' if query else ''}"
                     )
                 if query:
                     yield (
-                        f'{"" if self.legacy_args else "query: "}'
+                        f"{'' if self.legacy_args else 'query: '}"
                         f"{json.dumps(query, cls=BestEffortEncoder)}"
                     )
                 self.outdent(2)
-                yield f'{"" if self.legacy_args else "}"}));'
+                yield f"{'' if self.legacy_args else '}'}));"
                 if self.catch:
                     self.outdent()
                     yield "} catch (error) {}"
@@ -653,7 +653,7 @@ class URLJavascriptMixin:
             )
         tmp_file_pth = (
             GLOBAL_STATIC_DIR
-            / f'get_{url_path.stem}.{"m" if js_generator.module else ""}js'
+            / f"get_{url_path.stem}.{'m' if js_generator.module else ''}js"
         )
 
         makedirs(GLOBAL_STATIC_DIR, exist_ok=True)

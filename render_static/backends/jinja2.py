@@ -1,6 +1,6 @@
 from os.path import normpath
 from pathlib import Path
-from typing import Dict, Generator, List, Tuple, cast
+from typing import Dict, Generator, List, Tuple
 
 from django.apps import apps
 from django.apps.config import AppConfig
@@ -90,7 +90,7 @@ class StaticJinja2Templates(StaticEngine, Jinja2):
         backend we modified the loaders but modifying the Jinja2 loaders
         would be much more invasive.
         """
-        template = cast(Template, super().get_template(template_name))
+        template = super().get_template(template_name)
 
         for app_dir, app in self.app_directories:
             if normpath(template.origin.name).startswith(normpath(app_dir)):
@@ -136,7 +136,7 @@ class StaticJinja2Templates(StaticEngine, Jinja2):
             return list(template_names)
 
         raise TemplateDoesNotExist(
-            f"Template selector {selector} did not resolve to any " f"template names."
+            f"Template selector {selector} did not resolve to any template names."
         )
 
     def search_templates(  # type: ignore[override]

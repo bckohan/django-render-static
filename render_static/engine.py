@@ -70,7 +70,7 @@ def _resolve_context(
     except InvalidContext as inval_ctx:
         raise ImproperlyConfigured(
             f"STATIC_TEMPLATES 'context' configuration directive"
-            f"{' for ' + template if template else '' } must be a dictionary "
+            f"{' for ' + template if template else ''} must be a dictionary "
             f"or a callable that returns a dictionary!"
         ) from inval_ctx
 
@@ -187,8 +187,7 @@ class StaticTemplateEngine:
                 self.dest_ = Path(dest)
                 if not self.dest_.is_absolute():
                     raise ImproperlyConfigured(
-                        f"In STATIC_TEMPLATES, template {name} dest must be "
-                        f"absolute!"
+                        f"In STATIC_TEMPLATES, template {name} dest must be absolute!"
                     )
             context = _resolve_context(context, template=name)
             if context:
@@ -385,7 +384,7 @@ class StaticTemplateEngine:
             return self.engines[alias]
         except KeyError as key_error:
             raise InvalidTemplateEngineError(
-                f"Could not find config for '{alias}' " f"in settings.STATIC_TEMPLATES"
+                f"Could not find config for '{alias}' in settings.STATIC_TEMPLATES"
             ) from key_error
 
     def __iter__(self):

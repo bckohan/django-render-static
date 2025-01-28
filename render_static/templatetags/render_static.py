@@ -198,9 +198,9 @@ def transpiler_tag(
         ) = getfullargspec(unwrap(func))
         function_name = name or getattr(func, "_decorated_function", func).__name__
 
-        assert (
-            "transpiler" in pos_args or "transpiler" in kwonly
-        ), f"{function_name} must accept a transpiler argument."
+        assert "transpiler" in pos_args or "transpiler" in kwonly, (
+            f"{function_name} must accept a transpiler argument."
+        )
 
         param_defaults = {
             pos_args[len(pos_args or []) - len(defaults or []) + idx]: default

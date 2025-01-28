@@ -57,7 +57,7 @@ def complete_selector(
             # must exactly match whats on the command line for most shell completion
             # utilities
             completions.append(
-                CompletionItem(f"{incomplete}{tmpl_name[len(incomplete):]}")
+                CompletionItem(f"{incomplete}{tmpl_name[len(incomplete) :]}")
             )
     return completions
 

@@ -118,7 +118,7 @@ class EnumTests(EnumTranspiler):
         for idx1, prop in enumerate(["value"] + self.symmetric_properties_):
             for idx2, en in enumerate(enum):
                 yield (
-                    f'enums.{enum.__name__}.getCheck {"=" if (idx1 == 0 and idx2 == 0) else "&="} '
+                    f"enums.{enum.__name__}.getCheck {'=' if (idx1 == 0 and idx2 == 0) else '&='} "
                     f"{self.name_map[enum]}.{en.name} === {self.name_map[enum]}."
                     f"get({self.to_js(getattr(en, prop))});"
                 )

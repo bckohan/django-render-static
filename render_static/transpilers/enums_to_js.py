@@ -525,7 +525,7 @@ class EnumClassWriter(EnumTranspiler):
         :param enum: The enum being transpiled
         :yield: transpiled javascript lines
         """
-        yield f'{"export " if self.export_ else ""}class {self.class_name} {{'
+        yield f"{'export ' if self.export_ else ''}class {self.class_name} {{"
 
     def enumerations(self, enum: Type[Enum]) -> Generator[Optional[str], None, None]:
         """
@@ -538,9 +538,7 @@ class EnumClassWriter(EnumTranspiler):
             values = [self.to_js(getattr(enm, prop)) for prop in self.properties]
             if not self.str_is_prop and self.to_string_:
                 values.append(self.to_js(str(enm)))
-            yield (
-                f"static {enm.name} = new {self.class_name}" f'({", ".join(values)});'
-            )
+            yield (f"static {enm.name} = new {self.class_name}({', '.join(values)});")
 
     def static_properties(
         self, enum: Type[Enum]
@@ -575,7 +573,7 @@ class EnumClassWriter(EnumTranspiler):
         if "constructor" in self.overrides_:
             yield from self.transpile_override("constructor", constructor_impl())
         else:
-            yield f'constructor ({", ".join(props)}) {{'
+            yield f"constructor ({', '.join(props)}) {{"
             self.indent()
             yield from constructor_impl()
             self.outdent()
@@ -686,7 +684,7 @@ class EnumClassWriter(EnumTranspiler):
         :yield: transpiled javascript lines
         """
         enums = [f"{self.class_name}.{enm.name}" for enm in enum]
-        impl = f'return [{", ".join(enums)}][Symbol.iterator]();'
+        impl = f"return [{', '.join(enums)}][Symbol.iterator]();"
         if "[Symbol.iterator]" in self.overrides_:
             yield from self.transpile_override("[Symbol.iterator]", impl)
         else:

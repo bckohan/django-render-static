@@ -147,9 +147,9 @@ class DefaultDefineTranspiler(Transpiler):
         :param is_final:
         :return:
         """
-        assert not isinstance(
-            target, AppConfig
-        ), "Unsupported transpiler target: AppConfig"
+        assert not isinstance(target, AppConfig), (
+            "Unsupported transpiler target: AppConfig"
+        )
         self.members = target  # type: ignore
         yield from self.visit_members(self.members, is_last=is_last, is_final=is_final)
 
@@ -206,7 +206,7 @@ class DefaultDefineTranspiler(Transpiler):
         self.members = cls  # type: ignore
         yield f"{cls.__name__}: {{"
         self.indent()
-        self.object_path_ += f'{"." if self.object_path_ else ""}{cls.__name__}'
+        self.object_path_ += f"{'.' if self.object_path_ else ''}{cls.__name__}"
 
     def exit_class(
         self, cls: Type[Any], is_last: bool, is_final: bool
@@ -241,7 +241,7 @@ class DefaultDefineTranspiler(Transpiler):
             at all
         :yield: Transpiled javascript for the member.
         """
-        self.object_path_ += f'{"." if self.object_path_ else ""}{name}'
+        self.object_path_ += f"{'.' if self.object_path_ else ''}{name}"
         if self.object_path_ in self.overrides_:
             first = True
             for line in self.transpile_override(self.object_path_, self.to_js(member)):

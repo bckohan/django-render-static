@@ -912,7 +912,7 @@ class SimpleURLWriter(URLTreeVisitor):
             quote = "`"
             yield f"if (args.length === {nargs})"
             self.indent()
-            yield f'return {quote}/{self.path_join(path).lstrip("/")}{quote};'
+            yield f"return {quote}/{self.path_join(path).lstrip('/')}{quote};"
             self.outdent()
         else:
             opts_str = ",".join([self.to_javascript(param) for param in kwargs])
@@ -922,7 +922,7 @@ class SimpleURLWriter(URLTreeVisitor):
                 f"kwargs.hasOwnProperty(value)))"
             )
             self.indent()
-            yield f'return `/{self.path_join(path).lstrip("/")}`;'
+            yield f"return `/{self.path_join(path).lstrip('/')}`;"
             self.outdent()
 
 
@@ -1239,7 +1239,7 @@ class ClassURLWriter(URLTreeVisitor):
             self.outdent()
             yield "} else {"
             self.indent()
-            yield "return Object.keys(kwargs).length === 0 && " "args.length === 0;"
+            yield "return Object.keys(kwargs).length === 0 && args.length === 0;"
             self.outdent()
             yield "}"
 
@@ -1263,9 +1263,7 @@ class ClassURLWriter(URLTreeVisitor):
             """reverse default implementation"""
             yield "if (this.namespace) {"
             self.indent()
-            yield (
-                "qname = `${this.namespace}" '${qname.replace(this.namespace, "")}`;'
-            )
+            yield ('qname = `${this.namespace}${qname.replace(this.namespace, "")}`;')
             self.outdent()
             yield "}"
             yield "const kwargs = options.kwargs || {};"
@@ -1274,7 +1272,7 @@ class ClassURLWriter(URLTreeVisitor):
             yield "let url = this.urls;"
             yield "for (const ns of qname.split(':')) {"
             self.indent()
-            yield "if (ns && url) { url = url.hasOwnProperty(ns) ? " "url[ns] : null; }"
+            yield "if (ns && url) { url = url.hasOwnProperty(ns) ? url[ns] : null; }"
             self.outdent()
             yield "}"
             yield "if (url) {"
@@ -1331,7 +1329,7 @@ class ClassURLWriter(URLTreeVisitor):
         :yield: JavaScript LoC for the reversal class
         """
         yield from self.class_jdoc()
-        yield f'{"export " if self.export_ else ""} class {self.class_name_} {{'
+        yield f"{'export ' if self.export_ else ''} class {self.class_name_} {{"
         self.indent()
         yield ""
         yield from self.constructor()
@@ -1451,7 +1449,7 @@ class ClassURLWriter(URLTreeVisitor):
             # to reverse
             yield (
                 f"if (this.#match(kwargs, args, {nargs})) {{"
-                f' return {quote}/{self.path_join(path).lstrip("/")}'
+                f" return {quote}/{self.path_join(path).lstrip('/')}"
                 f"{quote}; }}"
             )
         else:
@@ -1460,12 +1458,12 @@ class ClassURLWriter(URLTreeVisitor):
                 yield (
                     f"if (this.#match(kwargs, args, [{opts_str}], "
                     f"{defaults_str})) {{"
-                    f' return {quote}/{self.path_join(path).lstrip("/")}'
+                    f" return {quote}/{self.path_join(path).lstrip('/')}"
                     f"{quote}; }}"
                 )
             else:
                 yield (
                     f"if (this.#match(kwargs, args, [{opts_str}])) {{"
-                    f' return {quote}/{self.path_join(path).lstrip("/")}'
+                    f" return {quote}/{self.path_join(path).lstrip('/')}"
                     f"{quote}; }}"
                 )

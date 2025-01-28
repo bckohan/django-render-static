@@ -69,7 +69,7 @@ def register_converter_placeholder(converter_type: Type, placeholder: Any) -> No
     """
     if not isinstance(converter_type, type):
         raise ValueError(
-            f"converter_type should be of type `type`, got " f"{type(converter_type)}!"
+            f"converter_type should be of type `type`, got {type(converter_type)}!"
         )
 
     placeholders = converter_placeholders.setdefault(converter_type, [])

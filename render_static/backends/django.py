@@ -91,7 +91,7 @@ class StaticDjangoTemplates(StaticEngine, DjangoTemplates):
         if template_names:
             return list(template_names)
         raise TemplateDoesNotExist(
-            f"Template selector {selector} did not resolve to any template " f"names."
+            f"Template selector {selector} did not resolve to any template names."
         )
 
     def search_templates(
