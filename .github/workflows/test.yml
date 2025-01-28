@@ -56,10 +56,13 @@ jobs:
         python-version: ${{ matrix.python-version }}
 
     - name: Install Poetry
-      uses: snok/install-poetry@v1
-      with:
-        virtualenvs-create: true
-        virtualenvs-in-project: true
+      run: |
+        pip install pipx
+        pipx ensurepath
+        pipx install poetry
+        poetry config --local virtualenvs.create true
+        poetry config --local virtualenvs.in-project true
+        poetry env use python
     - name: Install Release Dependencies
       run: |
         poetry config virtualenvs.in-project true
@@ -99,10 +102,13 @@ jobs:
           python-version: '3.12'
 
       - name: Install Poetry
-        uses: snok/install-poetry@v1
-        with:
-          virtualenvs-create: true
-          virtualenvs-in-project: true
+        run: |
+          pip install pipx
+          pipx ensurepath
+          pipx install poetry
+          poetry config --local virtualenvs.create true
+          poetry config --local virtualenvs.in-project true
+          poetry env use python
     
       - name: Install Release Dependencies
         run: |
