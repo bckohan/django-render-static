@@ -54,15 +54,6 @@ try:
 except ImportError:
     jinja2 = False
 
-importlib_resources = True
-if sys.version_info < (3, 9):
-    try:
-        from importlib_resources import Package
-
-        importlib_resources = True
-    except ImportError:
-        importlib_resources = False
-
 
 def empty_or_dne(directory):
     if os.path.exists(str(directory)):
@@ -1345,18 +1336,12 @@ class TestContextResolution(BaseTestCase):
             },
         )
 
-    @pytest.mark.skipif(
-        not importlib_resources, reason="importlib_resources not available"
-    )
     def test_pickle_context_resource(self):
         self.assertEqual(
             resolve_context(resource("tests.resources", "context.pickle")),
             {"context": "pickle"},
         )
 
-    @pytest.mark.skipif(
-        not importlib_resources, reason="importlib_resources not available"
-    )
     def test_json_context_resource(self):
         self.assertEqual(
             resolve_context(resource("tests.resources", "context.json")),
@@ -1368,9 +1353,6 @@ class TestContextResolution(BaseTestCase):
             resolve_context(resource(resources, "context.json")), {"context": "json"}
         )
 
-    @pytest.mark.skipif(
-        not importlib_resources, reason="importlib_resources not available"
-    )
     def test_python_context_resource(self):
         self.assertEqual(
             resolve_context(resource("tests.resources", "context.py")),
@@ -1387,9 +1369,6 @@ class TestContextResolution(BaseTestCase):
             {"context": "embedded_callable"},
         )
 
-    @pytest.mark.skipif(
-        not importlib_resources, reason="importlib_resources not available"
-    )
     def test_bad_contexts(self):
         self.assertRaises(
             InvalidContext,
@@ -1773,23 +1752,4 @@ def test_batch_loader_mixin_not_impl():
             False
         ), 'BatchLoaderMixin.get_dirs() should raise "NotImplementedError"'
     except NotImplementedError:
-        pass
-
-
-@pytest.mark.skipif(
-    sys.version_info >= (3, 9) or importlib_resources, reason="jinja2 installed"
-)
-def test_resources_38():
-    from render_static.resource import as_file, files
-
-    try:
-        files("dummy")
-        assert False, "file() should raise ImportError"  # pragma: no cover
-    except ImportError:
-        pass
-
-    try:
-        as_file("dummy")
-        assert False, "file() should raise ImportError"  # pragma: no cover
-    except ImportError:
         pass

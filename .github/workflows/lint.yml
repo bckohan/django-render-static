@@ -33,38 +33,39 @@ jobs:
           - python-version: '3.9'
             django-version: '5.1'
 
+    env:
+      TEST_PYTHON_VERSION: ${{ matrix.python-version }}
+      TEST_DJANGO_VERSION: ${{ matrix.django-version }}
+
     steps:
       - uses: actions/checkout@v4
       - name: Set up Python ${{ matrix.python-version }}
         uses: actions/setup-python@v5
+        id: sp
         with:
           python-version: ${{ matrix.python-version }}
 
-      - name: Install Poetry
-        run: |
-          pip install pipx
-          pipx ensurepath
-          pipx install poetry
-          poetry config --local virtualenvs.create true
-          poetry config --local virtualenvs.in-project true
-          poetry env use python
+      - name: Install Just
+        uses: extractions/setup-just@v2
       - name: Install Dependencies
         run: |
-          poetry config virtualenvs.in-project true
-          poetry run pip install --upgrade pip
-          poetry install -E all
-          poetry run pip install -U "Django~=${{ matrix.django-version }}"
+          just init ${{ steps.sp.outputs.python-path }} install-docs
+          just pin-dependency Django~=${{ matrix.django-version }}.0
       - name: Install Emacs
         if: ${{ github.event.inputs.debug == 'on' }}
         run: |
           sudo apt install emacs
       - name: Setup tmate session
         if: ${{ github.event.inputs.debug == 'on' }}
-        uses: mxschmitt/action-tmate@v3
+        uses: mxschmitt/action-tmate@v3.19
         with:
           detached: true
         timeout-minutes: 60
       - name: Run Static Analysis
         run: |
-          ./check.sh --no-fix
-          poetry run python -m readme_renderer ./README.md -o /tmp/README.html
+          just test ./tests/verify_environment.py
+          just check-lint
+          just check-format
+          just check-types
+          just check-package
+          just check-readme

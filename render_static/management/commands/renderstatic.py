@@ -11,9 +11,9 @@ A template name supplied as an argument does not need to be specified in
 given the global context as specified in ``STATIC_TEMPLATES``.
 """
 
-import sys
 import typing as t
 from pathlib import Path
+from typing import Annotated
 
 from click import Context, Parameter
 from click.shell_completion import CompletionItem
@@ -29,11 +29,6 @@ from django_typer.management import TyperCommand
 from typer import Argument, Option
 
 from render_static.engine import StaticTemplateEngine
-
-if sys.version_info >= (3, 9):
-    from typing import Annotated
-else:
-    from typing_extensions import Annotated
 
 
 def complete_selector(

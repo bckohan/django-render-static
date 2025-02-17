@@ -7,31 +7,11 @@ Convenience function for accessing packaged resource like so:
 """
 
 import contextlib
-import sys
 import types
-from functools import singledispatch
 from typing import Optional, Union
+from importlib.resources import as_file, files
 
 __all__ = ["resource"]
-
-# Distinguishing between different versions of Python:
-if sys.version_info >= (3, 9):
-    from importlib.resources import as_file, files
-else:
-    try:
-        from importlib_resources import as_file, files
-    except ImportError:
-
-        @singledispatch
-        def need_install(*args, **kwargs):  # pragma: no cover
-            """
-            On platforms <3.9, the importlib_resources backport needs to be
-            available to use resources.
-            """
-            raise ImportError("Install importlib_resources to enable resources.")
-
-        files = need_install
-        as_file = need_install
 
 
 def resource(package: Union[str, types.ModuleType], filename: str) -> str:
