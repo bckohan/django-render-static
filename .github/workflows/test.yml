@@ -1,5 +1,7 @@
 name: test
 
+permissions: read-all
+
 on:
   push:
   pull_request:
@@ -16,8 +18,10 @@ on:
 
 jobs:
 
-  test:
+  test-linux:
     runs-on: ubuntu-latest
+    permissions:
+      actions: write
     strategy:
       matrix:
         python-version: ['3.9', '3.10', '3.11', '3.12', '3.13']
@@ -78,7 +82,6 @@ jobs:
       run: |
         just test ./tests/verify_environment.py
         just test-all
-        mv .coverage py${{ matrix.python-version }}-dj${{ matrix.django-version }}.coverage
     
     - name: Store coverage files
       uses: actions/upload-artifact@v4
@@ -86,8 +89,126 @@ jobs:
         name: ${{ env.COVERAGE_FILE }}
         path: ${{ env.COVERAGE_FILE }}
   
+  test-macos:
+    runs-on: macos-latest
+    permissions:
+      actions: write
+    strategy:
+      matrix:
+        python-version: ['3.9', '3.13']
+        django-version:
+          - '3.2' # LTS April 2024
+          - '5.1' # December 2025
+        exclude:
+          - python-version: '3.9'
+            django-version: '5.1'
+          - python-version: '3.13'
+            django-version: '3.2'
+    env:
+      COVERAGE_FILE: macos-py${{ matrix.python-version }}-dj${{ matrix.django-version }}.coverage
+      TEST_PYTHON_VERSION: ${{ matrix.python-version }}
+      TEST_DJANGO_VERSION: ${{ matrix.django-version }}
+
+    steps:
+    - uses: actions/checkout@v4
+    - uses: actions/setup-node@v4
+      with:
+        node-version: 22
+    - name: Set up Python ${{ matrix.python-version }}
+      uses: actions/setup-python@v5
+      id: sp
+      with:
+        python-version: ${{ matrix.python-version }}
+    
+    - name: Setup Just
+      uses: extractions/setup-just@v2
+    - name: Install Release Dependencies
+      run: |
+        just init ${{ steps.sp.outputs.python-path }}
+        just install
+        just pin-dependency Django~=${{ matrix.django-version }}.0
+    - name: Install Emacs
+      if: ${{ github.event.inputs.debug == 'on' }}
+      run: |
+        sudo apt install emacs
+    - name: Setup tmate session
+      if: ${{ github.event.inputs.debug == 'on' }}
+      uses: mxschmitt/action-tmate@v3.19
+      with:
+        detached: true
+      timeout-minutes: 60
+    - name: Run Unit Tests
+      run: |
+        just test ./tests/verify_environment.py
+        just test-all
+    
+    - name: Store coverage files
+      uses: actions/upload-artifact@v4
+      with:
+        name: ${{ env.COVERAGE_FILE }}
+        path: ${{ env.COVERAGE_FILE }}
+  
+  test-windows:
+    runs-on: windows-latest
+    permissions:
+      actions: write
+    strategy:
+      matrix:
+        python-version: ['3.9', '3.13']
+        django-version:
+          - '3.2' # LTS April 2024
+          - '5.1' # December 2025
+        exclude:
+          - python-version: '3.9'
+            django-version: '5.1'
+          - python-version: '3.13'
+            django-version: '3.2'
+    env:
+      COVERAGE_FILE: macos-py${{ matrix.python-version }}-dj${{ matrix.django-version }}.coverage
+      TEST_PYTHON_VERSION: ${{ matrix.python-version }}
+      TEST_DJANGO_VERSION: ${{ matrix.django-version }}
+
+    steps:
+    - uses: actions/checkout@v4
+    - uses: actions/setup-node@v4
+      with:
+        node-version: 22
+    - name: Set up Python ${{ matrix.python-version }}
+      uses: actions/setup-python@v5
+      id: sp
+      with:
+        python-version: ${{ matrix.python-version }}
+    
+    - name: Setup Just
+      uses: extractions/setup-just@v2
+    - name: Install Release Dependencies
+      run: |
+        just init ${{ steps.sp.outputs.python-path }}
+        just install
+        just pin-dependency Django~=${{ matrix.django-version }}.0
+    - name: Install Emacs
+      if: ${{ github.event.inputs.debug == 'on' }}
+      run: |
+        sudo apt install emacs
+    - name: Setup tmate session
+      if: ${{ github.event.inputs.debug == 'on' }}
+      uses: mxschmitt/action-tmate@v3.19
+      with:
+        detached: true
+      timeout-minutes: 60
+    - name: Run Unit Tests
+      run: |
+        just test ./tests/verify_environment.py
+        just test-all
+    
+    - name: Store coverage files
+      uses: actions/upload-artifact@v4
+      with:
+        name: ${{ env.COVERAGE_FILE }}
+        path: ${{ env.COVERAGE_FILE }}
+        
   coverage-combine:
-    needs: [test]
+    needs: [test-linux, test-macos, test-windows]
     runs-on: ubuntu-latest
 
     steps:
@@ -107,9 +228,9 @@ jobs:
       - name: Get coverage files
         uses: actions/download-artifact@v4
         with:
-          pattern: coverage-*
+          pattern: "*.coverage"
           merge-multiple: true
-
+  
       - run: ls -la *.coverage
       - run: just coverage
 
