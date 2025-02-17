@@ -167,7 +167,7 @@ jobs:
           - python-version: '3.13'
             django-version: '3.2'
     env:
-      COVERAGE_FILE: macos-py${{ matrix.python-version }}-dj${{ matrix.django-version }}.coverage
+      COVERAGE_FILE: windows-py${{ matrix.python-version }}-dj${{ matrix.django-version }}.coverage
       TEST_PYTHON_VERSION: ${{ matrix.python-version }}
       TEST_DJANGO_VERSION: ${{ matrix.django-version }}
 
