@@ -68,16 +68,16 @@ jobs:
         just init ${{ steps.sp.outputs.python-path }}
         just install
         just pin-dependency Django~=${{ matrix.django-version }}.0
-    - name: Install Emacs
-      if: ${{ github.event.inputs.debug == 'true' }}
-      run: |
-        sudo apt install emacs
-    - name: Setup tmate session
-      if: ${{ github.event.inputs.debug == 'true' }}
-      uses: mxschmitt/action-tmate@v3.19
-      with:
-        detached: true
-      timeout-minutes: 60
+    # - name: Install Emacs
+    #   if: ${{ github.event.inputs.debug == 'true' }}
+    #   run: |
+    #     sudo apt install emacs
+    # - name: Setup tmate session
+    #   if: ${{ github.event.inputs.debug == 'true' }}
+    #   uses: mxschmitt/action-tmate@v3.19
+    #   with:
+    #     detached: true
+    #   timeout-minutes: 60
     - name: Run Unit Tests
       run: |
         just test ./tests/verify_environment.py
@@ -127,15 +127,15 @@ jobs:
         just init ${{ steps.sp.outputs.python-path }}
         just install
         just pin-dependency Django~=${{ matrix.django-version }}.0
-    - name: install-emacs-macos
-      if: ${{ github.event.inputs.debug == 'true' }}
-      run: |
-        brew install emacs
-    - name: Setup tmate session
-      if: ${{ github.event.inputs.debug == 'true' }}
-      uses: mxschmitt/action-tmate@v3.19
-      with:
-        detached: true
+    # - name: install-emacs-macos
+    #   if: ${{ github.event.inputs.debug == 'true' }}
+    #   run: |
+    #     brew install emacs
+    # - name: Setup tmate session
+    #   if: ${{ github.event.inputs.debug == 'true' }}
+    #   uses: mxschmitt/action-tmate@v3.19
+      # with:
+      #   detached: true
       timeout-minutes: 60
     - name: Run Unit Tests
       run: |
@@ -189,14 +189,14 @@ jobs:
         just init ${{ steps.sp.outputs.python-path }}
         just install
         just pin-dependency Django~=${{ matrix.django-version }}.0
-    - name: install-vim-windows
-      if: ${{ github.event.inputs.debug == 'true' }}
-      uses: rhysd/action-setup-vim@v1
-    - name: Setup tmate session
-      if: ${{ github.event.inputs.debug == 'true' }}
-      uses: mxschmitt/action-tmate@v3.19
-      with:
-        detached: true
+    # - name: install-vim-windows
+    #   if: ${{ github.event.inputs.debug == 'true' }}
+    #   uses: rhysd/action-setup-vim@v1
+    # - name: Setup tmate session
+    #   if: ${{ github.event.inputs.debug == 'true' }}
+    #   uses: mxschmitt/action-tmate@v3.19
+      # with:
+      #   detached: true
       timeout-minutes: 60
     - name: Run Unit Tests
       run: |
@@ -232,7 +232,13 @@ jobs:
         with:
           pattern: "*.coverage"
           merge-multiple: true
-  
+      - name: Install Emacs
+        if: ${{ github.event.inputs.debug == 'true' }}
+        run: |
+          sudo apt install emacs
+      - name: Setup tmate session
+        if: ${{ github.event.inputs.debug == 'true' }}
+        uses: mxschmitt/action-tmate@v3.19
       - run: ls -la *.coverage
       - run: just coverage
 
