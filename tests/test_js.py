@@ -699,7 +699,7 @@ class URLJavascriptMixin:
         try:
             resp = resp.json(object_hook=object_hook)
         except ValueError:
-            print(resp.text)
+            print(resp.content)
             raise
         resp["args"] = args_hook(resp["args"])
         self.assertEqual(
