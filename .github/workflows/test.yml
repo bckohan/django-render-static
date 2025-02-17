@@ -127,10 +127,10 @@ jobs:
         just init ${{ steps.sp.outputs.python-path }}
         just install
         just pin-dependency Django~=${{ matrix.django-version }}.0
-    - name: Install Emacs
+    - name: install-emacs-macos
       if: ${{ github.event.inputs.debug == 'true' }}
       run: |
-        sudo apt install emacs
+        brew install emacs
     - name: Setup tmate session
       if: ${{ github.event.inputs.debug == 'true' }}
       uses: mxschmitt/action-tmate@v3.19
@@ -189,10 +189,9 @@ jobs:
         just init ${{ steps.sp.outputs.python-path }}
         just install
         just pin-dependency Django~=${{ matrix.django-version }}.0
-    - name: Install Emacs
+    - name: install-vim-windows
       if: ${{ github.event.inputs.debug == 'true' }}
-      run: |
-        sudo apt install emacs
+      uses: rhysd/action-setup-vim@v1
     - name: Setup tmate session
       if: ${{ github.event.inputs.debug == 'true' }}
       uses: mxschmitt/action-tmate@v3.19
