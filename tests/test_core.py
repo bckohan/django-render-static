@@ -1694,6 +1694,8 @@ class TestTabCompletion(BaseTestCase):
         with contextlib.redirect_stdout(stdout):
             call_command(
                 "shellcompletion",
+                "--shell",
+                "zsh",
                 "complete",
                 "renderstatic app1/html/base.html ",
                 stdout=stdout,
