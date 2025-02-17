@@ -696,7 +696,11 @@ class URLJavascriptMixin:
         )
         resp = self.client.get(tst_pth)
 
-        resp = resp.json(object_hook=object_hook)
+        try:
+            resp = resp.json(object_hook=object_hook)
+        except ValueError:
+            print(resp.text)
+            raise
         resp["args"] = args_hook(resp["args"])
         self.assertEqual(
             {
