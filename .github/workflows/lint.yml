@@ -55,11 +55,11 @@ jobs:
           just init ${{ steps.sp.outputs.python-path }} install-docs
           just pin-dependency Django~=${{ matrix.django-version }}.0
       - name: Install Emacs
-        if: ${{ github.event.inputs.debug == 'on' }}
+        if: ${{ github.event.inputs.debug == 'true' }}
         run: |
           sudo apt install emacs
       - name: Setup tmate session
-        if: ${{ github.event.inputs.debug == 'on' }}
+        if: ${{ github.event.inputs.debug == 'true' }}
         uses: mxschmitt/action-tmate@v3.19
         with:
           detached: true
