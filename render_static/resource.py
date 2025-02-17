@@ -8,8 +8,8 @@ Convenience function for accessing packaged resource like so:
 
 import contextlib
 import types
-from typing import Optional, Union
 from importlib.resources import as_file, files
+from typing import Optional, Union
 
 __all__ = ["resource"]
 

@@ -6,6 +6,7 @@ v3.2.0 (2024-02-17)
 ====================
 
 * Implemented `Drop support for python 3.8 <https://github.com/bckohan/django-render-static/issues/171>`_
+* Implemented `Support django-typer 3.x <https://github.com/bckohan/django-render-static/issues/170>`_
 
 
 v3.1.3 (2024-08-26)

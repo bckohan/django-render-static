@@ -16,9 +16,6 @@ readme = "README.md"
 repository = "https://github.com/bckohan/django-render-static"
 homepage = "https://django-render-static.readthedocs.io"
 keywords = ["django", "static", "templates", "javascript", "url", "reverse", "defines", "transpiler", "transpile", "enum"]
-packages = [
-    { include = "render_static" }
-]
 dependencies = [
     "Django>=3.2,<6.0",
     "django-typer>=3.0,<3.1"
@@ -50,6 +47,8 @@ classifiers = [
     "Topic :: Software Development :: Libraries :: Python Modules"
 ]
 
+[tool.poetry]
+packages = [{ include = "render_static" }]
 
 [project.optional-dependencies]
 PyYAML = ["PyYAML>=5.1,<7.0"]

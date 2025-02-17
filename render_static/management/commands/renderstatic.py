@@ -19,11 +19,11 @@ from click import Context, Parameter
 from click.shell_completion import CompletionItem
 from django.core.management.base import CommandError
 from django.utils.translation import gettext as _
-from django_typer.completers import (
-    chain,
-    complete_directory,
-    complete_import_path,
-    complete_path,
+from django_typer.completers import chain
+from django_typer.completers.path import (
+    directories,
+    import_paths,
+    paths,
 )
 from django_typer.management import TyperCommand
 from typer import Argument, Option
@@ -40,13 +40,14 @@ def complete_selector(
     engine = StaticTemplateEngine()
     present = ctx.params.get(param.name or "") or []
     completions = []
+    seen = set()
     for template in engine.search(
         incomplete,
         first_engine=bool(ctx.params.get("first_engine")),
         first_loader=bool(ctx.params.get("first_loader")),
     ):
         tmpl_name = str(template.origin.template_name or "")
-        if tmpl_name and tmpl_name not in present and tmpl_name not in completions:
+        if tmpl_name and tmpl_name not in present and tmpl_name not in seen:
             # the slicing is because we need to denormalize the prefix if the
             # search process normalized the name somehow, because the prefixes
             # must exactly match whats on the command line for most shell completion
@@ -54,6 +55,7 @@ def complete_selector(
             completions.append(
                 CompletionItem(f"{incomplete}{tmpl_name[len(incomplete) :]}")
             )
+            seen.add(tmpl_name)
     return completions
 
 
@@ -89,7 +91,7 @@ class Command(TyperCommand):
                     "python files, json files, yaml files, or pickled python "
                     "dictionaries.",
                 ),
-                shell_complete=chain(complete_path, complete_import_path),
+                shell_complete=chain(paths, import_paths),
             ),
         ] = None,
         destination: Annotated[
@@ -103,7 +105,7 @@ class Command(TyperCommand):
                     "one exists. If no destination is specified in settings or "
                     "here, the default destination is settings.STATIC_ROOT."
                 ),
-                shell_complete=complete_directory,
+                shell_complete=directories,
             ),
         ] = None,
         first_engine: Annotated[
@@ -155,7 +157,7 @@ class Command(TyperCommand):
                     "Exclude these files from rendering, or any files at or below "
                     "this directory."
                 ),
-                shell_complete=complete_path,
+                shell_complete=paths,
             ),
         ] = [],
         no_render_contents: Annotated[
