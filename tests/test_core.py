@@ -1644,7 +1644,14 @@ class TestTabCompletion(BaseTestCase):
         stdout = StringIO()
         # see https://github.com/bckohan/django-typer/issues/19
         with contextlib.redirect_stdout(stdout):
-            call_command("shellcompletion", "complete", "renderstatic ", stdout=stdout)
+            call_command(
+                "shellcompletion",
+                "--shell",
+                "zsh",
+                "complete",
+                "renderstatic ",
+                stdout=stdout,
+            )
         completions = stdout.getvalue()
         self.assertTrue("app1/html/base.html" in completions)
         self.assertTrue("app1/html/hello.html" in completions)
@@ -1654,7 +1661,12 @@ class TestTabCompletion(BaseTestCase):
         stdout = StringIO()
         with contextlib.redirect_stdout(stdout):
             call_command(
-                "shellcompletion", "complete", "renderstatic app1", stdout=stdout
+                "shellcompletion",
+                "--shell",
+                "zsh",
+                "complete",
+                "renderstatic app1",
+                stdout=stdout,
             )
         completions = stdout.getvalue()
         self.assertTrue("app1/html/base.html" in completions)
@@ -1665,7 +1677,12 @@ class TestTabCompletion(BaseTestCase):
         stdout = StringIO()
         with contextlib.redirect_stdout(stdout):
             call_command(
-                "shellcompletion", "complete", "renderstatic adfa3", stdout=stdout
+                "shellcompletion",
+                "--shell",
+                "zsh",
+                "complete",
+                "renderstatic adfa3",
+                stdout=stdout,
             )
         completions = stdout.getvalue()
         self.assertFalse("app1/html/base.html" in completions)
@@ -1715,7 +1732,14 @@ class TestTabCompletion(BaseTestCase):
         stdout = StringIO()
         # see https://github.com/bckohan/django-typer/issues/19
         with contextlib.redirect_stdout(stdout):
-            call_command("shellcompletion", "complete", "renderstatic ", stdout=stdout)
+            call_command(
+                "shellcompletion",
+                "--shell",
+                "zsh",
+                "complete",
+                "renderstatic ",
+                stdout=stdout,
+            )
         completions = stdout.getvalue()
         self.assertTrue("app1/html/base.html" in completions)
         self.assertTrue("app1/html/hello.html" in completions)
@@ -1731,7 +1755,12 @@ class TestTabCompletion(BaseTestCase):
 
         with contextlib.redirect_stdout(stdout):
             call_command(
-                "shellcompletion", "complete", "renderstatic app1/h", stdout=stdout
+                "shellcompletion",
+                "--shell",
+                "zsh",
+                "complete",
+                "renderstatic app1/h",
+                stdout=stdout,
             )
         completions = stdout.getvalue()
         self.assertTrue("app1/html/base.html" in completions)
