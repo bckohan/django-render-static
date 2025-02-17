@@ -21,6 +21,8 @@ from render_static.engine import StaticTemplateEngine
 from render_static.exceptions import InvalidContext
 from render_static.origin import AppOrigin, Origin
 
+from django_typer.management import get_command
+
 APP1_STATIC_DIR = (
     Path(__file__).parent / "app1" / "static"
 )  # this dir does not exist and must be cleaned up
@@ -1642,17 +1644,9 @@ class BatchRenderTestCase(BaseTestCase):
 class TestTabCompletion(BaseTestCase):
     def test_tab_completion(self):
         stdout = StringIO()
-        # see https://github.com/bckohan/django-typer/issues/19
-        with contextlib.redirect_stdout(stdout):
-            call_command(
-                "shellcompletion",
-                "--shell",
-                "zsh",
-                "complete",
-                "renderstatic ",
-                stdout=stdout,
-            )
-        completions = stdout.getvalue()
+        shellcompletion = get_command("shellcompletion")
+        shellcompletion.init(shell="zsh")
+        completions = shellcompletion.complete("renderstatic ")
         self.assertTrue("app1/html/base.html" in completions)
         self.assertTrue("app1/html/hello.html" in completions)
         self.assertTrue("app1/html/nominal2.html" in completions)
