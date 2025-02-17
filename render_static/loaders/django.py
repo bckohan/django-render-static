@@ -97,6 +97,11 @@ class DirectorySupport(FilesystemLoader):
         except IsADirectoryError:
             self.is_dir = True
             return ""
+        except PermissionError:
+            if Path(origin.name).is_dir():
+                self.is_dir = True
+                return ""
+            raise
 
     def search(self, prefix: str) -> Generator[Template, None, None]:
         """

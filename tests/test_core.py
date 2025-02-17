@@ -1643,62 +1643,40 @@ class BatchRenderTestCase(BaseTestCase):
 
 class TestTabCompletion(BaseTestCase):
     def test_tab_completion(self):
-        stdout = StringIO()
         shellcompletion = get_command("shellcompletion")
         shellcompletion.init(shell="zsh")
         completions = shellcompletion.complete("renderstatic ")
-        self.assertTrue("app1/html/base.html" in completions)
-        self.assertTrue("app1/html/hello.html" in completions)
-        self.assertTrue("app1/html/nominal2.html" in completions)
-        self.assertTrue("examples/enums.js" in completions)
+        for expected in [
+            "app1/html/base.html",
+            "app1/html/hello.html",
+            "app1/html/nominal2.html",
+            "examples/enums.js",
+        ]:
+            self.assertTrue(expected.replace("/", os.sep) in completions)
 
-        stdout = StringIO()
-        with contextlib.redirect_stdout(stdout):
-            call_command(
-                "shellcompletion",
-                "--shell",
-                "zsh",
-                "complete",
-                "renderstatic app1",
-                stdout=stdout,
-            )
-        completions = stdout.getvalue()
-        self.assertTrue("app1/html/base.html" in completions)
-        self.assertTrue("app1/html/hello.html" in completions)
-        self.assertTrue("app1/html/nominal2.html" in completions)
-        self.assertFalse("examples/enums.js" in completions)
+        completions = shellcompletion.complete("renderstatic app1")
 
-        stdout = StringIO()
-        with contextlib.redirect_stdout(stdout):
-            call_command(
-                "shellcompletion",
-                "--shell",
-                "zsh",
-                "complete",
-                "renderstatic adfa3",
-                stdout=stdout,
-            )
-        completions = stdout.getvalue()
-        self.assertFalse("app1/html/base.html" in completions)
-        self.assertFalse("app1/html/hello.html" in completions)
-        self.assertFalse("app1/html/nominal2.html" in completions)
-        self.assertFalse("examples/enums.js" in completions)
+        for expected in [
+            "app1/html/base.html",
+            "app1/html/hello.html",
+            "app1/html/nominal2.html",
+        ]:
+            self.assertTrue(expected.replace("/", os.sep) in completions)
+        self.assertFalse("examples/enums.js".replace("/", os.sep) in completions)
 
-        stdout = StringIO()
-        with contextlib.redirect_stdout(stdout):
-            call_command(
-                "shellcompletion",
-                "--shell",
-                "zsh",
-                "complete",
-                "renderstatic app1/html/base.html ",
-                stdout=stdout,
-            )
-        completions = stdout.getvalue()
-        self.assertFalse("app1/html/base.html" in completions)
-        self.assertTrue("app1/html/hello.html" in completions)
-        self.assertTrue("app1/html/nominal2.html" in completions)
-        self.assertTrue("examples/enums.js" in completions)
+        completions = shellcompletion.complete("renderstatic adfa3")
+        self.assertEqual(completions.strip(), "")
+
+        completions = shellcompletion.complete(
+            f"renderstatic app1{os.sep}html{os.sep}base.html "
+        )
+        for expected in [
+            "app1/html/hello.html",
+            "app1/html/nominal2.html",
+            "examples/enums.js",
+        ]:
+            self.assertTrue(expected.replace("/", os.sep) in completions)
+        self.assertFalse("app1/html/base.html".replace("/", os.sep) in completions)
 
     @override_settings(
         STATIC_TEMPLATES={
@@ -1725,47 +1703,40 @@ class TestTabCompletion(BaseTestCase):
         },
     )
     def test_loc_mem_completion(self):
-        stdout = StringIO()
-        # see https://github.com/bckohan/django-typer/issues/19
-        with contextlib.redirect_stdout(stdout):
-            call_command(
-                "shellcompletion",
-                "--shell",
-                "zsh",
-                "complete",
-                "renderstatic ",
-                stdout=stdout,
-            )
-        completions = stdout.getvalue()
-        self.assertTrue("app1/html/base.html" in completions)
-        self.assertTrue("app1/html/hello.html" in completions)
-        self.assertTrue("app1/html/nominal2.html" in completions)
-        self.assertTrue("app1/urls.js" in completions)
-        self.assertTrue("app1/enums.js" in completions)
-        self.assertTrue("app1/examples/readme_url_usage.js" in completions)
-        self.assertTrue("base.html" in completions)
-        self.assertTrue("examples/enums.js" in completions)
+        shellcompletion = get_command("shellcompletion")
+        shellcompletion.init(shell="zsh")
+        completions = shellcompletion.complete("renderstatic ")
+        for expected in [
+            "app1/html/base.html",
+            "app1/html/hello.html",
+            "app1/html/nominal2.html",
+            "examples/enums.js",
+            "base.html",
+            "examples/enums.js",
+        ]:
+            self.assertTrue(expected.replace("/", os.sep) in completions)
 
-        stdout.truncate(0)
-        stdout.seek(0)
+        for expected in [
+            "app1/urls.js",
+            "app1/enums.js",
+            "app1/examples/readme_url_usage.js",
+        ]:
+            self.assertTrue(expected in completions)
 
-        with contextlib.redirect_stdout(stdout):
-            call_command(
-                "shellcompletion",
-                "--shell",
-                "zsh",
-                "complete",
-                "renderstatic app1/h",
-                stdout=stdout,
-            )
-        completions = stdout.getvalue()
-        self.assertTrue("app1/html/base.html" in completions)
-        self.assertTrue("app1/html/hello.html" in completions)
-        self.assertTrue("app1/html/nominal2.html" in completions)
-        self.assertFalse("app1/urls.js" in completions)
-        self.assertFalse("app1/enums.js" in completions)
-        self.assertFalse("app1/examples/readme_url_usage.js" in completions)
-        self.assertFalse("examples/enums.js" in completions)
+        completions = shellcompletion.complete("renderstatic app1/h")
+        for expected in [
+            f"app1/html{os.sep}base.html",
+            f"app1/html{os.sep}hello.html",
+            f"app1/html{os.sep}nominal2.html",
+        ]:
+            self.assertTrue(expected in completions)
+        for expected in [
+            "app1/urls.js",
+            "examples/enums.js",
+            "app1/examples/readme_url_usage.js",
+            "examples/enums.js",
+        ]:
+            self.assertFalse(expected.replace("/", os.sep) in completions)
 
 
 def test_batch_loader_mixin_not_impl():

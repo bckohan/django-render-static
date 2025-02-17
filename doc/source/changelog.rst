@@ -5,6 +5,8 @@ Change Log
 v3.2.0 (2024-02-17)
 ====================
 
+* Fixed `Batch loading jinja templates on windows using wildcards is broken. <https://github.com/bckohan/django-render-static/issues/173>`_
+* Fixed `Permissions errors when searching template directories on windows. <https://github.com/bckohan/django-render-static/issues/172>`_
 * Implemented `Drop support for python 3.8 <https://github.com/bckohan/django-render-static/issues/171>`_
 * Implemented `Support django-typer 3.x <https://github.com/bckohan/django-render-static/issues/170>`_
 
