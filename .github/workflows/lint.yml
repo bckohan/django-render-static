@@ -6,9 +6,10 @@ on:
   workflow_dispatch:
     inputs:
       debug:
-        description: 'Set to on, to open ssh debug session.'
+        description: 'Open ssh debug session.'
         required: true
-        default: 'off'
+        default: false
+        type: boolean
 
 jobs:
 
