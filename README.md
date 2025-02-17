@@ -8,6 +8,7 @@
 [![Test Status](https://github.com/bckohan/django-render-static/workflows/test/badge.svg)](https://github.com/bckohan/django-render-static/actions/workflows/test.yml)
 [![Lint Status](https://github.com/bckohan/django-render-static/workflows/lint/badge.svg)](https://github.com/bckohan/django-render-static/actions/workflows/lint.yml)
 [![Ruff](https://img.shields.io/endpoint?url=https://raw.githubusercontent.com/astral-sh/ruff/main/assets/badge/v2.json)](https://github.com/astral-sh/ruff)
+[![Published on Django Packages](https://img.shields.io/badge/Published%20on-Django%20Packages-0c3c26)](https://djangopackages.org/packages/p/django-render-static/)
 
 # django-render-static
 
