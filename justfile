@@ -137,7 +137,7 @@ test-all:
     poetry run pytest --cov-append
     poetry run pip uninstall -y jinja2 pyyaml
     poetry run pytest --cov-append
-    poetry run install -E PyYAML -E Jinja2
+    poetry install -E PyYAML -E Jinja2
 
 # run tests
 test *TESTS:
