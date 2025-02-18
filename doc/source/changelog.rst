@@ -2,6 +2,12 @@
 Change Log
 ==========
 
+v3.2.1 (2024-02-17)
+====================
+
+* Fixed `webdriver-manager included as non-dev dependency in 3.2.0 <https://github.com/bckohan/django-render-static/issues/175>`_
+
+
 v3.2.0 (2024-02-17)
 ====================
 
