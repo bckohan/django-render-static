@@ -7,10 +7,10 @@ r"""
 
 """
 
-VERSION = (3, 1, 3)
+VERSION = (3, 2, 0)
 
 __title__ = "Django Render Static"
 __version__ = ".".join(str(i) for i in VERSION)
 __author__ = "Brian Kohan"
 __license__ = "MIT"
-__copyright__ = "Copyright 2020-2024 Brian Kohan"
+__copyright__ = "Copyright 2020-2025 Brian Kohan"

@@ -5,9 +5,10 @@
 [![PyPI status](https://img.shields.io/pypi/status/django-render-static.svg)](https://pypi.python.org/pypi/django-render-static)
 [![Documentation Status](https://readthedocs.org/projects/django-render-static/badge/?version=latest)](http://django-render-static.readthedocs.io/?badge=latest/)
 [![Code Cov](https://codecov.io/gh/bckohan/django-render-static/branch/main/graph/badge.svg?token=0IZOKN2DYL)](https://codecov.io/gh/bckohan/django-render-static)
-[![Test Status](https://github.com/bckohan/django-render-static/workflows/test/badge.svg)](https://github.com/bckohan/django-render-static/actions/workflows/test.yml)
-[![Lint Status](https://github.com/bckohan/django-render-static/workflows/lint/badge.svg)](https://github.com/bckohan/django-render-static/actions/workflows/lint.yml)
+[![Test Status](https://github.com/bckohan/django-render-static/workflows/test/badge.svg?branch=main)](https://github.com/bckohan/django-render-static/actions/workflows/test.ym?query=branch:main)
+[![Lint Status](https://github.com/bckohan/django-render-static/workflows/lint/badge.svg?branch=main)](https://github.com/bckohan/django-render-static/actions/workflows/lint.yml?query=branch:main)
 [![Ruff](https://img.shields.io/endpoint?url=https://raw.githubusercontent.com/astral-sh/ruff/main/assets/badge/v2.json)](https://github.com/astral-sh/ruff)
+[![Published on Django Packages](https://img.shields.io/badge/Published%20on-Django%20Packages-0c3c26)](https://djangopackages.org/packages/p/django-render-static/)
 
 # django-render-static
 

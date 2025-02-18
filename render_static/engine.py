@@ -698,7 +698,7 @@ class StaticTemplateEngine:
                             template_name,
                             cast(
                                 DjangoTemplate,
-                                engine.get_template(template_name),
+                                engine.get_template(template_name.replace(os.sep, "/")),
                             ),
                         )
                     except TemplateDoesNotExist as tdne:  # pragma: no cover

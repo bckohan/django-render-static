@@ -11,6 +11,7 @@ from enum import Enum
 from os import makedirs
 from pathlib import Path
 from time import perf_counter
+import platform
 
 import pytest
 from deepdiff import DeepDiff
@@ -665,9 +666,15 @@ class URLJavascriptMixin:
                 with open(url_path, "rt") as url_js:
                     tmp_js.write(url_js.read())
             if js_generator.module:
-                tmp_js.write(
-                    f'import {{ {js_generator.class_mode} }} from "{url_path}";\n'
-                )
+                if platform.system() == "Windows":
+                    pth_str = str(url_path).replace(os.sep, "/")
+                    tmp_js.write(
+                        f'import {{ {js_generator.class_mode} }} from "file://{pth_str}";\n'
+                    )
+                else:
+                    tmp_js.write(
+                        f'import {{ {js_generator.class_mode} }} from "{url_path}";\n'
+                    )
             js_code = js_generator.generate(qname, kwargs, args, query)
             tmp_js.write(js_code)
 
@@ -696,7 +703,11 @@ class URLJavascriptMixin:
         )
         resp = self.client.get(tst_pth)
 
-        resp = resp.json(object_hook=object_hook)
+        try:
+            resp = resp.json(object_hook=object_hook)
+        except ValueError:
+            print(resp.content)
+            raise
         resp["args"] = args_hook(resp["args"])
         self.assertEqual(
             {

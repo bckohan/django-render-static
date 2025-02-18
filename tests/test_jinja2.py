@@ -173,7 +173,14 @@ class Jinja2TestCase(BaseTestCase):
         stdout = StringIO()
         # see https://github.com/bckohan/django-typer/issues/19
         with contextlib.redirect_stdout(stdout):
-            call_command("shellcompletion", "complete", "renderstatic ", stdout=stdout)
+            call_command(
+                "shellcompletion",
+                "--shell",
+                "zsh",
+                "complete",
+                "renderstatic ",
+                stdout=stdout,
+            )
         completions = stdout.getvalue()
         self.assertTrue("nominal.jinja2" in completions)
         self.assertTrue("subdir/batch_fs_test2.html" in completions)
@@ -187,7 +194,12 @@ class Jinja2TestCase(BaseTestCase):
         # see https://github.com/bckohan/django-typer/issues/19
         with contextlib.redirect_stdout(stdout):
             call_command(
-                "shellcompletion", "complete", "renderstatic batch", stdout=stdout
+                "shellcompletion",
+                "--shell",
+                "zsh",
+                "complete",
+                "renderstatic batch",
+                stdout=stdout,
             )
         completions = stdout.getvalue()
         self.assertFalse("nominal.jinja2" in completions)
@@ -590,7 +602,14 @@ class Jinja2DefinesToJavascriptTest(DefinesToJavascriptTest):
         stdout = StringIO()
         # see https://github.com/bckohan/django-typer/issues/19
         with contextlib.redirect_stdout(stdout):
-            call_command("shellcompletion", "complete", "renderstatic ", stdout=stdout)
+            call_command(
+                "shellcompletion",
+                "--shell",
+                "zsh",
+                "complete",
+                "renderstatic ",
+                stdout=stdout,
+            )
         completions = stdout.getvalue()
 
         self.assertTrue("defines1.js" in completions)
@@ -602,7 +621,12 @@ class Jinja2DefinesToJavascriptTest(DefinesToJavascriptTest):
         # see https://github.com/bckohan/django-typer/issues/19
         with contextlib.redirect_stdout(stdout):
             call_command(
-                "shellcompletion", "complete", "renderstatic define", stdout=stdout
+                "shellcompletion",
+                "--shell",
+                "zsh",
+                "complete",
+                "renderstatic define",
+                stdout=stdout,
             )
         completions = stdout.getvalue()
 
