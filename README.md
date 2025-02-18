@@ -83,169 +83,6 @@ $> manage.py collectstatic
 
 ## Usage
 
-### Transpiling Model Field Choices
-
-You have an app with a model with a character field that has several valid choices defined in an
-enumeration type way, and you'd like to export those defines to JavaScript. You'd like to include
-a template for other's using your app to use to generate a defines.js file. Say your app structure
-looks like this::
-
-    .
-    └── examples
-        ├── __init__.py
-        ├── apps.py
-        ├── defines.py
-        ├── models.py
-        ├── static_templates
-        │   └── examples
-        │       └── defines.js
-        └── urls.py
-
-
-Your defines/model classes might look like this:
-
-```python
-class ExampleModel(Defines, models.Model):
-
-    DEFINE1 = 'D1'
-    DEFINE2 = 'D2'
-    DEFINE3 = 'D3'
-    DEFINES = (
-        (DEFINE1, 'Define 1'),
-        (DEFINE2, 'Define 2'),
-        (DEFINE3, 'Define 3')
-    )
-
-    define_field = models.CharField(choices=DEFINES, max_length=2)
-```
-
-And your defines.js template might look like this:
-
-```js+django
-{% defines_to_js modules="examples.models" %}
-```
-
-If someone wanted to use your defines template to generate a JavaScript version of your Python
-class their settings file might look like this:
-
-```python
-STATIC_TEMPLATES = {
-    'templates': [
-        'examples/defines.js'
-    ]
-}
-```
-
-
-And then of course they would call `renderstatic` before `collectstatic`:
-
-```shell
-$> ./manage.py renderstatic
-$> ./manage.py collectstatic
-```
-
-This would create the following file::
-
-    .
-    └── examples
-        └── static
-            └── examples
-                └── defines.js
-
-Which would look like this:
-
-```javascript
-const defines = {
-    ExampleModel: {
-        DEFINE1: "D1",
-        DEFINE2: "D2",
-        DEFINE3: "D3",
-        DEFINES: [["D1", "Define 1"], ["D2", "Define 2"], ["D3", "Define 3"]]
-    }
-};
-```
-
-### Transpiling Enumerations
-
-Say instead of the usual choices tuple you're using PEP 435 style python enumerations as model
-fields using [django-enum](http://pypi.python.org/pypi/django-enum) and
-[enum-properties](http://pypi.python.org/pypi/enum-properties). For example we might define a
-simple color enumeration like so:
-
-```python
-from django.db import models
-from django_enum import EnumField, TextChoices
-from enum_properties import p, s
-
-class ExampleModel(models.Model):
-
-    class Color(TextChoices, s('rgb'), s('hex', case_fold=True)):
-
-        # name   value   label       rgb       hex
-        RED   =   'R',   'Red',   (1, 0, 0), 'ff0000'
-        GREEN =   'G',   'Green', (0, 1, 0), '00ff00'
-        BLUE  =   'B',   'Blue',  (0, 0, 1), '0000ff'
-
-    color = EnumField(Color, null=True, default=None)
-```
-
-If we define an enum.js template that looks like this:
-
-```js+django
-
-    {% enums_to_js enums="examples.models.ExampleModel.Color" %}
-```
-
-It will contain a javascript class transpilation of the Color enum that looks
-like this:
-
-```javascript
-
-class Color {
-
-    static RED = new Color("R", "RED", "Red", [1, 0, 0], "ff0000");
-    static GREEN = new Color("G", "GREEN", "Green", [0, 1, 0], "00ff00");
-    static BLUE = new Color("B", "BLUE", "Blue", [0, 0, 1], "0000ff");
-
-    constructor (value, name, label, rgb, hex) {
-        this.value = value;
-        this.name = name;
-        this.label = label;
-        this.rgb = rgb;
-        this.hex = hex;
-    }
-
-    toString() {
-        return this.value;
-    }
-
-    static get(value) {
-        switch(value) {
-            case "R":
-                return Color.RED;
-            case "G":
-                return Color.GREEN;
-            case "B":
-                return Color.BLUE;
-        }
-        throw new TypeError(`No Color enumeration maps to value ${value}`);
-    }
-
-    static [Symbol.iterator]() {
-        return [Color.RED, Color.GREEN, Color.BLUE][Symbol.iterator]();
-    }
-}
-```
-
-We can now use our enumeration like so:
-
-```javascript
-Color.BLUE === Color.get('B');
-for (const color of Color) {
-    console.log(color);
-}
-```
-
 ### Transpiling URL reversal
 
 You'd like to be able to call something like `reverse` on path names from your client JavaScript
@@ -353,4 +190,167 @@ register_converter(YearConverter, 'year')
 urlpatterns = [
     path('fetch/<year:year>', YearView.as_view(), name='fetch_year')
 ]
+```
+
+### Transpiling Enumerations
+
+Say instead of the usual choices tuple you're using PEP 435 style python enumerations as model
+fields using [django-enum](http://pypi.python.org/pypi/django-enum) and
+[enum-properties](http://pypi.python.org/pypi/enum-properties). For example we might define a
+simple color enumeration like so:
+
+```python
+from django.db import models
+from django_enum import EnumField, TextChoices
+from enum_properties import p, s
+
+class ExampleModel(models.Model):
+
+    class Color(TextChoices, s('rgb'), s('hex', case_fold=True)):
+
+        # name   value   label       rgb       hex
+        RED   =   'R',   'Red',   (1, 0, 0), 'ff0000'
+        GREEN =   'G',   'Green', (0, 1, 0), '00ff00'
+        BLUE  =   'B',   'Blue',  (0, 0, 1), '0000ff'
+
+    color = EnumField(Color, null=True, default=None)
+```
+
+If we define an enum.js template that looks like this:
+
+```js+django
+
+    {% enums_to_js enums="examples.models.ExampleModel.Color" %}
+```
+
+It will contain a javascript class transpilation of the Color enum that looks
+like this:
+
+```javascript
+
+class Color {
+
+    static RED = new Color("R", "RED", "Red", [1, 0, 0], "ff0000");
+    static GREEN = new Color("G", "GREEN", "Green", [0, 1, 0], "00ff00");
+    static BLUE = new Color("B", "BLUE", "Blue", [0, 0, 1], "0000ff");
+
+    constructor (value, name, label, rgb, hex) {
+        this.value = value;
+        this.name = name;
+        this.label = label;
+        this.rgb = rgb;
+        this.hex = hex;
+    }
+
+    toString() {
+        return this.value;
+    }
+
+    static get(value) {
+        switch(value) {
+            case "R":
+                return Color.RED;
+            case "G":
+                return Color.GREEN;
+            case "B":
+                return Color.BLUE;
+        }
+        throw new TypeError(`No Color enumeration maps to value ${value}`);
+    }
+
+    static [Symbol.iterator]() {
+        return [Color.RED, Color.GREEN, Color.BLUE][Symbol.iterator]();
+    }
+}
+```
+
+We can now use our enumeration like so:
+
+```javascript
+Color.BLUE === Color.get('B');
+for (const color of Color) {
+    console.log(color);
+}
+```
+
+### Transpiling Model Field Choices
+
+You have an app with a model with a character field that has several valid choices defined in an
+enumeration type way, and you'd like to export those defines to JavaScript. You'd like to include
+a template for other's using your app to use to generate a defines.js file. Say your app structure
+looks like this::
+
+    .
+    └── examples
+        ├── __init__.py
+        ├── apps.py
+        ├── defines.py
+        ├── models.py
+        ├── static_templates
+        │   └── examples
+        │       └── defines.js
+        └── urls.py
+
+
+Your defines/model classes might look like this:
+
+```python
+class ExampleModel(Defines, models.Model):
+
+    DEFINE1 = 'D1'
+    DEFINE2 = 'D2'
+    DEFINE3 = 'D3'
+    DEFINES = (
+        (DEFINE1, 'Define 1'),
+        (DEFINE2, 'Define 2'),
+        (DEFINE3, 'Define 3')
+    )
+
+    define_field = models.CharField(choices=DEFINES, max_length=2)
+```
+
+And your defines.js template might look like this:
+
+```js+django
+{% defines_to_js modules="examples.models" %}
+```
+
+If someone wanted to use your defines template to generate a JavaScript version of your Python
+class their settings file might look like this:
+
+```python
+STATIC_TEMPLATES = {
+    'templates': [
+        'examples/defines.js'
+    ]
+}
+```
+
+
+And then of course they would call `renderstatic` before `collectstatic`:
+
+```shell
+$> ./manage.py renderstatic
+$> ./manage.py collectstatic
+```
+
+This would create the following file::
+
+    .
+    └── examples
+        └── static
+            └── examples
+                └── defines.js
+
+Which would look like this:
+
+```javascript
+const defines = {
+    ExampleModel: {
+        DEFINE1: "D1",
+        DEFINE2: "D2",
+        DEFINE3: "D3",
+        DEFINES: [["D1", "Define 1"], ["D2", "Define 2"], ["D3", "Define 3"]]
+    }
+};
 ```
