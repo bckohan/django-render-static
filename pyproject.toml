@@ -146,10 +146,21 @@ addopts = [
 ]
 
 [tool.coverage.run]
+branch = true
 omit = [
   "tests/app1/static_jinja2/batch_test/**/*",
   "tests/app1/static_jinja2/**/*",
   "tests/app2/static_jinja2/**/*"
+]
+source = ["render_static"]
+concurrency = ["multiprocessing", "thread"]
+parallel = true
+relative_files = true
+command_line = "-m pytest --cov=render_static"
+
+[tool.coverage.paths]
+source = [
+    "render_static"
 ]
 
 [tool.ruff]
