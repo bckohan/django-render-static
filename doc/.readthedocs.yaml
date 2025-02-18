@@ -15,7 +15,7 @@ build:
     post_create_environment:
       - pip install poetry
     post_install:
-      - VIRTUAL_ENV=$READTHEDOCS_VIRTUALENV_PATH python -m poetry install -E PyYAML -E Jinja2
+      - VIRTUAL_ENV=$READTHEDOCS_VIRTUALENV_PATH python -m poetry install -E PyYAML -E Jinja2 --with docs
       - npm install -g jsdoc
 
 # Build documentation in the docs/ directory with Sphinx
