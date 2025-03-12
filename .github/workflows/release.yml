@@ -17,18 +17,6 @@ jobs:
 
   lint:
     permissions:
-      attestations: read
-      id-token: write
-      checks: read
-      deployments: read
-      discussions: read
-      issues: read
-      packages: read
-      pages: read
-      pull-requests: read
-      repository-projects: read
-      statuses: read
-      security-events: read
       contents: read
       actions: write
     uses: ./.github/workflows/lint.yml
@@ -36,18 +24,6 @@ jobs:
 
   test:
     permissions:
-      attestations: read
-      id-token: write
-      checks: read
-      deployments: read
-      discussions: read
-      issues: read
-      packages: read
-      pages: read
-      pull-requests: read
-      repository-projects: read
-      statuses: read
-      security-events: read
       contents: read
       actions: write
     uses: ./.github/workflows/test.yml
