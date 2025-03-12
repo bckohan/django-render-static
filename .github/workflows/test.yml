@@ -5,6 +5,7 @@ permissions: read-all
 on:
   push:
   pull_request:
+  workflow_call:
   workflow_dispatch:
     inputs:
       debug:
@@ -30,6 +31,7 @@ jobs:
           - '4.2' # LTS April 2026
           - '5.0' # April 2025
           - '5.1' # December 2025
+          - '5.2b1'
         exclude:
           - python-version: '3.11'
             django-version: '3.2'
@@ -39,6 +41,8 @@ jobs:
             django-version: '5.0'
           - python-version: '3.9'
             django-version: '5.1'
+          - python-version: '3.9'
+            django-version: '5.2b1'
           - python-version: '3.13'
             django-version: '3.2'
           - python-version: '3.13'
@@ -65,9 +69,12 @@ jobs:
       uses: extractions/setup-just@v2
     - name: Install Release Dependencies
       run: |
-        just init ${{ steps.sp.outputs.python-path }}
-        just install
-        just pin-dependency Django~=${{ matrix.django-version }}.0
+        just setup ${{ steps.sp.outputs.python-path }}
+        if [ "${{ matrix.django-version }}" = "5.2b1" ]; then
+          just test-lock "Django==${{ matrix.django-version }}"
+        else
+          just test-lock "Django~=${{ matrix.django-version }}.0"
+        fi
     - name: Install Emacs
       if: ${{ github.event.inputs.debug == 'true' }}
       run: |
@@ -124,9 +131,8 @@ jobs:
       uses: extractions/setup-just@v2
     - name: Install Release Dependencies
       run: |
-        just init ${{ steps.sp.outputs.python-path }}
-        just install
-        just pin-dependency Django~=${{ matrix.django-version }}.0
+        just setup ${{ steps.sp.outputs.python-path }}
+        just test-lock Django~=${{ matrix.django-version }}.0
     - name: install-emacs-macos
       if: ${{ github.event.inputs.debug == 'true' }}
       run: |
@@ -186,9 +192,8 @@ jobs:
       uses: extractions/setup-just@v2
     - name: Install Release Dependencies
       run: |
-        just init ${{ steps.sp.outputs.python-path }}
-        just install
-        just pin-dependency Django~=${{ matrix.django-version }}.0
+        just setup ${{ steps.sp.outputs.python-path }}
+        just test-lock Django~=${{ matrix.django-version }}.0
     - name: install-vim-windows
       if: ${{ github.event.inputs.debug == 'true' }}
       uses: rhysd/action-setup-vim@v1
@@ -224,8 +229,7 @@ jobs:
         uses: extractions/setup-just@v2
       - name: Install Release Dependencies
         run: |
-          just init ${{ steps.sp.outputs.python-path }}
-          just install
+          just setup ${{ steps.sp.outputs.python-path }}
 
       - name: Get coverage files
         uses: actions/download-artifact@v4

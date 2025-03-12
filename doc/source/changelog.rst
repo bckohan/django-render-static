@@ -2,13 +2,21 @@
 Change Log
 ==========
 
-v3.2.1 (2024-02-17)
+v3.3.0 (2025-03-12)
+====================
+
+* Fixed `True/False values transpiled as True/False instead of true/false <https://github.com/bckohan/django-render-static/issues/179>`_
+* Implemented `Move from poetry -> uv <https://github.com/bckohan/django-render-static/issues/178>`_
+* Implemented `Support Django 5.2 <https://github.com/bckohan/django-render-static/issues/177>`_
+
+
+v3.2.1 (2025-02-17)
 ====================
 
 * Fixed `webdriver-manager included as non-dev dependency in 3.2.0 <https://github.com/bckohan/django-render-static/issues/175>`_
 
 
-v3.2.0 (2024-02-17)
+v3.2.0 (2025-02-17)
 ====================
 
 * Fixed `Batch loading jinja templates on windows using wildcards is broken. <https://github.com/bckohan/django-render-static/issues/173>`_

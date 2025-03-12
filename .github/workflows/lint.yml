@@ -5,6 +5,7 @@ permissions: read-all
 on:
   push:
   pull_request:
+  workflow_call:
   workflow_dispatch:
     inputs:
       debug:
@@ -52,8 +53,8 @@ jobs:
         uses: extractions/setup-just@v2
       - name: Install Dependencies
         run: |
-          just init ${{ steps.sp.outputs.python-path }} install-docs
-          just pin-dependency Django~=${{ matrix.django-version }}.0
+          just setup ${{ steps.sp.outputs.python-path }} install-docs
+          just test-lock Django~=${{ matrix.django-version }}.0
       - name: Install Emacs
         if: ${{ github.event.inputs.debug == 'true' }}
         run: |
