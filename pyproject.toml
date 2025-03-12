@@ -150,7 +150,7 @@ command_line = "-m pytest --cov=render_static"
 
 [tool.coverage.paths]
 source = [
-    "render_static"
+    "src/render_static"
 ]
 
 [tool.ruff]
@@ -170,5 +170,5 @@ exclude = [
 [tool.pyright]
 exclude = ["tests/**/*"]
 include = [
-    "render_static"
+    "src/render_static"
 ]
