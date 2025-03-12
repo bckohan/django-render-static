@@ -51,8 +51,18 @@ install-basic:
 install-docs:
     uv sync --group docs --all-extras
 
+# todo remove this when we have a real testing framework
+[script]
+_lock-python:
+    import tomlkit
+    import sys
+    f='pyproject.toml'
+    d=tomlkit.parse(open(f).read())
+    d['project']['requires-python']='=={}'.format(sys.version.split()[0])
+    open(f,'w').write(tomlkit.dumps(d))
+
 # lock to specific python and versions of given dependencies
-test-lock +PACKAGES:
+test-lock +PACKAGES: _lock-python
     uv add --prerelease=allow {{ PACKAGES }}
 
 # run static type checking

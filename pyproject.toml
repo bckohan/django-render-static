@@ -85,6 +85,7 @@ dev = [
     "python-dateutil>=2.9.0.post0",
     "ruff>=0.9.10",
     "selenium>=4.29.0",
+    "tomlkit>=0.13.2",
     "types-pyyaml>=6.0.12.20241230",
     "webdriver-manager>=4.0.2",
 ]
