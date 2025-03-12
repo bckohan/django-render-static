@@ -101,7 +101,7 @@ class DirectorySupport(FilesystemLoader):
             if Path(origin.name).is_dir():
                 self.is_dir = True
                 return ""
-            raise
+            raise  # pragma: no cover
 
     def search(self, prefix: str) -> Generator[Template, None, None]:
         """

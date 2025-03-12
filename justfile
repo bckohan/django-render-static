@@ -32,16 +32,16 @@ install-uv:
 # setup the venv and pre-commit hooks
 setup python="python":
     uv venv -p {{ python }}
-    @just run pre-commit install
+    @just install-precommit
 
 # install git pre-commit hooks
 install-precommit:
-    @just run pre-commit install
+    uv run pre-commit install
 
 # update and install development dependencies
 install *OPTS:
     uv sync --all-extras {{ OPTS }}
-    @just run pre-commit install
+    @just install-precommit
 
 # install without extra dependencies
 install-basic:
@@ -187,8 +187,8 @@ check: check-lint check-format check-types check-package check-docs check-docs-l
 
 # run all tests
 test-all:
-    uv run --all-extras pytest --cov-append
-    uv run --extra PyYAML --extra Jinja2 pytest --cov-append
+    uv run --all-extras --exact --group test --no-dev pytest --cov-append
+    uv run --no-extra PyYAML --no-extra Jinja2 --exact --group test --no-dev pytest --cov-append
 
 # run tests
 test *TESTS:
