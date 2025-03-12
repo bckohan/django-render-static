@@ -67,6 +67,10 @@ jobs:
     
     - name: Setup Just
       uses: extractions/setup-just@v2
+    - name: Install uv
+      uses: astral-sh/setup-uv@v5
+      with:
+        enable-cache: true
     - name: Install Release Dependencies
       run: |
         just setup ${{ steps.sp.outputs.python-path }}
@@ -129,6 +133,10 @@ jobs:
     
     - name: Setup Just
       uses: extractions/setup-just@v2
+    - name: Install uv
+      uses: astral-sh/setup-uv@v5
+      with:
+        enable-cache: true
     - name: Install Release Dependencies
       run: |
         just setup ${{ steps.sp.outputs.python-path }}
@@ -190,6 +198,10 @@ jobs:
     
     - name: Setup Just
       uses: extractions/setup-just@v2
+    - name: Install uv
+      uses: astral-sh/setup-uv@v5
+      with:
+        enable-cache: true
     - name: Install Release Dependencies
       run: |
         just setup ${{ steps.sp.outputs.python-path }}
@@ -227,6 +239,10 @@ jobs:
 
       - name: Setup Just
         uses: extractions/setup-just@v2
+      - name: Install uv
+        uses: astral-sh/setup-uv@v5
+        with:
+          enable-cache: true
       - name: Install Release Dependencies
         run: |
           just setup ${{ steps.sp.outputs.python-path }}

@@ -465,6 +465,8 @@ class DefinesToJavascriptOverrideTest(StructureDiff, BaseTestCase):
                         ["MD2", "MDefine 2"],
                         ["MD3", "MDefine 3"],
                     ],
+                    "BOOL1": True,
+                    "BOOL2": False,
                 },
             },
         )
@@ -546,6 +548,8 @@ console.log(JSON.stringify(defines));
                         ["MD2", "MDefine 2"],
                         ["MD3", "MDefine 3"],
                     ],
+                    "BOOL1": True,
+                    "BOOL2": False,
                 },
             },
         )

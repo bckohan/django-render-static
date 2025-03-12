@@ -59,6 +59,8 @@ def to_js(value: Any) -> str:
     """
     if isinstance(value, Enum):
         value = value.value
+    if isinstance(value, bool):
+        return "true" if value else "false"
     if isinstance(value, numbers.Number):
         return str(value)
     if isinstance(value, str):
