@@ -17,6 +17,8 @@ jobs:
 
   lint:
     permissions:
+      attestations: read
+      id-token: write
       checks: read
       deployments: read
       discussions: read
