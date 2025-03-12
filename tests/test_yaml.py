@@ -5,7 +5,7 @@ from pathlib import Path
 import pytest
 from django.core.management import call_command
 from django.test import override_settings
-
+from render_static.context import InvalidContext
 from tests.test_core import (
     APP1_STATIC_DIR,
     EXPECTED_DIR,
@@ -19,13 +19,18 @@ except ImportError:
     yaml = None
 
 
-@pytest.mark.skipif(not yaml, reason="PyYAML is not installed")
 class TestYAMLContext(BaseTestCase):
+    @pytest.mark.skipif(not yaml, reason="PyYAML is not installed")
     def test_yaml_context(self):
         self.assertEqual(
             resolve_context(str(Path(__file__).parent / "resources" / "context.yaml")),
             {"context": "yaml"},
         )
+
+    @pytest.mark.skipif(yaml is not None, reason="PyYAML is installed")
+    def test_yaml_uninstalled_context(self):
+        with self.assertRaises(InvalidContext):
+            resolve_context(str(Path(__file__).parent / "resources" / "context.yaml"))
 
 
 @pytest.mark.skipif(not yaml, reason="PyYAML is not installed")

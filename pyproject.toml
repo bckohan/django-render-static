@@ -1,10 +1,10 @@
 [build-system]
-requires = ["poetry-core"]
-build-backend = "poetry.core.masonry.api"
+requires = ["hatchling"]
+build-backend = "hatchling.build"
 
 [project]
 name = "django-render-static"
-version = "3.2.1"
+version = "3.3.0"
 description = "Use Django's template engine to render static files at deployment or package time. Includes transpilers for extending Django's url reversal and enums to JavaScript."
 requires-python = ">=3.9,<4.0"
 authors = [
@@ -18,7 +18,7 @@ homepage = "https://django-render-static.readthedocs.io"
 keywords = ["django", "static", "templates", "javascript", "url", "reverse", "defines", "transpiler", "transpile", "enum"]
 dependencies = [
     "Django>=3.2,<6.0",
-    "django-typer>=3.0,<3.1"
+    "django-typer>=3.0,<3.2"
 ]
 classifiers = [
     "Environment :: Console",
@@ -32,6 +32,7 @@ classifiers = [
     "Framework :: Django :: 4.2",
     "Framework :: Django :: 5.0",
     "Framework :: Django :: 5.1",
+    "Framework :: Django :: 5.2",
     "Intended Audience :: Developers",
     "License :: OSI Approved :: MIT License",
     "Natural Language :: English",
@@ -47,8 +48,11 @@ classifiers = [
     "Topic :: Software Development :: Libraries :: Python Modules"
 ]
 
-[tool.poetry]
-packages = [{ include = "render_static" }]
+[tool.uv]
+package = true
+
+[tool.hatch.build.targets.wheel]
+packages = ["src/render_static"]
 
 [project.optional-dependencies]
 PyYAML = ["PyYAML>=5.1,<7.0"]
@@ -59,53 +63,53 @@ Jinja2 = ["Jinja2>=2.9,<4.0"]
 "Documentation" = "https://django-render-static.readthedocs.io"
 "Repository" = "https://github.com/bckohan/django-render-static"
 "Issues" = "https://github.com/bckohan/django-render-static/issues"
-"Changelog" = "https://django-render-static.readthedocs.io/en/latest/changelog.html"
+"Changelog" = "https://django-render-static.readthedocs.io/en/stable/changelog.html"
 "Code_of_Conduct" = "https://github.com/bckohan/django-render-static/blob/main/CODE_OF_CONDUCT.md"
 
-
-[tool.poetry.group.dev.dependencies]
-django-enum = "^2.0.0"
-enum-properties = "^2.0.0"
-ipdb = "^0.13.13"
-ipython = [
-    { version = "^8.20.0", markers = "python_version >= '3.10'" },
-    { version = "^8.18.1", markers = "python_version >= '3.9'" }
+[dependency-groups]
+test = [
+    # precommit has a transitive dependency on pyyaml which messes up our tests
+    # so we have to have a separate test group
+    "deepdiff>=8.3.0",
+    "django-enum>=2.1.0",
+    "enum-properties>=2.2.2",
+    "pytest>=8.3.5",
+    "pytest-cov>=6.0.0",
+    "pytest-django>=4.10.0",
+    "python-dateutil>=2.9.0.post0",
+    "selenium>=4.29.0",
+    "webdriver-manager>=4.0.2",
 ]
-pytest = "^8.0"
-pytest-django = "^4.8.0"
-pytest-cov = "^6.0.0"
-mypy = "^1.14"
-deepdiff = "^8.2.0"
-readme-renderer = {extras = ["md"], version = ">=43.0"}
-types-PyYAML = ">=6.0"
-importlib-metadata = ">=7.0.0"
-selenium = "^4.28.0"
-python-dateutil = "^2.9"
-aiohttp = "^3.11"
-pyright = {extras = ["nodejs"], version = "^1.1.357"}
-ruff = "^0.9"
-django-stubs = {extras = ["compatible-mypy"], version = ">=5.0.2"}
-pre-commit = "^4.0.1"
-webdriver-manager = "^4.0.2"
-
-
-[tool.poetry.group.docs]
-optional = true
-
-
-[tool.poetry.group.docs.dependencies]
-furo = "2024.8.6"
-sphinx-tabs = "^3.4.5"
-readme-renderer = { extras = ["md"], version = "44"}
-sphinxcontrib-typer = {extras = ["html", "pdf", "png"], version = "^0.5.1", markers="python_version >= '3.9'"}
-doc8 = "^1.1.1"
-Sphinx = [
-    { version = "^8.0", markers = "python_version >= '3.10'" },
-    { version = "^7.4", markers = "python_version < '3.10'" }
+dev = [
+    "deepdiff>=8.3.0",
+    "django-enum>=2.1.0",
+    "django-stubs[compatible-mypy]>=5.1.3",
+    "enum-properties>=2.2.2",
+    "ipdb>=0.13.13",
+    "ipython>=8.18.1",
+    "mypy>=1.15.0",
+    "pyright>=1.1.396",
+    "pytest>=8.3.5",
+    "pytest-cov>=6.0.0",
+    "pytest-django>=4.10.0",
+    "python-dateutil>=2.9.0.post0",
+    "pre-commit>=4.1.0",
+    "ruff>=0.9.10",
+    "selenium>=4.29.0",
+    "tomlkit>=0.13.2",
+    "types-pyyaml>=6.0.12.20241230",
+    "webdriver-manager>=4.0.2",
 ]
-docutils = "^0.21"
-sphinx-autobuild = "2024.10.3"
-
+docs = [
+    "doc8>=1.1.2",
+    "docutils>=0.21.2",
+    "furo>=2024.8.6",
+    "readme-renderer[md]>=44.0",
+    "sphinx>=7.4.7",
+    "sphinx-autobuild>=2024.10.3",
+    "sphinx-tabs>=3.4.7",
+    "sphinxcontrib-typer[pdf]>=0.5.1",
+]
 
 [tool.mypy]
 allow_redefinition = false
@@ -126,14 +130,14 @@ warn_redundant_casts = true
 warn_unused_configs = true
 warn_unreachable = true
 warn_no_return = true
+mypy_path = "src"
+modules = "render_static"
 
 
 [tool.doc8]
 ignore-path = "doc/build"
 max-line-length = 100
 sphinx = true
-
-
 
 [tool.pytest.ini_options]
 DJANGO_SETTINGS_MODULE = "tests.settings"
@@ -158,7 +162,7 @@ command_line = "-m pytest --cov=render_static"
 
 [tool.coverage.paths]
 source = [
-    "render_static"
+    "src/render_static"
 ]
 
 [tool.ruff]
@@ -178,5 +182,5 @@ exclude = [
 [tool.pyright]
 exclude = ["tests/**/*"]
 include = [
-    "render_static"
+    "src/render_static"
 ]

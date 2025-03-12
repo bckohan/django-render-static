@@ -1,5 +1,8 @@
 # Security Policy
 
+[![CodeQL](https://github.com/bckohan/django-render-static/actions/workflows/github-code-scanning/codeql/badge.svg?branch=main)](https://github.com/bckohan/django-render-static/actions/workflows/github-code-scanning/codeql?query=branch:main)
+[![OpenSSF Scorecard](https://api.securityscorecards.dev/projects/github.com/bckohan/django-render-static/badge)](https://securityscorecards.dev/viewer/?uri=github.com/bckohan/django-render-static)
+
 ## Supported Versions
 
 Only the latest version [![PyPI version](https://badge.fury.io/py/django-render-static.svg)](https://pypi.python.org/pypi/django-render-static) is supported.

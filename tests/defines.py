@@ -19,6 +19,9 @@ class MoreDefines(object):
         (MDEF3, "MDefine 3"),
     ]
 
+    BOOL1 = True
+    BOOL2 = False
+
 
 class ExtendedDefines(TestDefines):
     DEFINE4 = "D4"
