@@ -1,7 +1,7 @@
 # Security Policy
 
 [![CodeQL](https://github.com/bckohan/django-render-static/actions/workflows/github-code-scanning/codeql/badge.svg?branch=main)](https://github.com/bckohan/django-render-static/actions/workflows/github-code-scanning/codeql?query=branch:main)
-[![Zizmor](https://github.com/bckohan/django-enum/actions/workflows/zizmor.yml/badge.svg?branch=main)](https://woodruffw.github.io/zizmor)
+[![Zizmor](https://github.com/bckohan/django-render-static/actions/workflows/zizmor.yml/badge.svg?branch=main)](https://woodruffw.github.io/zizmor)
 [![OpenSSF Scorecard](https://api.securityscorecards.dev/projects/github.com/bckohan/django-render-static/badge)](https://securityscorecards.dev/viewer/?uri=github.com/bckohan/django-render-static)
 
 ## Supported Versions
