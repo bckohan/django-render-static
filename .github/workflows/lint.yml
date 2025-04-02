@@ -26,8 +26,7 @@ jobs:
         django-version:
           - '3.2' # LTS April 2024
           - '4.2' # LTS April 2026
-          - '5.0' # April 2025
-          - '5.1' # December 2025
+          - '5.2' # LTS April 2028
         exclude:
           - python-version: '3.9'
             django-version: '4.2'
@@ -36,7 +35,7 @@ jobs:
           - python-version: '3.13'
             django-version: '3.2'
           - python-version: '3.9'
-            django-version: '5.1'
+            django-version: '5.2'
 
     env:
       TEST_PYTHON_VERSION: ${{ matrix.python-version }}
