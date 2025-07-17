@@ -212,6 +212,28 @@ coverage:
 run +ARGS:
     uv run {{ ARGS }}
 
+# fetch the intersphinx references for the given package
+[script]
+fetch-refs LIB: install-docs
+    import os
+    from pathlib import Path
+    import logging as _logging
+    import sys
+    import runpy
+    from sphinx.ext.intersphinx import inspect_main
+    _logging.basicConfig()
+
+    libs = runpy.run_path(Path(os.getcwd()) / "doc/source/conf.py").get("intersphinx_mapping")
+    url = libs.get("{{ LIB }}", None)
+    if not url:
+        sys.exit(f"Unrecognized {{ LIB }}, must be one of: {', '.join(libs.keys())}")
+    if url[1] is None:
+        url = f"{url[0].rstrip('/')}/objects.inv"
+    else:
+        url = url[1]
+
+    raise SystemExit(inspect_main([url]))
+
 # validate the given version string against the lib version
 [script]
 validate_version VERSION:

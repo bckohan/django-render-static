@@ -2,6 +2,12 @@
 Change Log
 ==========
 
+v3.3.1 (2025-07-16)
+===================
+
+* Added `Convert docs to intersphinx references. <https://github.com/bckohan/django-render-static/issues/187>`_
+
+
 v3.3.0 (2025-03-12)
 ====================
 

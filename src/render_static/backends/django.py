@@ -19,14 +19,14 @@ __all__ = ["StaticDjangoTemplates"]
 
 class StaticDjangoTemplates(StaticEngine, DjangoTemplates):
     """
-    Extend the standard ``django.template.backends.django.DjangoTemplates``
+    Extend the standard :class:`django.template.backends.django.DjangoTemplates`
     backend to add options and change the default loaders.
 
     By default this backend will search for templates in application
     directories named ``static_templates``. The ``app_dir`` option is added to
     the standard options to allow users to override this location.
 
-    :param params: The parameters as passed into the ``STATIC_TEMPLATES``
+    :param params: The parameters as passed into the :setting:`STATIC_TEMPLATES`
         configuration for this backend.
     """
 

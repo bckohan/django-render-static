@@ -28,14 +28,10 @@ django.setup()
 
 
 # -- Project information -----------------------------------------------------
-
-project = 'django-render-static'
-copyright = f'2020-{datetime.now().year}, Brian Kohan'
-author = 'Brian Kohan'
-
-# The full version, including alpha/beta/rc tags
+project = render_static.__title__
+copyright = render_static.__copyright__
+author = render_static.__author__
 release = render_static.__version__
-
 
 # -- General configuration ---------------------------------------------------
 
@@ -46,7 +42,9 @@ extensions = [
     'sphinx.ext.autodoc',
     'sphinx.ext.viewcode',
     'sphinx.ext.todo',
-    'sphinxcontrib.typer'
+    'sphinxcontrib.typer',
+    'sphinx.ext.intersphinx',
+    'sphinxcontrib_django'
     # 'sphinx_js'
 ]
 
@@ -82,3 +80,36 @@ todo_include_todos = True
 #   str(Path(__file__).parent.parent.parent / 'render_static' / 'tests' /
 #   'examples' / 'static' / 'examples'
 # )
+
+autodoc_default_options = {
+    'show-inheritance': True,
+    # Add other autodoc options here if desired, e.g.:
+    # 'members': True,
+    # 'inherited-members': True,
+}
+
+intersphinx_mapping = {
+    "django": (
+        "https://docs.djangoproject.com/en/stable",
+        "https://docs.djangoproject.com/en/stable/_objects/",
+    ),
+    "django-typer": ("https://django-typer.readthedocs.io/en/stable", None),
+    "enum-properties": ("https://enum-properties.readthedocs.io/en/stable", None),
+    "django-enum": ("https://django-enum.readthedocs.io/en/stable", None),
+    "jinja": ("https://jinja.palletsprojects.com/en/stable", None),
+    "python": ('https://docs.python.org/3', None)
+}
+
+def pypi_role(name, rawtext, text, lineno, inliner, options={}, content=[]):
+    from docutils import nodes
+    url = f"https://pypi.org/project/{text}/"
+    node = nodes.reference(rawtext, text, refuri=url, **options)
+    return [node], []
+
+def setup(app):
+    # Register a sphinx.ext.autodoc.between listener to ignore everything
+    # between lines that contain the word IGNORE
+    from docutils.parsers.rst import roles
+    app.add_crossref_type(directivename="django-admin", rolename="django-admin")
+    roles.register_local_role('pypi', pypi_role)
+    return app

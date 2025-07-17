@@ -124,7 +124,7 @@ class DirectorySupport(FilesystemLoader):
 
 class StaticFilesystemLoader(DirectorySupport):
     """
-    Simple extension of ``django.template.loaders.filesystem.Loader``
+    Simple extension of :class:`django.template.loaders.filesystem.Loader`
     """
 
 
@@ -140,7 +140,7 @@ class StaticFilesystemBatchLoader(StaticFilesystemLoader, BatchLoaderMixin):
 
 class StaticLocMemLoader(LocMemLoader):
     """
-    Simple extension of ``django.template.loaders.locmem.Loader``
+    Simple extension of :class:`django.template.loaders.locmem.Loader`
     """
 
     def search(self, prefix: str) -> Generator[Template, None, None]:
@@ -157,7 +157,7 @@ class StaticLocMemLoader(LocMemLoader):
 
 class StaticAppDirectoriesLoader(DirectorySupport, AppDirLoader):
     """
-    Extension of ``django.template.loaders.app_directories.Loader``
+    Extension of :class:`django.template.loaders.app_directories.Loader`
 
     Searches application directories based on the engine's configured app
     directory name. This loader extends the standard AppDirLoader to provide an

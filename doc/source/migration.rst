@@ -4,9 +4,8 @@
 Migration
 =========
 
-`django-render-static` `uses semantic versioning <https://semver.org/>`_. This
-page documents how to migrate past the breaking changes introduced by major
-version updates.
+:pypi:`django-render-static` `uses semantic versioning <https://semver.org/>`_. This page documents
+how to migrate past the breaking changes introduced by major version updates.
 
 .. _migration_2_3:
 
@@ -60,18 +59,17 @@ and the second argument if one was provided to the indent parameter:
 Command Changes
 ~~~~~~~~~~~~~~~
 
-The `render_static` command has been removed and renamed to :ref:`renderstatic`.
-To upgrade simply replace any calls to render_static with :ref:`renderstatic`.
+The `render_static` command has been removed and renamed to :django-admin:`renderstatic`.
+To upgrade simply replace any calls to render_static with :django-admin:`renderstatic`.
 
 
-urls_to_js Changes
-~~~~~~~~~~~~~~~~~~
+:templatetag:`urls_to_js` Changes
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
-* urls_to_js no longer supports ES5 output, instead by default it now
-  transpiles to an es6 class.
-* urls_to_js excludes admin urls by default, to include them set exclude to None
-* kwargs, args and query values must now be specified as part of the options
-  parameter on reverse():
+* :templatetag:`urls_to_js` no longer supports ES5 output, instead by default it now transpiles to
+  an es6 class.
+* :templatetag:`urls_to_js` excludes admin urls by default, to include them set exclude to None
+* kwargs, args and query values must now be specified as part of the options parameter on reverse():
 
     .. code-block:: javascript
 
@@ -85,10 +83,9 @@ urls_to_js Changes
 STATIC_TEMPLATES
 ~~~~~~~~~~~~~~~~
 
-The ``templates`` parameter on ``STATIC_TEMPLATES`` may remain a dictionary,
-but will now also accept a sequence. This allows a single template to be rendered
-multiple times with different contexts. Specifying ``templates`` as a list of
-tuples is now preferred:
+The ``templates`` parameter on :setting:`STATIC_TEMPLATES` may remain a dictionary, but will now
+also accept a sequence. This allows a single template to be rendered multiple times with different
+contexts. Specifying ``templates`` as a list of tuples is now preferred:
 
     .. code-block:: python
 

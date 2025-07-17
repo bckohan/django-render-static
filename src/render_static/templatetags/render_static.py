@@ -306,11 +306,11 @@ def urls_to_js(
     **kwargs,
 ) -> str:
     """
-    Dump reversible URLs to javascript. The javascript generated provides
-    functions for each fully qualified URL name that perform the same service
-    as Django's URL `reverse` function. The javascript output by this tag
-    isn't standalone. It is up to the caller to embed it in another object.
-    For instance, given the following urls.py:
+    Dump reversible URLs to javascript. The javascript generated provides functions for
+    each fully qualified URL name that perform the same service as Django's URL
+    :func:`~django.urls.reverse` function. The javascript output by this tag isn't
+    standalone. It is up to the caller to embed it in another object. For instance,
+    given the following urls.py:
 
     .. code-block::
 
@@ -382,13 +382,13 @@ def urls_to_js(
         select the correct URL reversal based on the names of the parameters
         passed in and map those parameter values to the correct
         placeholders in the URL. To ensure the outputs of the javascript match
-        Django's `reverse` the strategy is to use the results of the `reverse`
-        call for the fully qualified name. Placeholder values are passed into
-        `reverse` and then overwritten with javascript substitution code based
-        on the regex grouping information. This strategy avoids as much error
-        prone regex/string processing as possible. The concession here is that
-        placeholder values must be supplied by the user wherever we cant infer
-        them. When using path instead of re_path we can use default
+        Django's :func:`~django.urls.reverse` the strategy is to use the results of the
+        :func:`~django.urls.reverse` call for the fully qualified name. Placeholder
+        values are passed into :func:`~django.urls.reverse` and then overwritten with
+        javascript substitution code based on the regex grouping information. This
+        strategy avoids as much error prone regex/string processing as possible. The
+        concession here is that placeholder values must be supplied by the user wherever
+        we cant infer them. When using path instead of re_path we can use default
         placeholders for all the known converters. When using re_path or custom
         path converters users must register placeholders by parameter name,
         converter type, or app_name. Libraries exist for generating string
@@ -399,7 +399,7 @@ def urls_to_js(
         as either a class or an import string. May be one of the built-ins or a
         user defined transpiler.
     :param url_conf: The root url module to dump urls from,
-        default: settings.ROOT_URLCONF
+        default: :setting:`ROOT_URLCONF`
     :param indent: string to use for indentation in javascript, default: '  '
     :param depth: the starting indentation depth, default: 0
     :param include: A list of path names to include, namespaces without path

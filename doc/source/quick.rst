@@ -1,13 +1,11 @@
 .. _ref-usage:
 
-.. _django-enum: http://pypi.python.org/pypi/django-enum
-.. _enum-properties: http://pypi.python.org/pypi/enum-properties
-
 ===============
 Quick Reference
 ===============
 
-First go back to the :doc:`installation` page and install `django-render-static` if you haven't!
+First go back to the :doc:`installation` page and install :pypi:`django-render-static` if you
+haven't!
 
 Generating Javascript Defines
 -----------------------------
@@ -24,8 +22,8 @@ looks like this::
         ├── defines.py
         ├── models.py
         ├── static_templates
-        │   └── my_app
-        │       └── defines.js
+        │   └── my_app
+        │   └── defines.js
         └── urls.py
 
 
@@ -62,7 +60,8 @@ class their settings file might look like this:
         'templates': ['my_app/defines.js']
     }
 
-And then of course they would call :ref:`renderstatic` before `collectstatic`::
+And then of course they would call :django-admin:`renderstatic` before
+:django-admin:`collectstatic`::
 
     $> ./manage.py renderstatic
     $> ./manage.py collectstatic
@@ -95,11 +94,12 @@ Which would look like this:
 URL reverse functions
 ---------------------
 
-You'd like to be able to call something like `reverse` on path names from your client JavaScript
-code the same way you do from Python Django code. You don't want to expose your admin paths though.
+You'd like to be able to call something like :func:`~django.urls.reverse` on path names from your
+client JavaScript code the same way you do from Python Django code. You don't want to expose your
+admin paths though.
 
-`django-render-static` comes bundled with a urls template ready to use. You can see if your URLs
-will generate out of the box by running:
+:pypi:`django-render-static` comes bundled with a urls template ready to use. You can see if your
+URLs will generate out of the box by running:
 
 .. code-block:: console
 
@@ -141,7 +141,7 @@ The output can be more customized as well. For example your settings file might 
     }
 
 
-Then call :ref:`renderstatic` before `collectstatic`::
+Then call :django-admin:`renderstatic` before :django-admin:`collectstatic`::
 
     $> ./manage.py renderstatic
     $> ./manage.py collectstatic
@@ -312,9 +312,9 @@ So you can now fetch paths like this:
 
 .. warning::
 
-    If you get an exception when you run :ref:`renderstatic` that originated from a
-    :py:class:`render_static.exceptions.URLGenerationFailed` exception, you mostly likely need to
-    register some :ref:`placeholders` before calling :ref:`urls_to_js`.
+    If you get an exception when you run :django-admin:`renderstatic` that originated from a
+    :class:`render_static.exceptions.URLGenerationFailed` exception, you mostly likely need to
+    register some :ref:`placeholders` before calling :templatetag:`urls_to_js`.
 
 .. note::
     The JavaScript URL resolution is guaranteed to produce the same paths as Django's reversal
@@ -325,9 +325,10 @@ So you can now fetch paths like this:
 Transpiling Enumerations
 ------------------------
 
-Say instead of the usual choices tuple you're using PEP 435 style python
-enumerations as model fields using django-enum_ and enum-properties_. For example
-we might define a simple color enumeration like so:
+Say instead of the usual choices tuple you're using
+:class:`PEP 435 style python enumerations <enum.Enum>` as model fields using
+:doc:`django-enum <django-enum:index>` and :doc:`enum-properties <enum-properties:index>`. For
+example we might define a simple color enumeration like so:
 
 .. code:: python
 
@@ -352,8 +353,7 @@ If we define an enum.js template that looks like this:
 
     {% enums_to_js enums="examples.models.ExampleModel.Color" %}
 
-It will contain a javascript class transpilation of the Color enum that looks
-like this:
+It will contain a javascript class transpilation of the Color enum that looks like this:
 
 .. code:: javascript
 

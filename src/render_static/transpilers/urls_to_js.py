@@ -312,8 +312,8 @@ class URLTreeVisitor(BaseURLTranspiler):
     :param exclude: A list of path names to exclude, namespaces without
         path names will be treated as every path under the namespace.
         Default: exclude nothing
-    :param kwargs: Set of configuration parameters, see `Transpiler`
-        params
+    :param kwargs: Set of configuration parameters, see
+        :class:`~render_static.transpilers.base.Transpiler` params
     """
 
     include_: Optional[Iterable[str]] = None
@@ -387,7 +387,7 @@ class URLTreeVisitor(BaseURLTranspiler):
         forms the bedrock of the reliability of the JavaScript url reversals.
         Do not change it lightly!
 
-        :param endpoint: The URLPattern to add
+        :param endpoint: The :class:`django.urls.URLPattern` to add
         :param qname: The fully qualified name of the URL
         :param app_name: The app_name the URLs belong to, if any
         :param route: The list of RoutePatterns above this URL

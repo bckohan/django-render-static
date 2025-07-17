@@ -5,10 +5,10 @@ if residing within an app. This command should be run during the deployment
 phase and always before collectstatic is run.
 
 This command accepts a list of template names to render. If no names are
-specified all templates as specified in ``STATIC_TEMPLATES`` will be rendered.
+specified all templates as specified in :setting:`STATIC_TEMPLATES` will be rendered.
 A template name supplied as an argument does not need to be specified in
-``STATIC_TEMPLATES`` for it to be found and rendered. Such templates will be
-given the global context as specified in ``STATIC_TEMPLATES``.
+:setting:`STATIC_TEMPLATES` for it to be found and rendered. Such templates will be
+given the global context as specified in :setting:`STATIC_TEMPLATES`.
 """
 
 import typing as t

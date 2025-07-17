@@ -1,7 +1,7 @@
 """
-The `url_to_js` tag avoids error prone string processing by using Django's
-`reverse` mechanism to generate the URLs to embed in the javascript. To do the
-reversal it needs temporary placeholder values to feed in as kwargs or args.
+The :templatetag:`urls_to_js` tag avoids error prone string processing by using Django's
+:func:`django.urls.reverse` mechanism to generate the URLs to embed in the javascript.
+To do the reversal it needs temporary placeholder values to feed in as kwargs or args.
 There aren't reliable or license friendly libraries available to generate the
 placeholders directly from the regular expressions so users are relied upon to
 supply them. This module provides facilities for registering and resolving

@@ -5,19 +5,19 @@ Installation
 ============
 
 
-1. Clone django-render-static from GitHub_ or install a release off PyPI_ ::
+1. Install :pypi:`django-render-static` or clone from GitHub_::
 
        pip install django-render-static
 
 
-2. Add 'render_static' to your ``INSTALLED_APPS`` ::
+2. Add 'render_static' to your :setting:`INSTALLED_APPS` ::
 
        INSTALLED_APPS = [
            'render_static',
            ...
        ]
 
-3. Add a ``STATIC_TEMPLATES`` configuration directive to your settings file::
+3. Add a :setting:`STATIC_TEMPLATES` configuration directive to your settings file::
 
         STATIC_TEMPLATES = {
             'templates' : [
@@ -25,11 +25,10 @@ Installation
             ]
         }
 
-4. Run ``renderstatic`` preceding every run of ``collectstatic`` ::
+4. Run :django-admin:`renderstatic` preceding every run of :django-admin:`collectstatic`::
 
         manage.py renderstatic
         manage.py collectstatic
 
 
 .. _GitHub: http://github.com/bckohan/django-render-static
-.. _PyPI: http://pypi.python.org/pypi/django-render-static

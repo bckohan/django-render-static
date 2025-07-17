@@ -75,7 +75,7 @@ class DefaultDefineTranspiler(Transpiler):
     :param const_name: The name to use for the const variable containing the
         transpiled defines.
     :param kwargs: Set of configuration parameters, see also
-        `Transpiler` params
+        :class:`~render_static.transpilers.base.Transpiler` params
     """
 
     include_member_: Callable[[Any], bool] = lambda name, member: name.isupper()  # type: ignore

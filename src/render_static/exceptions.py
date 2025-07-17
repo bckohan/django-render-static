@@ -1,5 +1,5 @@
 """
-Define exceptions thrown by `django-render-static`
+Define exceptions thrown by :pypi:`django-render-static`
 """
 
 __all__ = ["URLGenerationFailed", "ReversalLimitHit", "InvalidContext"]
@@ -7,15 +7,15 @@ __all__ = ["URLGenerationFailed", "ReversalLimitHit", "InvalidContext"]
 
 class URLGenerationFailed(Exception):
     """
-    Thrown by `urls_to_js` under any circumstance where URL generation fails
-    for a specific fully qualified URL name.
+    Thrown by :templatetag:`urls_to_js` under any circumstance where URL generation
+    fails for a specific fully qualified URL name.
     """
 
 
 class ReversalLimitHit(Exception):
     """
-    Thrown by `urls_to_js` under any circumstance where the configured maximum
-    number of tries has been hit when attempting to reverse a URL.
+    Thrown by :templatetag:`urls_to_js` under any circumstance where the configured
+    maximum number of tries has been hit when attempting to reverse a URL.
     """
 
 

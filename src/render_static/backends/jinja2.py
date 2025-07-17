@@ -40,7 +40,7 @@ def default_env(**options):
 
 class StaticJinja2Templates(StaticEngine, Jinja2):
     """
-    Extend the standard ``django.template.backends.jinja2.Jinja2`` backend
+    Extend the standard :class:`django.template.backends.jinja2.Jinja2` backend
     to add options. Unlike with the standard backend, the loaders used for
     this backend remain unchanged.
 
@@ -48,7 +48,7 @@ class StaticJinja2Templates(StaticEngine, Jinja2):
     directories named ``static_jinja2``. The ``app_dir`` option is added to
     the standard option to allow users to override this location.
 
-    :param params: The parameters as passed into the ``STATIC_TEMPLATES``
+    :param params: The parameters as passed into the :setting:`STATIC_TEMPLATES`
         configuration for this backend.
     """
 

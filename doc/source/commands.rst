@@ -4,10 +4,10 @@
 Commands
 ========
 
-.. _renderstatic:
-
 renderstatic
 ------------
+
+.. django-admin:: renderstatic
 
 .. automodule:: render_static.management.commands.renderstatic
 
@@ -22,16 +22,16 @@ Usage
 Example
 ~~~~~~~
 
-To generate all templates configured in ``STATIC_TEMPLATES`` settings:
+To generate all templates configured in :setting:`STATIC_TEMPLATES` settings:
 
-.. code::
+.. code-block:: bash
 
     $ manage.py renderstatic
 
-Alternatively individual templates can be generated, regardless of their presence
-in ``STATIC_TEMPLATES``. They will be given the global context with any overriding context
+Alternatively individual templates can be generated, regardless of their presence in
+:setting:`STATIC_TEMPLATES`. They will be given the global context with any overriding context
 parameters supplied on the command line:
 
-.. code::
+.. code-block:: bash
 
     $ manage.py renderstatic path/*.js -c ./js_context.yaml -d outputdir

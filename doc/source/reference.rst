@@ -47,6 +47,7 @@ loaders.jinja2
 
 .. automodule:: render_static.loaders.jinja2
 
+   .. autoclass:: SearchableLoader
    .. autoclass:: StaticFileSystemLoader
    .. autoclass:: StaticFileSystemBatchLoader
    .. autoclass:: StaticPackageLoader

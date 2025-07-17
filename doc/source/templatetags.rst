@@ -7,7 +7,7 @@
 Built-in Filters & Tags
 =======================
 
-`django-render-static` includes several built-in template filters and tags. These are described
+:pypi:`django-render-static` includes several built-in template filters and tags. These are described
 here. All tags and filters are available on both the ``StaticDjangoTemplates`` backend and the
 ``StaticJinja2Templates`` backend.
 
@@ -38,7 +38,7 @@ Tags
 
 Tags on the ``StaticDjangoTemplates`` backend are django template tags using the
 {% %} syntax. Using the ``StaticJinja2Templates`` backend these tags are global
-functions. For example, in Django templates ``urls_to_js`` might be called like so:
+functions. For example, in Django templates :templatetag:`urls_to_js` might be called like so:
 
 .. code-block:: js+django
 
@@ -65,10 +65,11 @@ to either of the above. They will then traverse the source code, looking into
 nested classes if necessary to find the specific structures they know how to
 transpile.
 
-.. _defines_to_js:
 
 ``defines_to_js``
 ~~~~~~~~~~~~~~~~~
+
+.. templatetag:: defines_to_js
 
 Converts a list of classes or modules and their defines-style attributes into
 JavaScript structures. Defines-style attributes are attributes that:
@@ -163,10 +164,11 @@ path:
 
     {% enddefines_to_js %}
 
-.. _urls_to_js:
 
 ``urls_to_js``
 ~~~~~~~~~~~~~~
+
+.. templatetag:: urls_to_js
 
 Often client side JavaScript needs to fetch site URLs asynchronously. These instances either
 necessitate using dynamic templating to reverse the url via the `url` tag or to hardcode the path
@@ -212,7 +214,7 @@ are included (everything else is by default excluded).
 
 .. note::
 
-    When implementing custom URL transpilers, any additional named arguments passed to the ``urls_to_js``
+    When implementing custom URL transpilers, any additional named arguments passed to the :templatetag:`urls_to_js`
     tag will be passed as kwargs to the URL transpiler when this tag instantiates it. These parameters
     are meant to provide configuration toggles for the generated JavaScript.
 
@@ -247,10 +249,10 @@ easy to implement new ones:
         path('fetch/<year:year>', YearView.as_view(), name='fetch_year')
     ]
 
-Note the ``placeholder`` attribute. This attribute is used by ``urls_to_js`` to reverse paths
+Note the ``placeholder`` attribute. This attribute is used by :templatetag:`urls_to_js` to reverse paths
 for the generated JavaScript. By including the attribute on your converter you ensure that
-anyone using your converter will be able to run ``urls_to_js`` without error. And you don't
-even have to include `django-render-static` as a dependency if you aren't using it!
+anyone using your converter will be able to run :templatetag:`urls_to_js` without error. And you don't
+even have to include :pypi:`django-render-static` as a dependency if you aren't using it!
 Alternatively if you're using someone else's converter and they haven't supplied a
 ``placeholder`` attribute, you can register one:
 
@@ -274,7 +276,7 @@ Of if you're using `re_path` instead:
 
 Paths with unnamed arguments are also supported, but be kind to yourself and don't use them.
 Any number of placeholders may be registered against any number of variable/app_name combinations.
-When ``urls_to_js`` is run it won't give up until its tried all placeholders that might potentially
+When :templatetag:`urls_to_js` is run it won't give up until its tried all placeholders that might potentially
 match the path.
 
 Overly complex string parsing logic is avoided by reversing the urls and using the regular
@@ -311,9 +313,9 @@ specific url names. For instance:
 **************************
 
 A transpiler class that produces ES6 JavaScript class is now included. As of version 2 This
-class is used by default. **The** ``ClassURLWriter`` **is guaranteed to produce output
-identical to Django's reverse function**. If it does not please report a bug. To use the
-class writer:
+class is used by default. **The** :class:`~render_static.transpilers.urls_to_js.ClassURLWriter`
+**is guaranteed to produce output identical to Django's reverse function**. If it does not please
+report a bug. To use the class writer:
 
 .. code-block:: htmldjango
 
@@ -455,11 +457,11 @@ Which can be used as:
     const urls = new URLResolver();
     urls.reverse('different', {kwargs: {'arg1': 143, 'arg2': 'emma'}});
 
-Note that the reverse function takes an options dictionary containing named parameters instead
-of passing kwargs and args positionally:
+Note that the reverse function takes an options dictionary containing named parameters instead of
+passing kwargs and args positionally:
 
-    * **kwargs** - analogous to kwargs in Django's `reverse`
-    * **args** - analogous to args in Django's `reverse`
+    * **kwargs** - analogous to kwargs in Django's :func:`~django.urls.reverse`
+    * **args** - analogous to args in Django's :func:`~django.urls.reverse`
     * **query** - optional GET query parameters for the URL string
 
 For instance:
@@ -478,7 +480,8 @@ For instance:
         }
     );
 
-The default `class_name` is URLResolver. Reverse should behave exactly as Django's `reverse`.
+The default `class_name` is URLResolver. Reverse should behave exactly as Django's
+:func:`~django.urls.reverse`.
 
 The URLResolver accepts an optional options object. This object currently supports one
 parameter: `namespace` which is a default namespace that will be prepended if it is
@@ -492,14 +495,14 @@ not already present to any reverse requests made on the resolver:
     urls.reverse('ns:name1')
     urls.reverse('name1')
 
-
-.. _enums_to_js:
-
 ``enums_to_js``
 ~~~~~~~~~~~~~~~
 
+.. templatetag:: enums_to_js
+
 Transpile PEP 435 style Python enumerations. The default transpiler that generates
-ES6 style classes in the style of `Axel Rauschmayer's Enum pattern. <https://github.com/rauschma/enumify>`_
+ES6 style classes in the style of `Axel Rauschmayer's Enum pattern.
+<https://github.com/rauschma/enumify>`_
 
 Converts a list of enums or modules and classes that contain enums into javascript.
 As with defines, it will recursively traverse that module or class you pass it and
@@ -510,10 +513,10 @@ It accepts a number of different parameters:
     - **enums** An enum class, or classes or modules containing enum classes or an import string to
       any of the above. All of the enums found during traversal will be transpiled.
     - **transpiler** A string import path or a class that implements
-      :py:class:`render_static.transpilers.enums_to_js.EnumTranspiler`. The transpiler walks the URL
+      :class:`render_static.transpilers.enums_to_js.EnumTranspiler`. The transpiler walks the URL
       tree and generates the JavaScript, users may customize the JavaScript generated by
       implementing their own transpiler class. One transpiler is included. The default,
-      :py:class:`render_static.transpilers.enums_to_js.EnumClassWriter`, spits out an ES6 class
+      :class:`render_static.transpilers.EnumClassWriter <render_static.transpilers.enums_to_js.EnumClassWriter>`, spits out an ES6 class
       for each Enum.
     - **indent** String to use for indentation in javascript, default: '\\t', If None or the empty
       string is specified, the generated code will not contain newlines.
@@ -521,9 +524,10 @@ It accepts a number of different parameters:
     - **Any additional parameters that the transpiler accepts**:
         - :py:class:`render_static.transpilers.enums_to_js.EnumClassWriter`
 
-Say instead of the usual choices tuple you're using PEP 435 style python
-enumerations as model fields using django-enum_ and enum-properties_. For example
-we might define a simple color enumeration like so:
+Say instead of the usual choices tuple you're using
+:class:`PEP 435 style python enumerations <enum.Enum>` as model fields using
+:doc:`django-enum <django-enum:index>` and :doc:`enum-properties <enum-properties:index>`. For
+example we might define a simple color enumeration like so:
 
 .. code:: python
 
@@ -553,8 +557,7 @@ If we define an enum.js template that looks like this:
 
     {% enums_to_js enums="examples.models.ExampleModel.Color" %}
 
-It will contain a javascript class transpilation of the Color enum that looks
-like this:
+It will contain a javascript class transpilation of the Color enum that looks like this:
 
 .. code:: javascript
 
@@ -606,7 +609,7 @@ We can now use our enumeration like so:
 Overrides
 *********
 
-You may add additional code to the class or :ref:`override` the following functions:
+You may add additional code to the class or :setting:`override` the following functions:
 
     - constructor
     - toString
@@ -614,19 +617,20 @@ You may add additional code to the class or :ref:`override` the following functi
     - ciCompare
     - [Symbol.iterator]
 
-See :py:attr:`render_static.transpilers.enums_to_js.EnumClassWriter.context` for the
-context made available by the transpiler to override blocks.
+See :attr:`render_static.transpilers.enums_to_js.EnumClassWriter.context` for the context made
+available by the transpiler to override blocks.
 
-.. _override:
 
 ``override``
 ~~~~~~~~~~~~
 
-All of the transpilation tags accept child override blocks to override default transpilation
-of functions or objects or be used to add additional code to an object block or class. For
-example, if we wanted to override the default transpilation of the Color class above to allow
-instantiation off a cmyk value we could do so by adapting the get function and adding a new
-static utility function called cmykToRgb. We would do so like this:
+.. templatetag:: override
+
+All of the transpilation tags accept child override blocks to override default transpilation of
+functions or objects or be used to add additional code to an object block or class. For example, if
+we wanted to override the default transpilation of the Color class above to allow instantiation off
+a cmyk value we could do so by adapting the get function and adding a new static utility function
+called cmykToRgb. We would do so like this:
 
 
 .. code:: js+django
@@ -666,10 +670,10 @@ static utility function called cmykToRgb. We would do so like this:
         {% endoverride %}
     {% endenums_to_js %}
 
-When a function is overridden, the default implementation is available in the template context
-as the ``default_impl`` variable. This allows you to add the default implementation from
-code to your override. The context available to an override block varies depending on the
-transpiler. See the individual tag sections for details.
+When a function is overridden, the default implementation is available in the template context as
+the ``default_impl`` variable. This allows you to add the default implementation from code to your
+override. The context available to an override block varies depending on the transpiler. See the
+individual tag sections for details.
 
 The above example will generate code that looks like this:
 

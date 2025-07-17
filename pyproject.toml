@@ -4,7 +4,7 @@ build-backend = "hatchling.build"
 
 [project]
 name = "django-render-static"
-version = "3.3.0"
+version = "3.3.1"
 description = "Use Django's template engine to render static files at deployment or package time. Includes transpilers for extending Django's url reversal and enums to JavaScript."
 requires-python = ">=3.9,<4.0"
 authors = [
@@ -109,6 +109,7 @@ docs = [
     "sphinx-autobuild>=2024.10.3",
     "sphinx-tabs>=3.4.7",
     "sphinxcontrib-typer[pdf]>=0.5.1",
+    "sphinxcontrib-django>=2.5",
 ]
 
 [tool.mypy]

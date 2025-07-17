@@ -95,7 +95,7 @@ class EnumClassWriter(EnumTranspiler):
     :param on_unrecognized: If the given value cannot be mapped to an
         enum instance, either "THROW_EXCEPTION", "RETURN_NULL", or
         "RETURN_INPUT". See
-        :py:class:`render_static.transpilers.enums_to_js.UnrecognizedBehavior`.
+        :class:`render_static.transpilers.enums_to_js.UnrecognizedBehavior`.
     :param export: If true the classes will be exported - Default: False
     :param include_properties: If true, any python properties present on the
         enums will be included in the transpiled javascript enums. May also

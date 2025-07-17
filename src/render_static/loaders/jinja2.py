@@ -5,7 +5,7 @@ be used for static template engines insteead. If in the future, changes to
 these loaders need to be made to keep code working with renderstatic that will
 be transparent to users.
 
-https://jinja.palletsprojects.com/en/3.0.x/api/#loaders
+:ref:`Jinja2 Loaders <jinja:loaders>`
 """
 
 from os.path import normpath
@@ -79,8 +79,6 @@ class SearchableLoader(BaseLoader):
 
 class StaticFileSystemLoader(SearchableLoader, FileSystemLoader):
     """
-    https://jinja.palletsprojects.com/en/3.0.x/api/#jinja2.FileSystemLoader
-
     We adapt the base loader to support loading directories as templates.
     """
 
@@ -134,36 +132,24 @@ class StaticFileSystemBatchLoader(StaticFileSystemLoader, BatchLoaderMixin):
 
 
 class StaticPackageLoader(SearchableLoader, PackageLoader):
-    """
-    https://jinja.palletsprojects.com/en/3.0.x/api/#jinja2.PackageLoader
-    """
+    pass
 
 
 class StaticPrefixLoader(SearchableLoader, PrefixLoader):
-    """
-    https://jinja.palletsprojects.com/en/3.0.x/api/#jinja2.PrefixLoader
-    """
+    pass
 
 
 class StaticFunctionLoader(FunctionLoader):
-    """
-    https://jinja.palletsprojects.com/en/3.0.x/api/#jinja2.FunctionLoader
-    """
+    pass
 
 
 class StaticDictLoader(SearchableLoader, DictLoader):
-    """
-    https://jinja.palletsprojects.com/en/3.0.x/api/#jinja2.DictLoader
-    """
+    pass
 
 
 class StaticChoiceLoader(SearchableLoader, ChoiceLoader):
-    """
-    https://jinja.palletsprojects.com/en/3.0.x/api/#jinja2.ChoiceLoader
-    """
+    pass
 
 
 class StaticModuleLoader(ModuleLoader):
-    """
-    https://jinja.palletsprojects.com/en/3.0.x/api/#jinja2.ModuleLoader
-    """
+    pass
