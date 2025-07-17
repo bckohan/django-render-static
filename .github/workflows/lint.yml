@@ -75,7 +75,7 @@ jobs:
         timeout-minutes: 60
       - name: Run Static Analysis
         run: |
-          uv run --all-extras pytest --cov-append ./tests/verify_environment.py
+          just test ./tests/verify_environment.py
           just check-lint
           just check-format
           just check-types

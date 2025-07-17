@@ -64,6 +64,7 @@ _lock-python:
 # lock to specific python and versions of given dependencies
 test-lock +PACKAGES: _lock-python
     uv add --prerelease=allow {{ PACKAGES }}
+    uv lock # in CI environments uv will not regenerate lock files
 
 # run static type checking
 check-types:
