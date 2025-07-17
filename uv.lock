@@ -589,7 +589,7 @@ docs = [
     { name = "sphinxcontrib-django" },
     { name = "sphinxcontrib-typer", extra = ["pdf"] },
 ]
-test = [
+testing = [
     { name = "deepdiff" },
     { name = "django-enum" },
     { name = "enum-properties" },
@@ -642,7 +642,7 @@ docs = [
     { name = "sphinxcontrib-django", specifier = ">=2.5" },
     { name = "sphinxcontrib-typer", extras = ["pdf"], specifier = ">=0.5.1" },
 ]
-test = [
+testing = [
     { name = "deepdiff", specifier = ">=8.3.0" },
     { name = "django-enum", specifier = ">=2.1.0" },
     { name = "enum-properties", specifier = ">=2.2.2" },

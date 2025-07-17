@@ -67,7 +67,7 @@ Jinja2 = ["Jinja2>=2.9,<4.0"]
 "Code_of_Conduct" = "https://github.com/bckohan/django-render-static/blob/main/CODE_OF_CONDUCT.md"
 
 [dependency-groups]
-test = [
+testing = [
     # precommit has a transitive dependency on pyyaml which messes up our tests
     # so we have to have a separate test group
     "deepdiff>=8.3.0",
