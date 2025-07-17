@@ -588,7 +588,7 @@ testing = [
 [package.metadata]
 requires-dist = [
     { name = "django", specifier = ">=3.2,<6.0" },
-    { name = "django-typer", specifier = ">=3.0,<3.2" },
+    { name = "django-typer", specifier = ">=3.0,<4.0" },
     { name = "jinja2", marker = "extra == 'jinja2'", specifier = ">=2.9,<4.0" },
     { name = "pyyaml", marker = "extra == 'pyyaml'", specifier = ">=5.1,<7.0" },
 ]

@@ -18,7 +18,7 @@ homepage = "https://django-render-static.readthedocs.io"
 keywords = ["django", "static", "templates", "javascript", "url", "reverse", "defines", "transpiler", "transpile", "enum"]
 dependencies = [
     "Django>=3.2,<6.0",
-    "django-typer>=3.0,<3.2"
+    "django-typer>=3.0,<4.0"
 ]
 classifiers = [
     "Environment :: Console",
