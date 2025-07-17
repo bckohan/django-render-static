@@ -54,6 +54,9 @@ package = true
 [tool.hatch.build.targets.wheel]
 packages = ["src/render_static"]
 
+[tool.hatch.build.targets.sdist]
+packages = ["src/render_static"]
+
 [project.optional-dependencies]
 PyYAML = ["PyYAML>=5.1,<7.0"]
 Jinja2 = ["Jinja2>=2.9,<4.0"]
