@@ -85,7 +85,7 @@ class StaticTemplateEngine:
     independently and can override configured parameters including contexts
     and render destinations:
 
-    .. code-block::
+    .. code-block:: python
 
         from render_static.engine import StaticTemplateEngine
         from django.conf import settings
@@ -126,12 +126,6 @@ class StaticTemplateEngine:
             context={'var1': 'value3'},
             destination=Path(settings.BASE_DIR) / 'static_dir/rendered.html'
         )
-
-
-    :param config: If provided use this configuration instead of the one from
-        settings
-    :raises :class:`~django.core.exceptions.ImproperlyConfigured`: If there are any
-        errors in the configuration passed in or specified in settings.
     """
 
     app_dirname: str
@@ -151,19 +145,6 @@ class StaticTemplateEngine:
     class TemplateConfig:
         """
         Container for template specific configuration parameters.
-
-        :param name: The name of the template
-        :param dest: The absolute destination directory where the template will
-            be written. May be
-            None which indicates the template will be written to its owning
-            app's static directory if it was loaded with an app directory
-            loader
-        :param context: A specific dictionary context to use for this template,
-            may also be an import string to a callable or a callable that
-            generates a dictionary. This may override global context
-            parameters.
-        :raises ImproperlyConfigured: If there are any unexpected or
-            misconfigured parameters
         """
 
         context_: Dict = {}
@@ -175,6 +156,20 @@ class StaticTemplateEngine:
             dest: Optional[Union[Path, str]] = None,
             context: Optional[Union[Dict, Callable, str]] = None,
         ) -> None:
+            """
+            :param name: The name of the template
+            :param dest: The absolute destination directory where the template will
+                be written. May be
+                None which indicates the template will be written to its owning
+                app's static directory if it was loaded with an app directory
+                loader
+            :param context: A specific dictionary context to use for this template,
+                may also be an import string to a callable or a callable that
+                generates a dictionary. This may override global context
+                parameters.
+            :raises: :exc:`~django.core.exceptions.ImproperlyConfigured` If there are
+                any unexpected or misconfigured parameters
+            """
             self.name = name
 
             if dest is not None:
@@ -210,6 +205,12 @@ class StaticTemplateEngine:
             return self.dest_
 
     def __init__(self, config: Optional[Dict] = None) -> None:
+        """
+        :param config: If provided use this configuration instead of the one from
+            settings
+        :raises: :exc:`~django.core.exceptions.ImproperlyConfigured`: If there are any
+            errors in the configuration passed in or specified in settings.
+        """
         if config:
             self.config_ = config
 
@@ -223,8 +224,8 @@ class StaticTemplateEngine:
 
         :return: The :setting:`STATIC_TEMPLATES` configuration this engine has
             initialized from
-        :raises ImproperlyConfigured: If there are any terminal errors with the
-            configurations
+        :raises: :exc:`~django.core.exceptions.ImproperlyConfigured` If there are any
+            terminal errors with the configurations
         """
         if not self.config_:
             self.config_ = getattr(settings, "STATIC_TEMPLATES", {}) or {}
@@ -249,8 +250,8 @@ class StaticTemplateEngine:
         context dictionary in the :setting:`STATIC_TEMPLATES` configuration.
 
         :return: A dictionary containing the global template context
-        :raises ImproperlyConfigured: If the template context is specified and
-            is not a dictionary.
+        :raises: :exc:`~django.core.exceptions.ImproperlyConfigured` If the template
+            context is specified and is not a dictionary.
         """
         return {
             "settings": settings,
@@ -266,8 +267,8 @@ class StaticTemplateEngine:
         type as a list of name, config pairs.
 
         :return: A dictionary mapping template names to configurations
-        :raise ImproperlyConfigured: If there are any configuration issues with
-            the templates
+        :raises: :exc:`~django.core.exceptions.ImproperlyConfigured` If there are any
+            configuration issues with the templates
         """
         try:
             templates = self.config.get("templates", {})
@@ -317,8 +318,8 @@ class StaticTemplateEngine:
         necessary.
 
         :return: A dictionary mapping engine names to instances
-        :raise ImproperlyConfigured: If there are configuration problems with
-            the engine backends.
+        :raises: :exc:`~django.core.exceptions.ImproperlyConfigured` If there are
+            configuration problems with the engine backends.
         """
         engine_defs = self.config.get("ENGINES", None)
         if engine_defs is None:
@@ -377,8 +378,8 @@ class StaticTemplateEngine:
 
         :param alias: The name of the backend to fetch
         :return: The backend instance
-        :raises InvalidTemplateEngineError: If a backend of the given alias
-            does not exist
+        :raises: :exc:`~django.template.utils.InvalidTemplateEngineError` If a backend
+            of the given alias does not exist
         """
         try:
             return self.engines[alias]
@@ -590,7 +591,7 @@ class StaticTemplateEngine:
 
         The location of the directory of the rendered template will either be
         based on the `dest` configuration parameter for the template or the app
-         the template was found in.
+        the template was found in.
 
         :param selectors: The name(s) of the template(s) to render to disk
         :param context: Additional context parameters that will override

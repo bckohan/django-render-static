@@ -105,7 +105,7 @@ URLs will generate out of the box by running:
 
         $> ./manage.py renderstatic render_static/urls.js --dest ./urls.js
 
-If this fails, you may need to add some :ref:`placeholders`.
+If this fails, you may need to add some :mod:`~render_static.placeholders`.
 
 The output can be more customized as well. For example your settings file might look like:
 
@@ -314,7 +314,7 @@ So you can now fetch paths like this:
 
     If you get an exception when you run :django-admin:`renderstatic` that originated from a
     :class:`render_static.exceptions.URLGenerationFailed` exception, you mostly likely need to
-    register some :ref:`placeholders` before calling :templatetag:`urls_to_js`.
+    register some :mod:`~render_static.placeholders` before calling :templatetag:`urls_to_js`.
 
 .. note::
     The JavaScript URL resolution is guaranteed to produce the same paths as Django's reversal

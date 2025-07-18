@@ -221,10 +221,6 @@ class Substitute:
     """
     A placeholder representing a substitution, either by a positional argument
     or a named argument in a url path string.
-
-    :param arg_or_kwarg: Either an integer index corresponding to the argument
-        to substitute for this placeholder or the string name of the argument
-        to substitute at this placeholder.
     """
 
     arg_: Optional[Union[str, int]] = None
@@ -238,6 +234,11 @@ class Substitute:
         return self.arg_
 
     def __init__(self, arg_or_kwarg: Union[str, int]) -> None:
+        """
+        :param arg_or_kwarg: Either an integer index corresponding to the argument
+            to substitute for this placeholder or the string name of the argument
+            to substitute at this placeholder.
+        """
         self.arg_ = arg_or_kwarg
 
     def to_str(self) -> str:
@@ -305,15 +306,6 @@ class URLTreeVisitor(BaseURLTranspiler):
     is written by the base class using the configured indentation/newline
     options. When None is yielded or returned, nothing will be written. To
     write a newline and nothing else, simply yield or return an empty string.
-
-    :param include: A list of path names to include, namespaces without
-        path names will be treated as every path under the namespace.
-        Default: include everything
-    :param exclude: A list of path names to exclude, namespaces without
-        path names will be treated as every path under the namespace.
-        Default: exclude nothing
-    :param kwargs: Set of configuration parameters, see
-        :class:`~render_static.transpilers.base.Transpiler` params
     """
 
     include_: Optional[Iterable[str]] = None
@@ -341,6 +333,16 @@ class URLTreeVisitor(BaseURLTranspiler):
         exclude: Optional[Iterable[str]] = exclude_,
         **kwargs,
     ):
+        """
+        :param include: A list of path names to include, namespaces without
+            path names will be treated as every path under the namespace.
+            Default: include everything
+        :param exclude: A list of path names to exclude, namespaces without
+            path names will be treated as every path under the namespace.
+            Default: exclude nothing
+        :param kwargs: Set of configuration parameters, see
+            :class:`~render_static.transpilers.base.Transpiler` params
+        """
         self.include_ = include
         self.exclude_ = exclude
         super().__init__(**kwargs)
@@ -787,9 +789,6 @@ class SimpleURLWriter(URLTreeVisitor):
         * *raise_on_not_found*
             Raise a TypeError if no reversal for a url pattern is found,
             default: True
-
-    :param kwargs: Set of configuration parameters, see also `URLTreeVisitor`
-        params
     """
 
     raise_on_not_found_ = True
@@ -810,6 +809,11 @@ class SimpleURLWriter(URLTreeVisitor):
         }
 
     def __init__(self, **kwargs) -> None:
+        """
+        :param kwargs: Set of configuration parameters, see also
+            :meth:`URLTreeVisitor <render_static.transpilers.urls_to_js.URLTreeVisitor.__init__>`
+            params
+        """
         super().__init__(**kwargs)
         self.raise_on_not_found_ = kwargs.pop(
             "raise_on_not_found", self.raise_on_not_found_
@@ -928,11 +932,11 @@ class SimpleURLWriter(URLTreeVisitor):
 
 class ClassURLWriter(URLTreeVisitor):
     """
-    A URLTreeVisitor that produces a JavaScript class with a reverse() function
-    directly analogous to Django's url reverse function.
+    A visitor that produces a JavaScript class with a reverse() function
+    directly analogous to Django's url :func:`django.urls.reverse` function.
 
-    This is not the default visitor for the `url_to_js` tag, but its probably
-    the one you want. It accepts several additional parameters on top of the
+    This is not the default visitor for the :templatetag:`urls_to_js` tag, but its
+    probably the one you want. It accepts several additional parameters on top of the
     base parameters. To use this visitor you may call it like so:
 
     .. code-block:: js+django
@@ -962,9 +966,6 @@ class ClassURLWriter(URLTreeVisitor):
             The generated JavaScript file will include an export statement
             for the generated class.
             default: False
-
-    :param kwargs: Set of configuration parameters, see also `URLTreeVisitor`
-        params
     """
 
     class_name_ = "URLResolver"
@@ -989,6 +990,10 @@ class ClassURLWriter(URLTreeVisitor):
         }
 
     def __init__(self, **kwargs) -> None:
+        """
+        :param kwargs: Set of configuration parameters, see also
+            :meth:`URLTreeVisitor.__init__` params
+        """
         super().__init__(**kwargs)
         self.class_name_ = kwargs.pop("class_name", self.class_name_)
         self.raise_on_not_found_ = kwargs.pop(

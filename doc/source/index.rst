@@ -16,7 +16,7 @@ these structures by transpiling client side code from the server side code keeps
 DRY.
 
 :pypi:`django-render-static` includes Python to Javascript transpilers for:
-    - Django's :function:`~django.urls.reverse` function (:templatetag:`urls_to_js`)
+    - Django's :func:`~django.urls.reverse` function (:templatetag:`urls_to_js`)
     - PEP 435 style Python enumerations (:templatetag:`enums_to_js`)
     - Plain data define-like structures in Python classes and modules
       (:templatetag:`defines_to_js`)
@@ -43,7 +43,6 @@ encouraged! Especially additional template tags and filters!
    runtimes
    templatetags
    commands
-   reference
-   changelog
    migration
-
+   changelog
+   reference/index

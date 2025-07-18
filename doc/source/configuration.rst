@@ -167,7 +167,7 @@ Context configuration parameters may be any of the following:
     - **python**: A path to a python file. The locals defined in the file will
       comprise the context.
     - **a packaged resource**: Any of the above files imported as a packaged resource via
-      :ref:`resource` to any of the above files.
+      :mod:`render_static.resource` to any of the above files.
     - **import string**: to any of the above.
 
 For example:

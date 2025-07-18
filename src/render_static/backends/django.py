@@ -25,9 +25,6 @@ class StaticDjangoTemplates(StaticEngine, DjangoTemplates):
     By default this backend will search for templates in application
     directories named ``static_templates``. The ``app_dir`` option is added to
     the standard options to allow users to override this location.
-
-    :param params: The parameters as passed into the :setting:`STATIC_TEMPLATES`
-        configuration for this backend.
     """
 
     _app_dirname: str = "static_templates"
@@ -37,6 +34,10 @@ class StaticDjangoTemplates(StaticEngine, DjangoTemplates):
         return self._app_dirname
 
     def __init__(self, params: Dict) -> None:
+        """
+        :param params: The parameters as passed into the :setting:`STATIC_TEMPLATES`
+            configuration for this backend.
+        """
         params = params.copy()
         options = params.pop("OPTIONS").copy()
         loaders = options.get("loaders", None)

@@ -68,14 +68,6 @@ class DefaultDefineTranspiler(Transpiler):
                 ]
             }
         };
-
-    :param include_member: A function that accepts a member name and member
-        instance of a class and returns if the member should be written. By
-        default this will include any member that is all upper case.
-    :param const_name: The name to use for the const variable containing the
-        transpiled defines.
-    :param kwargs: Set of configuration parameters, see also
-        :class:`~render_static.transpilers.base.Transpiler` params
     """
 
     include_member_: Callable[[Any], bool] = lambda name, member: name.isupper()  # type: ignore
@@ -131,6 +123,15 @@ class DefaultDefineTranspiler(Transpiler):
         const_name: str = const_name_,
         **kwargs,
     ) -> None:
+        """
+        :param include_member: A function that accepts a member name and member
+            instance of a class and returns if the member should be written. By
+            default this will include any member that is all upper case.
+        :param const_name: The name to use for the const variable containing the
+            transpiled defines.
+        :param kwargs: Set of configuration parameters, see also
+            :class:`~render_static.transpilers.base.Transpiler` params
+        """
         self.include_member_ = include_member
         self.const_name_ = const_name
         super().__init__(**kwargs)

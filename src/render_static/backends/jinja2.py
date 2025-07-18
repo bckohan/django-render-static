@@ -47,9 +47,6 @@ class StaticJinja2Templates(StaticEngine, Jinja2):
     By default this backend will search for templates in application
     directories named ``static_jinja2``. The ``app_dir`` option is added to
     the standard option to allow users to override this location.
-
-    :param params: The parameters as passed into the :setting:`STATIC_TEMPLATES`
-        configuration for this backend.
     """
 
     _app_dirname = "static_jinja2"
@@ -61,6 +58,10 @@ class StaticJinja2Templates(StaticEngine, Jinja2):
     app_directories: List[Tuple[Path, AppConfig]] = []
 
     def __init__(self, params: Dict) -> None:
+        """
+        :param params: The parameters as passed into the :setting:`STATIC_TEMPLATES`
+            configuration for this backend.
+        """
         params = params.copy()
         self.dirs = list(params.get("DIRS", []))
         self.app_dirs = params.get("APP_DIRS", False)

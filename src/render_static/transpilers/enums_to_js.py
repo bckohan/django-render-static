@@ -29,15 +29,22 @@ if sys.version_info >= (3, 11):
 class UnrecognizedBehavior(Enum):
     """
     Enumeration of behaviors when a value cannot be mapped to an enum instance:
-
-        * THROW_EXCEPTION - throw a TypeError
-        * RETURN_NULL - return null
-        * RETURN_INPUT - return the input value
     """
 
     THROW_EXCEPTION = auto()
+    """
+    Throw a TypeError if the value cannot be mapped to an enum instance.
+    """
+
     RETURN_NULL = auto()
+    """
+    Return null if the value cannot be mapped to an enum instance.
+    """
+
     RETURN_INPUT = auto()
+    """
+    Return the input value if the value cannot be mapped to an enum instance.
+    """
 
 
 class EnumTranspiler(Transpiler):
@@ -88,37 +95,6 @@ class EnumClassWriter(EnumTranspiler):
     """
     A PEP 435 transpiler that generates ES6 style classes in the style of
     https://github.com/rauschma/enumify
-
-    :param class_name: A pattern to use to generate class names. This should
-        be a string that will be formatted with the class name of each enum.
-        The default string '{}' will resolve to the python class name.
-    :param on_unrecognized: If the given value cannot be mapped to an
-        enum instance, either "THROW_EXCEPTION", "RETURN_NULL", or
-        "RETURN_INPUT". See
-        :class:`render_static.transpilers.enums_to_js.UnrecognizedBehavior`.
-    :param export: If true the classes will be exported - Default: False
-    :param include_properties: If true, any python properties present on the
-        enums will be included in the transpiled javascript enums. May also
-        be an iterable of property names to include. `value` will always
-        be included.
-    :param symmetric_properties: If true, properties that the enums may be
-        instantiated from will be automatically determined and included in the
-        get() function. If False (default), enums will not be instantiable
-        from properties. May also be an iterable of property names to
-        treat as symmetric.
-    :param exclude_properties: Exclude this list of properties. Only useful if
-        include_properties is True
-    :param class_properties: If true, include all Django classproperties as
-        static members on the transpiled Enum class. May also be an iterable
-        of specific property names to include.
-    :param to_string: If true (default) include a toString() method that
-        returns a string representation of the enum. If a non-empty string,
-        use that string as the name of the property to return from toString().
-    :param isymmetric_properties: If provided, case insensitive symmetric
-        properties will be limited to those listed. If not provided, case
-        insensitive properties will be dynamically determined. Provide
-        an empty list to disable case insensitive properties.
-    :param kwargs: additional kwargs for the base transpiler classes.
     """
 
     enum_: Type[Enum]
@@ -435,6 +411,38 @@ class EnumClassWriter(EnumTranspiler):
         isymmetric_properties: Optional[Union[Collection[str], bool]] = None,
         **kwargs,
     ) -> None:
+        """
+        :param class_name: A pattern to use to generate class names. This should
+            be a string that will be formatted with the class name of each enum.
+            The default string '{}' will resolve to the python class name.
+        :param on_unrecognized: If the given value cannot be mapped to an
+            enum instance, either "THROW_EXCEPTION", "RETURN_NULL", or
+            "RETURN_INPUT". See
+            :class:`render_static.transpilers.enums_to_js.UnrecognizedBehavior`.
+        :param export: If true the classes will be exported - Default: False
+        :param include_properties: If true, any python properties present on the
+            enums will be included in the transpiled javascript enums. May also
+            be an iterable of property names to include. `value` will always
+            be included.
+        :param symmetric_properties: If true, properties that the enums may be
+            instantiated from will be automatically determined and included in the
+            get() function. If False (default), enums will not be instantiable
+            from properties. May also be an iterable of property names to
+            treat as symmetric.
+        :param exclude_properties: Exclude this list of properties. Only useful if
+            include_properties is True
+        :param class_properties: If true, include all Django classproperties as
+            static members on the transpiled Enum class. May also be an iterable
+            of specific property names to include.
+        :param to_string: If true (default) include a toString() method that
+            returns a string representation of the enum. If a non-empty string,
+            use that string as the name of the property to return from toString().
+        :param isymmetric_properties: If provided, case insensitive symmetric
+            properties will be limited to those listed. If not provided, case
+            insensitive properties will be dynamically determined. Provide
+            an empty list to disable case insensitive properties.
+        :param kwargs: additional kwargs for the base transpiler classes.
+        """
         super().__init__(**kwargs)
         self.class_name_pattern_ = class_name
         raise_on_not_found = kwargs.pop("raise_on_not_found", None)

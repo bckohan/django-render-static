@@ -93,8 +93,6 @@ def to_js_datetime(value: Any) -> str:
 class _TargetTreeNode:
     """
     Simple tree node for tracking python target hierarchy.
-
-    :param target: The target at this node
     """
 
     target: Optional[ResolvedTranspilerTarget]
@@ -104,6 +102,9 @@ class _TargetTreeNode:
     def __init__(
         self, target: Optional[ResolvedTranspilerTarget] = None, transpile: bool = False
     ):
+        """
+        :param target: The target at this node
+        """
         self.target = target
         self.children = []
         self.transpile = transpile
@@ -123,11 +124,6 @@ class CodeWriter:
     A base class that provides basic code writing functionality. This class
     implements a simple indentation/newline scheme that deriving classes may
     use.
-
-    :param level: The level to start indentation at
-    :param indent: The indent string to use
-    :param prefix: A prefix string to add to each line
-    :param kwargs: Any additional configuration parameters
     """
 
     rendered_: str
@@ -143,6 +139,12 @@ class CodeWriter:
         prefix: str = prefix_,
         **kwargs,
     ) -> None:
+        """
+        :param level: The level to start indentation at
+        :param indent: The indent string to use
+        :param prefix: A prefix string to add to each line
+        :param kwargs: Any additional configuration parameters
+        """
         self.rendered_ = ""
         self.level_ = level
         self.indent_ = indent or ""
@@ -195,11 +197,6 @@ class Transpiler(CodeWriter, metaclass=ABCMeta):
 
     To use this class derive from it and implement include_target() and
     visit().
-
-    :param to_javascript: A callable that accepts a python artifact and returns
-        a transpiled object or primitive instantiation.
-    :param kwargs: A set of configuration parameters for the generator, see
-        above.
     """
 
     to_javascript_: Callable = to_js
@@ -237,6 +234,12 @@ class Transpiler(CodeWriter, metaclass=ABCMeta):
         overrides: Optional[Dict[str, "OverrideNode"]] = None,
         **kwargs,
     ) -> None:
+        """
+        :param to_javascript: A callable that accepts a python artifact and returns
+            a transpiled object or primitive instantiation.
+        :param kwargs: A set of configuration parameters for the generator, see
+            above.
+        """
         super().__init__(**kwargs)
         self.to_javascript = (
             to_javascript if callable(to_javascript) else import_string(to_javascript)

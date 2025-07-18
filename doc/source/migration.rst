@@ -29,8 +29,8 @@ There are some import path changes in 3.0:
 Template Filter Changes
 ~~~~~~~~~~~~~~~~~~~~~~~
 
-classes_to_js and modules_to_js template filters have been removed and
-replaced by the :ref:`defines_to_js` tag. To upgrade simply replace the old
+:templatetag:`classes_to_js` and modules_to_js template filters have been removed and
+replaced by the :templatetag:`defines_to_js` tag. To upgrade simply replace the old
 filter with the new tag and pass the first argument as the defined parameter
 and the second argument if one was provided to the indent parameter:
 
