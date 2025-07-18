@@ -2,6 +2,12 @@
 Change Log
 ==========
 
+v3.3.2 (2025-07-18)
+===================
+
+* Docs: change autodoc configuration to make type hints more legible.
+
+
 v3.3.1 (2025-07-16)
 ===================
 

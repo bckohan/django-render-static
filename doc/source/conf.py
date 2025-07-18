@@ -87,6 +87,12 @@ autodoc_default_options = {
     # 'members': True,
     # 'inherited-members': True,
 }
+# In your Sphinx conf.py
+autodoc_typehints = "description"
+autodoc_typehints_format = "short"
+autodoc_class_signature = "separated"
+autodoc_member_order = 'bysource'
+
 
 intersphinx_mapping = {
     "django": (
@@ -100,11 +106,13 @@ intersphinx_mapping = {
     "python": ('https://docs.python.org/3', None)
 }
 
+
 def pypi_role(name, rawtext, text, lineno, inliner, options={}, content=[]):
     from docutils import nodes
     url = f"https://pypi.org/project/{text}/"
     node = nodes.reference(rawtext, text, refuri=url, **options)
     return [node], []
+
 
 def setup(app):
     # Register a sphinx.ext.autodoc.between listener to ignore everything
