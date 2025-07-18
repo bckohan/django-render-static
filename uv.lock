@@ -519,7 +519,7 @@ wheels = [
 
 [[package]]
 name = "django-render-static"
-version = "3.3.1"
+version = "3.3.2"
 source = { editable = "." }
 dependencies = [
     { name = "django" },
