@@ -7,9 +7,9 @@ on:
   push:
     tags-ignore:
       - '*'
-    branches:
-      - '*'
+    branches: ['main']
   pull_request:
+    branches: ['main']
   workflow_call:
   workflow_dispatch:
     inputs:
@@ -30,13 +30,14 @@ jobs:
       actions: write
     strategy:
       matrix:
-        python-version: ['3.9', '3.10', '3.11', '3.12', '3.13', '3.14.0-rc.3']
+        python-version: ['3.9', '3.10', '3.11', '3.12', '3.13', '3.14']
         django-version:
           - '3.2' # LTS April 2024
           - '4.2' # LTS April 2026
           - '5.0' # April 2025
           - '5.1' # December 2025
           - '5.2' # LTS April 2028
+          - '6.0a1' # prerelease
         exclude:
           - python-version: '3.11'
             django-version: '3.2'
@@ -55,14 +56,26 @@ jobs:
           - python-version: '3.13'
             django-version: '5.0'
 
-          - python-version: '3.14.0-rc.3'
+          - python-version: '3.14'
             django-version: '3.2'
-          - python-version: '3.14.0-rc.3'
+          - python-version: '3.14'
             django-version: '4.2'
-          - python-version: '3.14.0-rc.3'
+          - python-version: '3.14'
             django-version: '5.0'
-          - python-version: '3.14.0-rc.3'
+          - python-version: '3.14'
             django-version: '5.1'
+
+          - python-version: '3.9'
+            django-version: '6.0a1'
+          - python-version: '3.10'
+            django-version: '6.0a1'
+          - python-version: '3.11'
+            django-version: '6.0a1'
+          - python-version: '3.12'
+            django-version: '6.0a1'
+          - python-version: '3.13'
+            django-version: '6.0a1'
+
     env:
       COVERAGE_FILE: linux-py${{ matrix.python-version }}-dj${{ matrix.django-version }}.coverage
       TEST_PYTHON_VERSION: ${{ matrix.python-version }}
@@ -78,6 +91,7 @@ jobs:
       id: sp
       with:
         python-version: ${{ matrix.python-version }}
+        allow-prereleases: true
     
     - name: Setup Just
       uses: extractions/setup-just@v3
@@ -85,10 +99,15 @@ jobs:
       uses: astral-sh/setup-uv@v6
       with:
         enable-cache: true
-    - name: Install Release Dependencies
+    - name: Install Dependencies
+      shell: bash
       run: |
         just setup ${{ steps.sp.outputs.python-path }}
-        just test-lock "Django~=${{ matrix.django-version }}.0"
+        if [[ "${{ matrix.django-version }}" =~ (a|b|rc) ]]; then
+          just test-lock Django==${{ matrix.django-version }}
+        else
+          just test-lock Django~=${{ matrix.django-version }}.0
+        fi
     - name: Install Emacs
       if: ${{ github.event.inputs.debug == 'true' }}
       run: |
