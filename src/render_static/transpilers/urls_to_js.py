@@ -11,7 +11,6 @@ import re
 from abc import abstractmethod
 from typing import Any, Dict, Generator, Iterable, List, Optional, Tuple, Union
 
-from django import VERSION as DJANGO_VERSION
 from django.conf import settings
 from django.core.serializers.json import DjangoJSONEncoder
 from django.template.context import Context
@@ -1116,81 +1115,6 @@ class ClassURLWriter(URLTreeVisitor):
             self.outdent()
             yield "}"
 
-    def deep_equal(self) -> Generator[Optional[str], None, None]:
-        """
-        The recursive deepEqual function.
-        :yield: The JavaScript jdoc comment lines and deepEqual function.
-        """
-
-        def impl() -> Generator[str, None, None]:
-            """deepEqual default implementation"""
-            yield "if (!(this.isObject(object1) && this.isObject(object2))) {"
-            self.indent()
-            yield "return object1 === object2;"
-            self.outdent()
-            yield "}"
-            yield "const keys1 = Object.keys(object1);"
-            yield "const keys2 = Object.keys(object2);"
-            yield "if (keys1.length !== keys2.length) {"
-            self.indent()
-            yield "return false;"
-            self.outdent()
-            yield "}"
-            yield "for (let key of keys1) {"
-            self.indent()
-            yield "const val1 = object1[key];"
-            yield "const val2 = object2[key];"
-            yield "const areObjects = this.isObject(val1) && this.isObject(val2);"
-            yield "if ("
-            self.indent()
-            yield "(areObjects && !this.deepEqual(val1, val2)) ||"
-            yield "(!areObjects && val1 !== val2)"
-            yield ") { return false; }"
-            self.outdent()
-            yield "}"
-            self.outdent()
-            yield "return true;"
-
-        if "deepEqual" in self.overrides_:
-            yield from self.transpile_override("deepEqual", impl())
-        else:
-            for comment_line in """
-            /**
-             * Given two values, do a deep equality comparison. If the values are
-             * objects, all keys and values are recursively compared.
-             *
-             * @param {Object} object1 - The first object to compare.
-             * @param {Object} object2 - The second object to compare.
-             */""".split("\n"):
-                yield comment_line[12:]
-            yield "deepEqual(object1, object2) {"
-            self.indent()
-            yield from impl()
-            self.outdent()
-            yield "}"
-
-    def is_object(self) -> Generator[Optional[str], None, None]:
-        """
-        The isObject() function.
-        :yield: The JavaScript jdoc comment lines and isObject function.
-        """
-        impl = 'return object != null && typeof object === "object";'
-        if "isObject" in self.overrides_:
-            yield from self.transpile_override("isObject", impl)
-        else:
-            for comment_line in """
-            /**
-             * Given a variable, return true if it is an object.
-             *
-             * @param {Object} object - The variable to check.
-             */""".split("\n"):
-                yield comment_line[12:]
-            yield "isObject(object) {"
-            self.indent()
-            yield impl
-            self.outdent()
-            yield "}"
-
     def match(self) -> Generator[Optional[str], None, None]:
         """
         The #match() function.
@@ -1206,24 +1130,21 @@ class ClassURLWriter(URLTreeVisitor):
             self.indent()
             yield "if (kwargs.hasOwnProperty(key)) {"
             self.indent()
-            if DJANGO_VERSION[0:2] >= (4, 1):
-                # there was a change in Django 4.1 that seems to coerce kwargs
-                # given to the default kwarg type of the same name if one
-                # exists for the purposes of reversal. Thus 1 will == '1'
-                # In javascript we attempt string conversion and hope for the
-                # best. In 4.1 given kwargs will also override default kwargs
-                # for kwargs the reversal is expecting. This seems to have
-                # been a byproduct of the differentiation of captured_kwargs
-                # and extra_kwargs - that this wasn't caught in Django's CI is
-                # evidence that previous behavior wasn't considered spec.
-                yield (
-                    "if (kwargs[key] !== val && "
-                    "JSON.stringify(kwargs[key]) !== JSON.stringify(val) "
-                    "&& !expected.includes(key)) "
-                    "{ return false; }"
-                )
-            else:
-                yield "if (!this.deepEqual(kwargs[key], val)) { return false; }"
+            # there was a change in Django 4.1 that seems to coerce kwargs
+            # given to the default kwarg type of the same name if one
+            # exists for the purposes of reversal. Thus 1 will == '1'
+            # In javascript we attempt string conversion and hope for the
+            # best. In 4.1 given kwargs will also override default kwargs
+            # for kwargs the reversal is expecting. This seems to have
+            # been a byproduct of the differentiation of captured_kwargs
+            # and extra_kwargs - that this wasn't caught in Django's CI is
+            # evidence that previous behavior wasn't considered spec.
+            yield (
+                "if (kwargs[key] !== val && "
+                "JSON.stringify(kwargs[key]) !== JSON.stringify(val) "
+                "&& !expected.includes(key)) "
+                "{ return false; }"
+            )
             yield "if (!expected.includes(key)) { delete kwargs[key]; }"
             self.outdent()
             yield "}"
@@ -1341,11 +1262,6 @@ class ClassURLWriter(URLTreeVisitor):
         yield ""
         yield from self.match()
         yield ""
-        if DJANGO_VERSION[0:2] < (4, 1):
-            yield from self.deep_equal()
-            yield ""
-            yield from self.is_object()
-            yield ""
         yield from self.reverse()
         yield ""
         yield "urls = {"
