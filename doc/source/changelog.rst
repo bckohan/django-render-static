@@ -2,6 +2,13 @@
 Change Log
 ==========
 
+v3.4.0 (2025-11-22)
+===================
+
+* `Drop support for Django 3.2-4.1 and 5.0 <https://github.com/bckohan/django-render-static/issues/204>`_
+* `Drop support for python 3.9 <https://github.com/bckohan/django-render-static/issues/203>`_
+
+
 v3.3.4 (2025-09-27)
 ===================
 
