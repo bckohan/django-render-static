@@ -155,7 +155,11 @@ jobs:
     - name: Install Release Dependencies
       run: |
         just setup ${{ steps.sp.outputs.python-path }}
-        just test-lock Django~=${{ matrix.django-version }}.0
+        if [[ "${{ matrix.django-version }}" =~ (a|b|rc) ]]; then
+          just test-lock Django==${{ matrix.django-version }}
+        else
+          just test-lock Django~=${{ matrix.django-version }}.0
+        fi
     - name: install-emacs-macos
       if: ${{ github.event.inputs.debug == 'true' }}
       run: |
@@ -232,7 +236,14 @@ jobs:
     - name: Install Release Dependencies
       run: |
         just setup ${{ steps.sp.outputs.python-path }}
-        just test-lock Django~=${{ matrix.django-version }}.0
+        $version = "${{ matrix.django-version }}"
+
+        if ($version -match "(a|b|rc)") {
+          just test-lock "Django==$version"
+        } else {
+          just test-lock "Django~=$version.0"
+        }
+      shell: pwsh
     - name: install-vim-windows
       if: ${{ github.event.inputs.debug == 'true' }}
       uses: rhysd/action-setup-vim@v1
