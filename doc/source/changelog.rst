@@ -2,6 +2,12 @@
 Change Log
 ==========
 
+v3.5.0 (2026-01-29)
+===================
+
+* Move template :mod:`shell completer logic <render_static.management.completers>` to separate
+  module for reuse.
+
 v3.4.0 (2025-11-22)
 ===================
 

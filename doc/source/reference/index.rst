@@ -20,3 +20,4 @@ Reference
    placeholders
    context
    resource
+   completers

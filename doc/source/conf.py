@@ -99,6 +99,7 @@ intersphinx_mapping = {
         "https://docs.djangoproject.com/en/stable",
         "https://docs.djangoproject.com/en/stable/_objects/",
     ),
+    "click": ("https://click.palletsprojects.com/en/stable", None),
     "django-typer": ("https://django-typer.readthedocs.io/en/stable", None),
     "enum-properties": ("https://enum-properties.readthedocs.io/en/stable", None),
     "django-enum": ("https://django-enum.readthedocs.io/en/stable", None),
