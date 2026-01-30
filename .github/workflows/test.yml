@@ -143,6 +143,7 @@ jobs:
       id: sp
       with:
         python-version: ${{ matrix.python-version }}
+        allow-prereleases: true
     
     - name: Setup Just
       uses: extractions/setup-just@v3
@@ -224,7 +225,7 @@ jobs:
       id: sp
       with:
         python-version: ${{ matrix.python-version }}
-    
+        allow-prereleases: true
     - name: Setup Just
       uses: extractions/setup-just@v3
     - name: Install uv

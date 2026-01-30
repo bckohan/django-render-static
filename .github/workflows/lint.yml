@@ -58,6 +58,7 @@ jobs:
         id: sp
         with:
           python-version: ${{ matrix.python-version }}
+          allow-prereleases: true
 
       - name: Install Just
         uses: extractions/setup-just@v3
