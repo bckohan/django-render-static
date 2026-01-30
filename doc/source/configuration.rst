@@ -141,6 +141,8 @@ called static_templates/js I could configure templates like so:
 
     'templates': ['js/*.js']
 
+.. _context:
+
 ``context``
 -----------
 Specify a dictionary containing the context to pass to any static templates as they render. This is
