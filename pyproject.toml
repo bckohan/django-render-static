@@ -170,6 +170,7 @@ exclude = [
     "examples",
     "tests/resources/bad_code.py"
 ]
+target-version = "py310"
 
 [tool.ruff.lint]
 exclude = [
