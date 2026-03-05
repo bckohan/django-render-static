@@ -97,8 +97,8 @@ To run specific tests or debug tests against specific Python or Django versions 
 
 ```sh
 just install -p 3.11 --group dj52
-just test -k test_call_command
-just debug-test -k test_call_command
+just test -k test_classes_to_js
+just debug-test -k test_classes_to_js
 ```
 
 
