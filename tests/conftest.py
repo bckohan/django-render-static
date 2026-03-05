@@ -1,6 +1,7 @@
 import os
 import sys
 import inspect
+from importlib.metadata import distributions
 
 import pytest
 from django import VERSION
@@ -54,6 +55,53 @@ def pytest_runtest_call(item):
             dbg.set_trace()
         except (OSError, AssertionError):
             pass
+
+
+def pytest_addoption(parser):
+    parser.addoption(
+        "--log-env",
+        action="store_true",
+        default=False,
+        help="Log python environment information (pip freeze)",
+    )
+
+
+def pytest_sessionstart(session: pytest.Session) -> None:
+
+    if os.getenv("GITHUB_ACTIONS") == "true" or session.config.getoption("--log-env"):
+
+        def freeze():
+            lines = []
+            for dist in distributions():
+                name = dist.metadata["Name"]
+                version = dist.version
+
+                direct_url = dist.read_text("direct_url.json")
+                if direct_url:
+                    import json
+
+                    data = json.loads(direct_url)
+                    if "url" in data:
+                        lines.append(f"{name} @ {data['url']}")
+                        continue
+
+                lines.append(f"{name}=={version}")
+
+            return sorted(lines)
+
+        def write_reqs(number: int) -> bool:
+            try:
+                with open(
+                    f"requirements-test-{number}.txt", "x", encoding="utf-8"
+                ) as f:
+                    f.write("\n".join(freeze()) + "\n")
+                return True
+            except FileExistsError:
+                return False
+
+        run = 0
+        while not write_reqs(run):
+            run += 1
 
 
 def pytest_configure(config: pytest.Config) -> None:
