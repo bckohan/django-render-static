@@ -158,3 +158,4 @@ cython_debug/
 /render_static/tests/enum_app/static
 /render_static/tests/examples/static
 requirements.txt
+uv.lock
