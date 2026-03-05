@@ -74,6 +74,8 @@ html_theme_options = {
 # so a file named "default.css" will overwrite the builtin "default.css".
 html_static_path = []
 
+latex_engine = 'xelatex'
+
 todo_include_todos = True
 
 # js_source_path = (

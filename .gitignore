@@ -159,3 +159,4 @@ cython_debug/
 /render_static/tests/examples/static
 requirements.txt
 uv.lock
+zizmor.sarif

@@ -2,53 +2,55 @@
 Introduction
 ============
 
-.. image:: https://img.shields.io/badge/License-MIT-blue.svg
-   :target: https://lbesson.mit-license.org/
-   :alt: License: BSD
+.. only:: html
+  
+  .. image:: https://img.shields.io/badge/License-MIT-blue.svg
+    :target: https://lbesson.mit-license.org/
+    :alt: License: BSD
 
-.. image:: https://img.shields.io/endpoint?url=https://raw.githubusercontent.com/astral-sh/ruff/main/assets/badge/v2.json
-   :target: https://github.com/astral-sh/ruff
-   :alt: Ruff
+  .. image:: https://img.shields.io/endpoint?url=https://raw.githubusercontent.com/astral-sh/ruff/main/assets/badge/v2.json
+    :target: https://github.com/astral-sh/ruff
+    :alt: Ruff
 
-.. image:: https://badge.fury.io/py/django-render-static.svg
-   :target: https://pypi.python.org/pypi/django-render-static/
-   :alt: PyPI version
+  .. image:: https://badge.fury.io/py/django-render-static.svg
+    :target: https://pypi.python.org/pypi/django-render-static/
+    :alt: PyPI version
 
-.. image:: https://img.shields.io/pypi/pyversions/django-render-static.svg
-   :target: https://pypi.python.org/pypi/django-render-static/
-   :alt: PyPI pyversions
+  .. image:: https://img.shields.io/pypi/pyversions/django-render-static.svg
+    :target: https://pypi.python.org/pypi/django-render-static/
+    :alt: PyPI pyversions
 
-.. image:: https://img.shields.io/pypi/djversions/django-render-static.svg
-   :target: https://pypi.org/project/django-render-static/
-   :alt: PyPI Django versions
+  .. image:: https://img.shields.io/pypi/djversions/django-render-static.svg
+    :target: https://pypi.org/project/django-render-static/
+    :alt: PyPI Django versions
 
-.. image:: https://img.shields.io/pypi/status/django-render-static.svg
-   :target: https://pypi.python.org/pypi/django-render-static
-   :alt: PyPI status
+  .. image:: https://img.shields.io/pypi/status/django-render-static.svg
+    :target: https://pypi.python.org/pypi/django-render-static
+    :alt: PyPI status
 
-.. image:: https://img.shields.io/pypi/types/django-render-static.svg
-   :target: https://pypi.python.org/pypi/django-render-static
-   :alt: PyPi Typed
+  .. image:: https://img.shields.io/pypi/types/django-render-static.svg
+    :target: https://pypi.python.org/pypi/django-render-static
+    :alt: PyPi Typed
 
-.. image:: https://readthedocs.org/projects/django-render-static/badge/?version=latest
-   :target: http://django-render-static.readthedocs.io/?badge=latest/
-   :alt: Documentation Status
+  .. image:: https://readthedocs.org/projects/django-render-static/badge/?version=latest
+    :target: http://django-render-static.readthedocs.io/?badge=latest/
+    :alt: Documentation Status
 
-.. image:: https://img.shields.io/codecov/c/github/bckohan/django-render-static/main.svg
-   :target: https://codecov.io/github/bckohan/django-render-static?branch=main
-   :alt: Code Coverage
+  .. image:: https://img.shields.io/codecov/c/github/bckohan/django-render-static/main.svg
+    :target: https://codecov.io/github/bckohan/django-render-static?branch=main
+    :alt: Code Coverage
 
-.. image:: https://github.com/bckohan/django-render-static/actions/workflows/test.yml/badge.svg?branch=main
-   :target: https://github.com/bckohan/django-render-static/actions/workflows/test.yml?query=branch:master
-   :alt: Test Status
+  .. image:: https://github.com/bckohan/django-render-static/actions/workflows/test.yml/badge.svg?branch=main
+    :target: https://github.com/bckohan/django-render-static/actions/workflows/test.yml?query=branch:master
+    :alt: Test Status
 
-.. image:: https://github.com/bckohan/django-render-static/actions/workflows/lint.yml/badge.svg?branch=main
-   :target: https://github.com/bckohan/django-render-static/actions/workflows/lint.yml?query=branch:master
-   :alt: Lint Status
+  .. image:: https://github.com/bckohan/django-render-static/actions/workflows/lint.yml/badge.svg?branch=main
+    :target: https://github.com/bckohan/django-render-static/actions/workflows/lint.yml?query=branch:master
+    :alt: Lint Status
 
-.. image:: https://img.shields.io/badge/Published%20on-Django%20Packages-0c3c26
-   :target: https://djangopackages.org/packages/p/django-render-static/
-   :alt: Published on Django Packages
+  .. image:: https://img.shields.io/badge/Published%20on-Django%20Packages-0c3c26
+    :target: https://djangopackages.org/packages/p/django-render-static/
+    :alt: Published on Django Packages
 
 Use Django's template engines to render static files that are collected during the
 :django-admin:`collectstatic` routine and likely served above Django at runtime. Files rendered by

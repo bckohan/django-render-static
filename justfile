@@ -93,17 +93,17 @@ clean: clean-docs clean-git-ignored clean-env
 
 # build html documentation
 build-docs-html:
-    @just run --group docs --all-extras --isolated --exact sphinx-build --fresh-env --builder html --doctree-dir ./doc/build/doctrees ./doc/source ./doc/build/html
+    @just run --no-default-groups --group docs --all-extras --isolated --exact sphinx-build --fresh-env --builder html --doctree-dir ./doc/build/doctrees ./doc/source ./doc/build/html
 
 [script]
 _open-pdf-docs:
     import webbrowser
     from pathlib import Path
-    webbrowser.open(f"file://{Path('./doc/build/pdf/django-render-static.pdf').absolute()}")
+    webbrowser.open(f"file://{Path('./doc/build/pdf/djangorenderstatic.pdf').absolute()}")
 
 # build pdf documentation
 build-docs-pdf:
-    @just run --group docs --all-extras --isolated --exact sphinx-build --fresh-env --builder latex --doctree-dir ./doc/build/doctrees ./doc/source ./doc/build/pdf
+    @just run --no-default-groups --group docs --all-extras --isolated --exact sphinx-build --fresh-env --builder latex --doctree-dir ./doc/build/doctrees ./doc/source ./doc/build/pdf
     make -C ./doc/build/pdf
     @just _open-pdf-docs
 
