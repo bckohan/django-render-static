@@ -222,7 +222,7 @@ check-all *ENV:
 # run zizmor security analysis of CI
 zizmor:
     cargo install --locked zizmor
-    zizmor --format sarif .github/workflows/ > zizmor.sarif
+    zizmor --persona auditor --format sarif .github/workflows/ > zizmor.sarif
 
 # run specific tests (project venv)
 test *TESTS:
