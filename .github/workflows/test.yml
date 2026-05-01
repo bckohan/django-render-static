@@ -75,7 +75,7 @@ jobs:
         python-version: ${{ matrix.python-version }}
         allow-prereleases: true
     - name: Setup Just
-      uses: extractions/setup-just@f8a3cce218d9f83db3a2ecd90e41ac3de6cdfd9b
+      uses: extractions/setup-just@53165ef7e734c5c07cb06b3c8e7b647c5aa16db3
     - name: Install uv
       uses: astral-sh/setup-uv@5a095e7a2014a4212f075830d4f7277575a9d098
       with:
@@ -152,7 +152,7 @@ jobs:
         python-version: ${{ matrix.python-version }}
         allow-prereleases: true
     - name: Setup Just
-      uses: extractions/setup-just@f8a3cce218d9f83db3a2ecd90e41ac3de6cdfd9b
+      uses: extractions/setup-just@53165ef7e734c5c07cb06b3c8e7b647c5aa16db3
     - name: Install uv
       uses: astral-sh/setup-uv@5a095e7a2014a4212f075830d4f7277575a9d098
       with:
@@ -232,7 +232,7 @@ jobs:
         python-version: ${{ matrix.python-version }}
         allow-prereleases: true
     - name: Setup Just
-      uses: extractions/setup-just@f8a3cce218d9f83db3a2ecd90e41ac3de6cdfd9b
+      uses: extractions/setup-just@53165ef7e734c5c07cb06b3c8e7b647c5aa16db3
     - name: Install uv
       uses: astral-sh/setup-uv@5a095e7a2014a4212f075830d4f7277575a9d098
       with:
@@ -267,6 +267,9 @@ jobs:
   coverage-combine:
     needs: [test-linux, test-macos, test-windows]
     runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      id-token: write
 
     steps:
       - uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd
@@ -279,7 +282,7 @@ jobs:
           allow-prereleases: true
 
       - name: Setup Just
-        uses: extractions/setup-just@f8a3cce218d9f83db3a2ecd90e41ac3de6cdfd9b
+        uses: extractions/setup-just@53165ef7e734c5c07cb06b3c8e7b647c5aa16db3
       - name: Install uv
         uses: astral-sh/setup-uv@5a095e7a2014a4212f075830d4f7277575a9d098
         with:
@@ -301,6 +304,6 @@ jobs:
       - name: Upload coverage to Codecov
         uses: codecov/codecov-action@671740ac38dd9b0130fbe1cec585b89eea48d3de
         with:
-          token: ${{ secrets.CODECOV_TOKEN }}
+          use_oidc: true
           files:
             ./coverage.xml
