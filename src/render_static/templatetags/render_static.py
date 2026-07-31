@@ -21,11 +21,12 @@ from typing import (
     cast,
 )
 
+import django
 from django import template
 from django.conf import settings
 from django.template import Node, NodeList
 from django.template.context import Context
-from django.template.library import parse_bits
+from django.template.library import parse_bits as _library_parse_bits
 from django.utils.module_loading import import_string
 from django.utils.safestring import SafeString
 
@@ -42,6 +43,31 @@ __all__ = ["split", "defines_to_js", "urls_to_js", "enums_to_js"]
 
 Targets = Union[TranspilerTargets, TranspilerTarget]
 TranspilerType = Union[Type[Transpiler], str]
+
+
+# the signature of parse_bits is version dependent, so avoid the stubs
+_parse_bits = cast(Any, _library_parse_bits)
+
+if django.VERSION[:2] >= (6, 1):
+    parse_bits = _parse_bits
+else:
+
+    def parse_bits(
+        parser, bits, params, varargs, varkw, defaults, kwonly, kwonly_defaults, name
+    ):
+        # Django < 6.1 requires a takes_context argument before name
+        return _parse_bits(
+            parser,
+            bits,
+            params,
+            varargs,
+            varkw,
+            defaults,
+            kwonly,
+            kwonly_defaults,
+            False,
+            name,
+        )
 
 
 def do_transpile(
@@ -235,7 +261,6 @@ def transpiler_tag(
                 defaults,
                 kwonly,
                 kwonly_defaults,
-                False,
                 function_name,
             )
             # we rearrange everything here to turn all arguments into
@@ -501,7 +526,6 @@ def override(parser, token):
         [],
         [],
         {},
-        False,
         "override",
     )
     name = p_args[0] if p_args else None

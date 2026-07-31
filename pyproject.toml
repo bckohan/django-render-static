@@ -4,7 +4,7 @@ build-backend = "hatchling.build"
 
 [project]
 name = "django-render-static"
-version = "3.5.2"
+version = "3.5.3"
 description = "Use Django's template engine to render static files at deployment or package time. Includes transpilers for extending Django's url reversal and enums to JavaScript."
 requires-python = ">=3.10,<4.0"
 authors = [
@@ -17,7 +17,7 @@ repository = "https://github.com/bckohan/django-render-static"
 homepage = "https://django-render-static.readthedocs.io"
 keywords = ["django", "static", "templates", "javascript", "url", "reverse", "defines", "transpiler", "transpile", "enum"]
 dependencies = [
-    "Django>=4.2,<6.1",
+    "Django>=4.2,<6.2",
     "django-typer>=3.0,<4.0"
 ]
 classifiers = [
@@ -29,6 +29,7 @@ classifiers = [
     "Framework :: Django :: 4.2",
     "Framework :: Django :: 5.2",
     "Framework :: Django :: 6.0",
+    "Framework :: Django :: 6.1",
     "Intended Audience :: Developers",
     "License :: OSI Approved :: MIT License",
     "Natural Language :: English",
@@ -51,7 +52,7 @@ conflicts = [
   [
     { group = "dj42" },
     { group = "dj52" },
-    { group = "dj60" },
+    { group = "dj61" },
   ],
 ]
 
@@ -123,13 +124,13 @@ dev = [
 
 # for CI and testing
 dj42 = [
-    "Django~=4.2; python_version < '3.13'",
+    "Django>=4.2,<5.0; python_version < '3.13'",
 ]
 dj52 = [
-    "Django~=5.2",
+    "Django>=5.2,<6.0"
 ]
-dj60 = [
-    "Django~=6.0; python_version >= '3.12'",
+dj61 = [
+    "Django>=6.1rc1,<6.2; python_version >= '3.12'",
 ]
 
 [tool.mypy]
