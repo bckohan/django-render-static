@@ -19,14 +19,14 @@ jobs:
     permissions:
       contents: read
       actions: write
-    uses: ./.github/workflows/lint.yml
+    uses: $/.github/workflows/lint.yml
 
   test:
     permissions:
       contents: read
       actions: write
       id-token: write
-    uses: ./.github/workflows/test.yml
+    uses: $/.github/workflows/test.yml
 
   build:
     name: Build Package
