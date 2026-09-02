@@ -4,9 +4,9 @@ build-backend = "hatchling.build"
 
 [project]
 name = "django-render-static"
-version = "3.5.3"
+version = "3.6.0"
 description = "Use Django's template engine to render static files at deployment or package time. Includes transpilers for extending Django's url reversal and enums to JavaScript."
-requires-python = ">=3.10,<4.0"
+requires-python = ">=3.11,<4.0"
 authors = [
   {name = "Brian Kohan", email = "bckohan@gmail.com"},
 ]
@@ -17,7 +17,7 @@ repository = "https://github.com/bckohan/django-render-static"
 homepage = "https://django-render-static.readthedocs.io"
 keywords = ["django", "static", "templates", "javascript", "url", "reverse", "defines", "transpiler", "transpile", "enum"]
 dependencies = [
-    "Django>=4.2,<6.2",
+    "Django>=5.2,<6.2",
     "django-typer>=3.0,<4.0"
 ]
 classifiers = [
@@ -26,7 +26,6 @@ classifiers = [
     "Operating System :: OS Independent",
     "Topic :: Software Development :: Libraries :: Python Modules",
     "Development Status :: 5 - Production/Stable",
-    "Framework :: Django :: 4.2",
     "Framework :: Django :: 5.2",
     "Framework :: Django :: 6.0",
     "Framework :: Django :: 6.1",
@@ -34,11 +33,11 @@ classifiers = [
     "License :: OSI Approved :: MIT License",
     "Natural Language :: English",
     "Programming Language :: Python",
-    "Programming Language :: Python :: 3.10",
     "Programming Language :: Python :: 3.11",
     "Programming Language :: Python :: 3.12",
     "Programming Language :: Python :: 3.13",
     "Programming Language :: Python :: 3.14",
+    "Programming Language :: Python :: 3.15",
     "Topic :: Internet :: WWW/HTTP",
     "Topic :: Internet :: WWW/HTTP :: Site Management",
     "Topic :: Software Development :: Libraries",
@@ -50,7 +49,6 @@ classifiers = [
 package = true
 conflicts = [
   [
-    { group = "dj42" },
     { group = "dj52" },
     { group = "dj61" },
   ],
@@ -77,7 +75,10 @@ django-enum = ["django-enum>=2.1.0"]
 enum-properties = ["enum-properties>=2.2.2"]
 test = [
     { include-group = "coverage" },
-    "deepdiff>=8.3.0",
+    "deepdiff>=8.3.0; python_version < '3.15'",
+    # deepdiff 9.1 requires cachebox<6 which has no cp315 wheels and does not
+    # build on 3.15 (PyO3 too old). Cap until deepdiff loosens the pin.
+    "deepdiff>=8.3.0,<9.1; python_version >= '3.15'",
     { include-group = "django-enum" },
     { include-group = "enum-properties" },
     "pytest>=8.3.5",
@@ -123,9 +124,6 @@ dev = [
 ]
 
 # for CI and testing
-dj42 = [
-    "Django>=4.2,<5.0; python_version < '3.13'",
-]
 dj52 = [
     "Django>=5.2,<6.0"
 ]
@@ -195,7 +193,7 @@ exclude = [
     "examples",
     "tests/resources/bad_code.py"
 ]
-target-version = "py310"
+target-version = "py311"
 
 [tool.ruff.lint]
 exclude = [

@@ -2,10 +2,19 @@
 Transpiler tools for PEP 435 style python enumeration classes.
 """
 
-import sys
 import warnings
 from abc import abstractmethod
-from enum import Enum, Flag, IntEnum, IntFlag, auto
+from enum import (
+    Enum,
+    EnumCheck,
+    Flag,
+    FlagBoundary,
+    IntEnum,
+    IntFlag,
+    ReprEnum,
+    StrEnum,
+    auto,
+)
 from typing import Any, Collection, Dict, Generator, List, Optional, Set, Type, Union
 
 from django.db.models import IntegerChoices, TextChoices
@@ -19,11 +28,18 @@ except ImportError:
     from django.utils.functional import classproperty
 
 
-IGNORED_ENUMS = {Enum, IntEnum, IntFlag, Flag, TextChoices, IntegerChoices}
-if sys.version_info >= (3, 11):
-    from enum import EnumCheck, FlagBoundary, ReprEnum, StrEnum
-
-    IGNORED_ENUMS.update({FlagBoundary, ReprEnum, StrEnum, EnumCheck})
+IGNORED_ENUMS = {
+    Enum,
+    IntEnum,
+    IntFlag,
+    Flag,
+    TextChoices,
+    IntegerChoices,
+    FlagBoundary,
+    ReprEnum,
+    StrEnum,
+    EnumCheck,
+}
 
 
 class UnrecognizedBehavior(Enum):

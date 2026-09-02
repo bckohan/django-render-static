@@ -28,7 +28,7 @@ just manage <cmd>   # run Django management commands using tests.settings
 
 Tests use `pytest-django` with `DJANGO_SETTINGS_MODULE=tests.settings`. The `just test-all` recipe runs the suite twice in isolated venvs: once with all optional extras (PyYAML, Jinja2) and once without.
 
-In CI, Django version matrix entries are `dj42`/`dj52`/`dj60` — these map to `[dependency-groups]` in `pyproject.toml` and are passed as `--group` flags to `uv run --isolated`. No `test-lock` or venv mutation is needed.
+In CI, Django version matrix entries are `dj52`/`dj61` — these map to `[dependency-groups]` in `pyproject.toml` and are passed as `--group` flags to `uv run --isolated`. No `test-lock` or venv mutation is needed.
 
 100% code coverage is required before PRs are accepted.
 
