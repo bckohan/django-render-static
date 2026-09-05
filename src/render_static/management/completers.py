@@ -4,8 +4,7 @@ Shell completion helpers for :django-admin:`renderstatic` related management com
 
 import typing as t
 
-from click import Context, Parameter
-from click.shell_completion import CompletionItem
+from django_typer.completers import CompletionItem, Context, Parameter
 
 from render_static.engine import StaticTemplateEngine
 
