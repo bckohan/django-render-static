@@ -17,7 +17,7 @@ r"""
 
 """
 
-VERSION = (3, 6, 0)
+VERSION = (3, 7, 0)
 
 __title__ = "Django Render Static"
 __version__ = ".".join(str(i) for i in VERSION)

@@ -160,3 +160,5 @@ cython_debug/
 requirements.txt
 uv.lock
 zizmor.sarif
+.claude
+.claude/worktrees
